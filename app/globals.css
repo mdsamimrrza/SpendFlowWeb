@@ -1,0 +1,195 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Light — warm parchment (mobile constants/theme.ts) */
+  --sf-primary: #0f5c4d;
+  --sf-primary-strong: #0a453a;
+  --sf-primary-light: #dce9e3;
+  --sf-accent: #a8791f;
+  --sf-success: #0f5c4d;
+  --sf-income: #047857;
+  --sf-warning: #a8791f;
+  --sf-danger: #a5442b;
+  --sf-rust: #a5442b;
+  --sf-info: #2a6f86;
+  --sf-background: #edeae0;
+  --sf-surface: #f7f5ec;
+  --sf-surface-elevated: #e5e2d6;
+  --sf-text: #17241f;
+  --sf-text-muted: #4b5c55;
+  --sf-faint: #8b978f;
+  --sf-border: #cfcaba;
+  --sf-input: #f7f5ec;
+  --sf-tab: #f7f5ec;
+  --sf-accent-bg: #dce9e3;
+  --sf-brass: #a8791f;
+  --sf-brass-tint: #f0e3c8;
+  --sf-rust-tint: #f1dcd3;
+  /* Chart expense series (mobile rule): rust in light, indigo in dark. */
+  --sf-expense-series: #a5442b;
+}
+
+.dark {
+  /* Dark — deep slate */
+  --sf-primary: #818cf8;
+  --sf-primary-strong: #a5b4fc;
+  --sf-primary-light: rgb(129 140 248 / 0.18);
+  --sf-accent: #8b5cf6;
+  --sf-success: #10b981;
+  --sf-income: #10b981;
+  --sf-warning: #f59e0b;
+  --sf-danger: #ef4444;
+  --sf-rust: #ef4444;
+  --sf-info: #0ea5e9;
+  --sf-background: #0b0f19;
+  --sf-surface: #151d2a;
+  --sf-surface-elevated: #1e293b;
+  --sf-text: #f8fafc;
+  --sf-text-muted: #94a3b8;
+  --sf-faint: #64748b;
+  --sf-border: #273549;
+  --sf-input: #151d2a;
+  --sf-tab: #151d2a;
+  --sf-accent-bg: rgb(129 140 248 / 0.18);
+  --sf-brass: #f59e0b;
+  --sf-brass-tint: rgb(245 158 11 / 0.15);
+  --sf-rust-tint: rgb(239 68 68 / 0.15);
+  --sf-expense-series: #818cf8;
+}
+
+body {
+  background-color: var(--sf-background);
+  color: var(--sf-text);
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--sf-primary-light);
+}
+
+/* ============================================================
+   Ledger design system — financial statement aesthetic.
+   Flat paper, hairline rules, sharp corners, serif figures.
+   No soft shadows, no blur, no gradients, no rounded cards.
+   ============================================================ */
+
+/* Statement panel: hairline box on paper. */
+.panel {
+  background: var(--sf-surface);
+  border: 1px solid var(--sf-border);
+}
+
+/* Flat panel that sits directly on the background (dashed paper inset). */
+.panel-flush {
+  background: transparent;
+  border: 1px solid var(--sf-border);
+}
+
+/* Section masthead rule inside a panel. */
+.panel-rule {
+  border-bottom: 1px solid var(--sf-border);
+}
+
+/* Small-caps label — the system's only label style. */
+.caps {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sf-text-muted);
+}
+
+.caps-faint {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sf-faint);
+}
+
+/* Serif figures for money — the system's display voice. */
+.figures {
+  font-family: Georgia, "Times New Roman", serif;
+  font-variant-numeric: lining-nums tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Sans tabular figures for dense tabular money. */
+.numeric {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Rule line that stretches after an inline label. */
+.rule-after {
+  height: 1px;
+  background: var(--sf-border);
+  flex: 1;
+}
+
+/* End-of-statement double rule (classic ledger close). */
+.end-rule {
+  border-top: 3px double var(--sf-border);
+}
+
+/* Statement serial stamp. */
+.stamp {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sf-faint);
+}
+
+/* Chart line-draw entrance (stock-style), respects reduced motion. */
+.chart-draw {
+  stroke-dasharray: 2400;
+  stroke-dashoffset: 2400;
+  animation: chart-draw 1.1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.chart-draw-delay {
+  animation-delay: 0.15s;
+}
+@keyframes chart-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chart-draw {
+    animation: none;
+    stroke-dasharray: none;
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Ledger rows and panels ease their state changes. */
+.panel,
+.panel a,
+tr {
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--sf-surface-elevated) 25%,
+    var(--sf-surface) 50%,
+    var(--sf-surface-elevated) 75%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.4s linear infinite;
+}
