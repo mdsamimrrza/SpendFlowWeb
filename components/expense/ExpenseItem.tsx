@@ -2,6 +2,7 @@
 
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import type { ExpenseRow } from "@/services/expenses";
+import { categoryGlyph } from "@/components/ui/Glyph";
 
 interface ExpenseItemProps {
   row: ExpenseRow;
@@ -13,14 +14,15 @@ interface ExpenseItemProps {
 /** Transaction row (mobile ExpenseItem parity — buttons replace the swipe gesture). */
 export function ExpenseItem({ row, displayAmount, timeLabel, showCurrencyBadge = false }: ExpenseItemProps) {
   const isIncome = row.type === "income";
+  const CategoryIcon = categoryGlyph(row.categories?.icon);
   return (
     <div className="flex items-center gap-3 rounded-md bg-surface px-3 py-2.5 transition hover:bg-surface-elevated">
       <span
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base"
-        style={{ backgroundColor: `${row.categories?.color ?? "#888"}22` }}
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+        style={{ backgroundColor: `${row.categories?.color ?? "#888"}22`, color: row.categories?.color ?? undefined }}
         aria-hidden
       >
-        {row.categories?.icon ?? "💸"}
+        <CategoryIcon size={16} />
       </span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-bold text-text">

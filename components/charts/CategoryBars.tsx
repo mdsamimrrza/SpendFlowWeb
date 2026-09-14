@@ -25,9 +25,9 @@ export function CategoryBars({ slices, totalLabel, totalValue, formatValue }: Ca
   return (
     <div>
       {(totalValue || totalLabel) && (
-        <div className="panel-rule mb-4 flex items-baseline justify-between pb-3">
-          {totalValue && <p className="figures text-2xl font-bold text-text">{totalValue}</p>}
-          {totalLabel && <p className="caps">{totalLabel}</p>}
+        <div className="panel-rule mb-4 flex items-baseline justify-between gap-3 pb-3">
+          {totalValue && <p className="figures min-w-0 break-all text-2xl font-bold text-text">{totalValue}</p>}
+          {totalLabel && <p className="caps whitespace-nowrap">{totalLabel}</p>}
         </div>
       )}
       <ul>

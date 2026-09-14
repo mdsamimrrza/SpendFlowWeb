@@ -47,6 +47,16 @@ export async function createTransfer(
   userId: string,
   input: CreateTransferInput,
 ): Promise<Transfer> {
+  const amount = Number(input.amount);
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 1_000_000_000_000) {
+    throw new Error("Enter a valid amount greater than zero.");
+  }
+  if (input.fee != null && (!Number.isFinite(input.fee) || input.fee < 0)) {
+    throw new Error("Fee must be zero or greater.");
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) {
+    throw new Error("Enter a valid date.");
+  }
   const { data: accounts, error: accError } = await supabase
     .from("bank_accounts")
     .select("id, currency")
@@ -74,7 +84,7 @@ export async function createTransfer(
       user_id: userId,
       from_account_id: input.fromAccountId,
       to_account_id: input.toAccountId,
-      amount: input.amount,
+      amount,
       from_currency: from.currency,
       to_currency: to.currency,
       exchange_rate: exchangeRate,
@@ -92,11 +102,14 @@ export async function createTransfer(
 
 export async function deleteTransfer(
   supabase: SupabaseClient<Database>,
+  userId: string,
   id: string,
 ): Promise<void> {
   const { error } = await supabase
     .from("transfers")
     .update({ deleted_at: new Date().toISOString() })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("user_id", userId)
+    .is("deleted_at", null);
   if (error) throw error;
 }

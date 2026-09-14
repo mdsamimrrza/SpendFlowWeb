@@ -2,20 +2,27 @@ import type { HTMLAttributes, ReactNode } from "react";
 
 interface PanelProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
-  /** Statement masthead label rendered in the panel's top rule. */
+  /** Card header label rendered above the body. */
   label?: string;
-  /** Right-aligned slot inside the masthead (e.g. currency chip, action). */
+  /** Right-aligned slot inside the header (e.g. currency chip, action). */
   action?: ReactNode;
 }
 
-/** Ledger panel: hairline box with an optional statement masthead. */
+/** Card: soft white tile with an optional header row. A flex column so a
+ *  single body child can fill (and evenly consume) a stretched grid row. */
 export function Panel({ label, action, className = "", children, ...rest }: PanelProps) {
   return (
-    <div {...rest} className={`panel ${className}`}>
+    <div {...rest} className={`panel flex flex-col ${className}`}>
       {label && (
-        <div className="panel-rule flex items-center justify-between px-5 py-2.5">
-          <span className="caps">{label}</span>
-          {action}
+        <div className="panel-rule flex items-center justify-between gap-2 px-4 py-3 sm:px-5">
+          <span className="caps whitespace-nowrap">{label}</span>
+          {action && (
+            // Constrained slot: long actions shrink (min-w-0) and scroll or
+            // truncate inside — they never push the masthead wider.
+            <div className="flex min-w-0 items-center justify-end overflow-hidden">
+              {action}
+            </div>
+          )}
         </div>
       )}
       {children}

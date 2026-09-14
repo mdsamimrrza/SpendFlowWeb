@@ -7,8 +7,8 @@ const supabaseUrl =
 const supabaseAnonKey =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "missing-supabase-key";
 
-// Public paths: landing page, auth flow + the static design-preview page (mock data only).
-const PUBLIC_PATHS = ["/", "/sign-in", "/onboarding", "/auth/callback", "/preview"];
+// Public paths: landing page, auth flow + the static design-preview pages (mock data only).
+const PUBLIC_PATHS = ["/", "/sign-in", "/onboarding", "/auth/callback", "/preview", "/preview-dash", "/preview-history", "/preview-settings", "/preview-profile", "/preview-expense", "/preview-categories", "/preview-profit-loss", "/preview-analytics", "/preview-accounts", "/preview-bullion", "/preview-transfer", "/preview-transfer-log", "/preview-export", "/preview-recurring", "/preview-bin"];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });

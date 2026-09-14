@@ -121,6 +121,13 @@ web app relies on `redirect_to` surviving Supabase's allowlist check:
 - `access_denied` (user cancelled consent) now returns to `/auth/callback` and is surfaced on
   `/sign-in` as `?error=oauth_cancelled`; failed exchanges land as `?error=oauth`. Success
   redirects to `/overview` (mobile parity — into the app, not the marketing landing).
+- **Email-redirect targets (audit P2-6, fixed 2026-09-14)**: password reset and signup
+  confirmation now target the bare allowlisted `/auth/callback` path (previously `/sign-in?reset=1`
+  / nothing), so every web auth email link rides on the same one allowlist entry as Google OAuth.
+  The callback detects GoTrue's `type=recovery` param and lands the session on
+  `/profile?recovery=1`, where the set-new-password step completes. A per-origin entry with a
+  `/auth/callback` path prefix satisfies Supabase's redirect_to matching; run
+  `scripts/verify-oauth-redirect.mjs` (or a real reset email) after adding any new origin.
 
 ### 7.1 Redirect allowlist verification script
 
@@ -136,3 +143,30 @@ node scripts/verify-oauth-redirect.mjs http://192.168.1.20:3000   # LAN dev from
 ```
 
 No secrets needed — it uses only the anon key from `.env.local`.
+
+### 7.2 Outbound auth email — custom SMTP (configured 2026-09-14)
+
+Every email a user receives — signup confirmation, password reset, and the security OTP
+(email-change / account-deletion; the `send-security-otp` function itself sends nothing, it
+proxies to GoTrue `POST /auth/v1/otp`) — is delivered by the Auth server through the project's
+**SMTP config**, which is set to the custom Gmail mailbox `sahakarisip.app@gmail.com`
+(sender name "SpendFlow"). Because it lives in GoTrue's config, one setting covers web **and**
+mobile; no client code or edge-function change is involved, and Supabase's built-in
+4 emails/hour free mailer no longer applies.
+
+- Credentials live ONLY in the local, gitignored `.env` (`EMAIL_SERVER_HOST/PORT/USER/PASSWORD`,
+  `EMAIL_FROM`) — never in code, never in a `NEXT_PUBLIC_*` var, never committed.
+- (Re-)apply after any credential change (e.g. a rotated Gmail app password):
+  `node scripts/configure-smtp.mjs --apply` (needs a Supabase personal access token —
+  Dashboard → Account → Tokens — via `--token`, env `SUPABASE_ACCESS_TOKEN`, or the prompt).
+  Inspect current state without changing anything: `node scripts/configure-smtp.mjs --check`.
+- Verify delivery end-to-end: `node scripts/configure-smtp.mjs --test you@example.com`
+  triggers a real recovery mail through the same path the app's "Forgot password" uses.
+- Gotchas: the From address MUST equal the SMTP user (Gmail rejects relay otherwise — the script
+  warns); if the mailbox hits Gmail sender quotas, auth emails fail with `otp_send_failed` /
+  silent non-delivery, and the OTP cooldown auto-rolls back on send failure (see function header).
+- Email **templates** (subjects/body) are separate config — Dashboard → Authentication →
+  Email Templates. The redesigned SpendFlow set lives in `emails/` in this repo
+  (`confirm-signup`, `reset-password`, `security-code`, `change-email` + `README.md` for
+  subject lines, dashboard mapping, and the hard rule that the Magic-Link template must keep
+  `{{ .Code }}` — both apps' OTP flows depend on it). SMTP change does not touch templates.

@@ -12,7 +12,7 @@ import {
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
-import { ensureProfile, updateProfile } from "@/services/auth";
+import { ensureProfile, updateProfile, clearLocalCaches } from "@/services/auth";
 import { generateDueRecurringExpenses } from "@/services/recurring";
 import { notifyExpensesChanged } from "@/hooks/useExpenses";
 import type { Profile, ProfileUpdate } from "@/types/database.types";
@@ -45,8 +45,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     const run = (async () => {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const user = sessionData.session?.user;
+      let user = session?.user;
+      if (!user) {
+        const { data: sessionData } = await supabase.auth.getSession().catch(() => ({ data: { session: null } }));
+        user = sessionData.session?.user;
+      }
       if (!user) {
         setProfile(null);
         return;
@@ -79,20 +82,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       inflight.current = null;
     }
-  }, [supabase]);
+  }, [supabase, session?.user]);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-    });
+    let resolved = false;
+    const markDone = (sess: Session | null) => {
+      setSession(sess);
+      if (!resolved) {
+        resolved = true;
+        setLoading(false);
+      }
+    };
 
+    // 1. Listen for auth state change first (captures INITIAL_SESSION and any immediate auth event)
     const { data: sub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
-      if (!nextSession) setProfile(null);
+      markDone(nextSession);
+      if (!nextSession) {
+        setProfile(null);
+        // Audit P3-4: session can vanish without an explicit sign-out click
+        // (expiry / global sign-out on another device) — purge per-user caches.
+        clearLocalCaches();
+      }
     });
 
-    return () => sub.subscription.unsubscribe();
+    // 2. Query session explicitly with catch/finally
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        markDone(data?.session ?? null);
+      })
+      .catch(() => {
+        markDone(null);
+      })
+      .finally(() => {
+        if (!resolved) {
+          resolved = true;
+          setLoading(false);
+        }
+      });
+
+    // 3. Safety fallback timer so loading is NEVER stuck at true on network latency or lock contention
+    const timer = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        setLoading(false);
+      }
+    }, 1200);
+
+    return () => {
+      clearTimeout(timer);
+      sub.subscription.unsubscribe();
+    };
   }, [supabase]);
 
   useEffect(() => {

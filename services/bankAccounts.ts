@@ -107,11 +107,38 @@ export interface AccountInput {
   country?: string | null;
 }
 
+/** Client-side write validation (DB CHECKs back these up — audit P2-4/P3). */
+function validateAccountInput(input: {
+  name?: string;
+  currency?: string;
+  initialBalance?: number;
+  last4?: string | null;
+  color?: string;
+  icon?: string;
+}): void {
+  if (input.name !== undefined && (!input.name.trim() || input.name.trim().length > 40)) {
+    throw new Error("Name must be 1–40 characters");
+  }
+  if (input.currency !== undefined && !/^[A-Z]{3}$/.test(input.currency)) {
+    throw new Error("Currency must be a 3-letter code");
+  }
+  if (input.initialBalance !== undefined && !Number.isFinite(input.initialBalance)) {
+    throw new Error("Balance must be a number");
+  }
+  if (input.last4 != null && !/^\d{0,4}$/.test(input.last4)) {
+    throw new Error("Last 4 must be at most 4 digits");
+  }
+  if (input.color !== undefined && !/^#[0-9A-Fa-f]{6}$/.test(input.color)) {
+    throw new Error("Invalid color");
+  }
+}
+
 export async function createBankAccount(
   supabase: SupabaseClient<Database>,
   userId: string,
   input: AccountInput,
 ): Promise<BankAccountRow> {
+  validateAccountInput(input);
   if (input.isDefault) {
     await supabase
       .from("bank_accounts")
@@ -142,9 +169,21 @@ export async function createBankAccount(
 
 export async function updateBankAccount(
   supabase: SupabaseClient<Database>,
+  userId: string,
   id: string,
   update: Partial<AccountInput>,
 ): Promise<BankAccountRow> {
+  validateAccountInput(update);
+  // Audit P3-5: promoting to default must un-root the previous one first, or
+  // the partial unique index rejects the write (createBankAccount already does).
+  if (update.isDefault === true) {
+    const { error: unsetError } = await supabase
+      .from("bank_accounts")
+      .update({ is_default: false })
+      .eq("user_id", userId)
+      .eq("is_default", true);
+    if (unsetError) throw unsetError;
+  }
   const { data, error } = await supabase
     .from("bank_accounts")
     .update({
@@ -156,8 +195,12 @@ export async function updateBankAccount(
         : {}),
       ...(update.last4 !== undefined ? { account_number_last4: update.last4 } : {}),
       ...(update.isDefault != null ? { is_default: update.isDefault } : {}),
+      ...(update.color != null ? { color: update.color } : {}),
+      ...(update.icon != null ? { icon: update.icon } : {}),
     })
     .eq("id", id)
+    .eq("user_id", userId)
+    .is("deleted_at", null)
     .select(SELECT_COLUMNS)
     .single();
   if (error) throw error;
@@ -167,11 +210,71 @@ export async function updateBankAccount(
 /** Soft delete (parity); linked entries keep their rows (FK SET NULL). */
 export async function deleteBankAccount(
   supabase: SupabaseClient<Database>,
+  userId: string,
   id: string,
 ): Promise<void> {
   const { error } = await supabase
     .from("bank_accounts")
     .update({ deleted_at: new Date().toISOString() })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("user_id", userId)
+    .is("deleted_at", null);
   if (error) throw error;
+}
+
+export interface AccountCycleStat {
+  count: number;
+  spent: number;
+  earned: number;
+}
+
+/**
+ * Per-account activity for a date window (web-only ledger detail): entry
+ * count + spent/earned, converted to each account's OWN currency with the
+ * same snapshot-first rule as computeAccountBalances.
+ */
+export async function computeAccountCycleStats(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  accounts: BankAccountRow[],
+  fromISO: string,
+  toISO: string,
+): Promise<Map<string, AccountCycleStat>> {
+  const stats = new Map<string, AccountCycleStat>();
+  if (accounts.length === 0) return stats;
+
+  const { data, error } = await supabase
+    .from("expenses")
+    .select("bank_account_id, amount, currency, exchange_rate_to_usd, type")
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .not("bank_account_id", "is", null)
+    .gte("date", fromISO)
+    .lte("date", toISO);
+  if (error) throw error;
+
+  const rateCache = new Map<string, number>();
+  const accountRate = async (currency: string) => {
+    if (!rateCache.has(currency)) {
+      rateCache.set(currency, await getRate(supabase, currency));
+    }
+    return rateCache.get(currency)!;
+  };
+
+  for (const row of data ?? []) {
+    const account = accounts.find((a) => a.id === (row.bank_account_id as string));
+    if (!account) continue;
+    let v = Number(row.amount);
+    if (row.currency !== account.currency) {
+      const fromRate = row.exchange_rate_to_usd ?? (await accountRate(row.currency));
+      const toRate = await accountRate(account.currency);
+      if (fromRate > 0) v = (v * fromRate) / toRate;
+    }
+    const s = stats.get(account.id) ?? { count: 0, spent: 0, earned: 0 };
+    s.count += 1;
+    if (row.type === "income") s.earned += v;
+    else s.spent += v;
+    stats.set(account.id, s);
+  }
+  return stats;
 }

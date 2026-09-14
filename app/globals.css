@@ -3,60 +3,60 @@
 @tailwind utilities;
 
 :root {
-  /* Light — warm parchment (mobile constants/theme.ts) */
-  --sf-primary: #0f5c4d;
-  --sf-primary-strong: #0a453a;
-  --sf-primary-light: #dce9e3;
-  --sf-accent: #a8791f;
-  --sf-success: #0f5c4d;
-  --sf-income: #047857;
-  --sf-warning: #a8791f;
-  --sf-danger: #a5442b;
-  --sf-rust: #a5442b;
-  --sf-info: #2a6f86;
-  --sf-background: #edeae0;
-  --sf-surface: #f7f5ec;
-  --sf-surface-elevated: #e5e2d6;
-  --sf-text: #17241f;
-  --sf-text-muted: #4b5c55;
-  --sf-faint: #8b978f;
-  --sf-border: #cfcaba;
-  --sf-input: #f7f5ec;
-  --sf-tab: #f7f5ec;
-  --sf-accent-bg: #dce9e3;
-  --sf-brass: #a8791f;
-  --sf-brass-tint: #f0e3c8;
-  --sf-rust-tint: #f1dcd3;
-  /* Chart expense series (mobile rule): rust in light, indigo in dark. */
-  --sf-expense-series: #a5442b;
+  /* Light — porcelain surfaces, emerald brand, graphite ink */
+  --sf-primary: #0b8457;
+  --sf-primary-strong: #086342;
+  --sf-primary-light: #dcf2e7;
+  --sf-accent: #b45309;
+  --sf-success: #0b8457;
+  --sf-income: #0b8457;
+  --sf-warning: #b45309;
+  --sf-danger: #e5484d;
+  --sf-rust: #e5484d;
+  --sf-info: #0e7490;
+  --sf-background: #f3f5f3;
+  --sf-surface: #ffffff;
+  --sf-surface-elevated: #eef2ef;
+  --sf-text: #0d1411;
+  --sf-text-muted: #54625b;
+  --sf-faint: #97a39c;
+  --sf-border: #e2e7e3;
+  --sf-input: #f3f5f3;
+  --sf-tab: #ffffff;
+  --sf-accent-bg: #dcf2e7;
+  --sf-brass: #b45309;
+  --sf-brass-tint: #fbeedc;
+  --sf-rust-tint: #fbe5e5;
+  /* Chart expense series (theme rule): red in light, mint in dark. */
+  --sf-expense-series: #e5484d;
 }
 
 .dark {
-  /* Dark — deep slate */
-  --sf-primary: #818cf8;
-  --sf-primary-strong: #a5b4fc;
-  --sf-primary-light: rgb(129 140 248 / 0.18);
-  --sf-accent: #8b5cf6;
-  --sf-success: #10b981;
-  --sf-income: #10b981;
-  --sf-warning: #f59e0b;
-  --sf-danger: #ef4444;
-  --sf-rust: #ef4444;
-  --sf-info: #0ea5e9;
-  --sf-background: #0b0f19;
-  --sf-surface: #151d2a;
-  --sf-surface-elevated: #1e293b;
-  --sf-text: #f8fafc;
-  --sf-text-muted: #94a3b8;
-  --sf-faint: #64748b;
-  --sf-border: #273549;
-  --sf-input: #151d2a;
-  --sf-tab: #151d2a;
-  --sf-accent-bg: rgb(129 140 248 / 0.18);
-  --sf-brass: #f59e0b;
-  --sf-brass-tint: rgb(245 158 11 / 0.15);
-  --sf-rust-tint: rgb(239 68 68 / 0.15);
-  --sf-expense-series: #818cf8;
+  /* Dark — true near-black, mint brand */
+  --sf-primary: #34d399;
+  --sf-primary-strong: #6ee7b7;
+  --sf-primary-light: rgb(52 211 153 / 0.14);
+  --sf-accent: #fbbf24;
+  --sf-success: #34d399;
+  --sf-income: #34d399;
+  --sf-warning: #fbbf24;
+  --sf-danger: #f87171;
+  --sf-rust: #f87171;
+  --sf-info: #38bdf8;
+  --sf-background: #0a0d0c;
+  --sf-surface: #121613;
+  --sf-surface-elevated: #1a201c;
+  --sf-text: #f1f5f2;
+  --sf-text-muted: #9ca8a1;
+  --sf-faint: #626e67;
+  --sf-border: #242b26;
+  --sf-input: #161b18;
+  --sf-tab: rgb(18 22 19 / 0.92);
+  --sf-accent-bg: rgb(52 211 153 / 0.14);
+  --sf-brass: #fbbf24;
+  --sf-brass-tint: rgb(251 191 36 / 0.14);
+  --sf-rust-tint: rgb(248 113 113 / 0.14);
+  --sf-expense-series: #34d399;
 }
 
 body {
@@ -78,50 +78,62 @@ body {
 }
 
 /* ============================================================
-   Ledger design system — financial statement aesthetic.
-   Flat paper, hairline rules, sharp corners, serif figures.
-   No soft shadows, no blur, no gradients, no rounded cards.
+   Neo design system — soft fintech surfaces.
+   White porcelain cards, rounded corners, one soft elevation
+   step, bold sans figures. No serif, no hairline-statement
+   styling; density comes from spacing and type hierarchy.
    ============================================================ */
 
-/* Statement panel: hairline box on paper. */
+/* Card surface: white tile with a single soft lift. */
 .panel {
   background: var(--sf-surface);
   border: 1px solid var(--sf-border);
+  border-radius: 16px;
+  box-shadow:
+    0 1px 2px rgb(10 14 12 / 0.04),
+    0 8px 24px rgb(10 14 12 / 0.05);
 }
 
-/* Flat panel that sits directly on the background (dashed paper inset). */
+.dark .panel {
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.3),
+    0 8px 24px rgb(0 0 0 / 0.25);
+}
+
+/* Flush variant that sits directly on the background. */
 .panel-flush {
   background: transparent;
   border: 1px solid var(--sf-border);
+  border-radius: 16px;
 }
 
-/* Section masthead rule inside a panel. */
+/* Internal divider under a card header. */
 .panel-rule {
   border-bottom: 1px solid var(--sf-border);
 }
 
-/* Small-caps label — the system's only label style. */
+/* Overline label. */
 .caps {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--sf-text-muted);
 }
 
 .caps-faint {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--sf-faint);
 }
 
-/* Serif figures for money — the system's display voice. */
+/* Display figures for money — heavy sans, tight tracking. */
 .figures {
-  font-family: Georgia, "Times New Roman", serif;
   font-variant-numeric: lining-nums tabular-nums;
-  letter-spacing: -0.01em;
+  font-weight: 800;
+  letter-spacing: -0.03em;
 }
 
 /* Sans tabular figures for dense tabular money. */
@@ -133,22 +145,40 @@ body {
 /* Rule line that stretches after an inline label. */
 .rule-after {
   height: 1px;
-  background: var(--sf-border);
+  border-radius: 9999px;
+  background: linear-gradient(90deg, var(--sf-border), transparent);
   flex: 1;
 }
 
-/* End-of-statement double rule (classic ledger close). */
+/* Section close divider. */
 .end-rule {
-  border-top: 3px double var(--sf-border);
+  border-top: 1px solid var(--sf-border);
 }
 
-/* Statement serial stamp. */
+/* Tiny meta caption. */
 .stamp {
   font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
+  font-weight: 600;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--sf-faint);
+}
+
+/* Frosted glass surface for floating chrome (top bar, dock). */
+.glass {
+  background: color-mix(in srgb, var(--sf-surface) 82%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/* Horizontally swipeable strip on narrow screens — scrollbar hidden so
+   masthead rules keep their height; touch/wheel scrolling still works. */
+.scroll-x {
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.scroll-x::-webkit-scrollbar {
+  display: none;
 }
 
 /* Chart line-draw entrance (stock-style), respects reduced motion. */
@@ -173,7 +203,59 @@ body {
   }
 }
 
-/* Ledger rows and panels ease their state changes. */
+/* Soft fade + rise entrance used when a chart re-renders (range switch). */
+.chart-fade {
+  animation: chart-fade 420ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+@keyframes chart-fade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chart-fade {
+    animation: none;
+  }
+}
+
+/* Right-docked record sheet (components/ui/SlideOver) — slides up as a
+   bottom sheet on phones, in from the right on sm and up. */
+.sf-slide-over {
+  animation: sf-slide-over 220ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+@keyframes sf-slide-over {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@media (max-width: 639px) {
+  .sf-slide-over {
+    animation-name: sf-slide-over-up;
+  }
+  @keyframes sf-slide-over-up {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sf-slide-over {
+    animation: none;
+  }
+}
+
+/* Cards ease their state changes. */
 .panel,
 .panel a,
 tr {

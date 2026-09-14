@@ -63,13 +63,13 @@ export function CashFlowHero({
 
   return (
     <section className="panel">
-      {/* Masthead rule */}
-      <div className="border-b-2 border-primary px-5 py-2.5 sm:px-6">
-        <div className="flex items-center justify-between">
+      {/* Masthead rule — tighter padding only below sm; compact (landing) untouched */}
+      <div className={`border-b-2 border-primary py-2.5 ${compact ? "px-5" : "px-4"} sm:px-6`}>
+        <div className="flex flex-wrap items-center justify-between gap-x-3">
           <span className="caps !text-primary-strong">Statement of cash flow</span>
           <span className="caps">{cycleLabel}</span>
         </div>
-        <div className="mt-1 flex items-center justify-between">
+        <div className="mt-1 flex flex-wrap items-center justify-between gap-x-3">
           <span className="stamp">Form SF-01 · personal ledger</span>
           <span className="stamp">No. {statementNo}</span>
         </div>
@@ -81,11 +81,17 @@ export function CashFlowHero({
           compact
             ? // Hairline grid: bg-border shows through gap-px seams.
               "grid grid-cols-2 gap-px bg-border"
-            : "grid grid-cols-1 divide-y divide-border md:grid-cols-4 md:divide-x md:divide-y-0"
+            : // Mobile/tablet: net spans full width, inflow/outflow share a
+              // row, budget pace spans full width. Desktop: 4-col row.
+              "grid grid-cols-2 gap-px bg-border lg:grid-cols-4"
         }
       >
         {/* Net figure — auto-shrinks as the number grows, never overflows */}
-        <div className={`bg-surface px-5 py-5 sm:px-6 ${compact ? "col-span-2" : ""}`}>
+        <div
+          className={`bg-surface px-5 py-5 sm:px-6 ${
+            compact ? "col-span-2" : "col-span-2 lg:col-span-1"
+          }`}
+        >
           <p className="caps">Net cash flow</p>
           <div className={`figures mt-2 font-bold ${net < 0 ? "text-danger" : "text-text"}`}>
             <FitText basePx={compact ? 34 : 44} minPx={20} title="Net cash flow for this cycle">
@@ -93,15 +99,17 @@ export function CashFlowHero({
               {formatted(Math.abs(net))}
             </FitText>
           </div>
-          <p className="mt-3 text-xs text-text-muted">
-            {todayLabel} <span className="numeric font-bold text-text">{formatted(todayTotal)}</span>
+          <p className="mt-3 flex flex-wrap items-baseline gap-x-1.5 text-xs text-text-muted">
+            <span>{todayLabel}</span>
+            <span className="numeric font-bold text-text">{formatted(todayTotal)}</span>
             {delta && (
               <>
-                {" · "}
-                <span className={`numeric font-bold ${delta.positive ? "text-income" : "text-danger"}`}>
+                <span
+                  className={`numeric font-bold ${delta.positive ? "text-income" : "text-danger"}`}
+                >
                   {delta.text}
                 </span>
-                <span className="text-faint"> vs prev cycle</span>
+                <span className="text-faint">vs prev cycle</span>
               </>
             )}
           </p>
@@ -136,7 +144,11 @@ export function CashFlowHero({
         </div>
 
         {/* Budget pace */}
-        <div className={`bg-surface px-5 py-5 sm:px-6 ${compact ? "col-span-2" : ""}`}>
+        <div
+          className={`bg-surface px-5 py-5 sm:px-6 ${
+            compact ? "col-span-2" : "col-span-2 lg:col-span-1"
+          }`}
+        >
           <p className="caps">Budget pace</p>
           {budget != null && budget > 0 ? (
             <>
@@ -157,7 +169,7 @@ export function CashFlowHero({
                   />
                 )}
               </div>
-              <p className="mt-1.5 text-[11px] text-faint">
+              <p className="mt-3 text-[11px] text-faint">
                 Day {pace.daysElapsed}/{pace.daysTotal}
                 {pace.projected != null && (
                   <>

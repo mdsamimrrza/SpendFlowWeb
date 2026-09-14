@@ -51,8 +51,12 @@ Auth routing: session → tabs; no session + onboarding incomplete → onboardin
 - Habits: day-of-week rhythm (`FinancialInsights`), burn velocity / pacing forecast (`BudgetAnalyticsCard`).
 
 ### Recurring
-- Subscription/recurring-bill rules: list with monthly-normalized totals (daily×30, weekly×4.33), pause/resume, detail modal, bottom-sheet form with frequency presets.
-- `generateDueRecurringExpenses` runs on login/refresh: idempotent batch generation into `expenses` using `ON CONFLICT (recurring_rule_id, date)`; forward-only `next_due_date` advance; local notification reminder.
+- Recurring **plans** (migration 20260915000000, verified live 2026-09-14): schedule-locked chains — due slots = `plan_start_date` + N × cycle; paying late never shifts the plan. Frequency daily/weekly/monthly/**custom** (`interval_days` 1–365). Billing `mode`: **pay_on_due** (default — a due card + explicit Mark Paid, never silent money) or **auto_charge** (posted by the generator).
+- Installment rows carry `expenses.recurring_due_date` (the slot key); dedup is `UNIQUE (recurring_rule_id, recurring_due_date)` — non-partial, so "Not paid — undo" HARD-deletes the row to free the slot.
+- `generateDueRecurringExpenses` books due slots of active **auto_charge** rules only (batch upsert `ignoreDuplicates`, forward-only `.lt()` chain advance, cap 100/run). Shared single-write payment surface: `markOccurrencePaid` (slot + cycle advance), `skipCurrentOccurrence` (advance, book nothing), `undoLatestOccurrencePayment` (most-recent slot only), `payPlanFromForm` (Add Expense "Pay from plan": books the open slot with the form's values and RE-ANCHORS the chain from the payment date; rule amount/currency self-correct).
+- Tab UI: rule rows show DUE badge / "Paid · on time/late Nd" proof derived from the latest occurrence; detail sheet = due banner + **Mark Paid / Skip this cycle**, paid proof + **Not paid — undo**, timeline strip (≤4 booked ✓, current ○ PENDING/NEXT, 2 dashed future). Form presets + billing-mode cards + Every-N-days with 7/14/28/30 chips.
+- Expense form: NO plan-creation control (removed in review — plans are created on the Recurring tab only). The form shows a dashed **"🔁 Pay from plan (N)"** pill under the amount hero; selecting auto-fills amount/category/currency/description/channel/date=today. Rule-linked rows in edit mode show "Part of a recurring plan · manage" and a three-way delete (this payment only / cancel plan too).
+- Dashboard `BillsDueStrip`: active rules with an open un-booked slot (≤3 shown), one-tap Mark Paid, header `BILLS DUE · n` → Recurring tab.
 
 ### Settings
 - Currency picker (from `constants/app.ts` — 12 currencies: NPR, INR, USD, QAR, GBP, AED, SAR, MYR, KRW, JPY, AUD, CAD). **Changing display currency never rewrites the stored budget** — conversion is display-only.

@@ -24,14 +24,36 @@ export async function signUpWithEmail(
   return supabase.auth.signUp({
     email,
     password,
-    options: { data: { display_name: displayName } },
+    options: {
+      data: { display_name: displayName },
+      // Audit P2-6: confirmation links must land on the one redirect target
+      // this project's allowlist documents (docs/SUPABASE.md §7) — anything
+      // else gets silently rewritten to the mobile deep link. Bare path so the
+      // allowlist entry matches; the callback defaults signed-in users to
+      // /overview.
+      emailRedirectTo: `${window.location.origin}/auth/callback`,
+    },
   });
 }
 
 export async function resetPassword(supabase: SupabaseClient<Database>, email: string) {
   return supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/sign-in?reset=1`,
+    // Audit P2-6: /sign-in?reset=1 was never an allowlisted target (SUPABASE.md
+    // §7 rewrites unlisted redirects to spendflow://). Route recovery through
+    // /auth/callback (allowlisted; it detects type=recovery and lands the user
+    // on the profile set-new-password step).
+    redirectTo: `${window.location.origin}/auth/callback`,
   });
+}
+
+/** Recovery-session password set (after a reset link completed via callback). */
+export async function finalizeRecoveryPassword(
+  supabase: SupabaseClient<Database>,
+  newPassword: string,
+): Promise<{ error: string | null }> {
+  if (newPassword.length < 8) return { error: "At least 8 characters" };
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  return { error: error?.message ?? null };
 }
 
 /** PKCE Google OAuth — web counterpart of mobile's browser-session flow. */
@@ -52,11 +74,38 @@ export async function signOutAllDevices(supabase: SupabaseClient<Database>) {
   clearLocalCaches();
 }
 
-function clearLocalCaches() {
+/** Purge per-user client-side data (sign-out / session loss — audit P3-4). */
+export function clearLocalCaches() {
   // Per-user caches are intentionally left simple on web v1 (no offline
   // mutation queue exists — docs/SYNC-STRATEGY.md §5).
   for (const key of Object.keys(localStorage)) {
-    if (key.startsWith("sf_cache_")) localStorage.removeItem(key);
+    // Audit P3-4: alert-dedupe keys also carry user-derived data — purge both
+    // prefixes on sign-out so nothing per-user survives the session.
+    if (key.startsWith("sf_cache_") || key.startsWith("sf_alert_sent_")) {
+      localStorage.removeItem(key);
+    }
+  }
+}
+
+/**
+ * Audit P3-2: stored avatar URLs must point at the avatars bucket on THIS
+ * project's Supabase host. Anything else (arbitrary third-party URL =
+ * tracking-pixel sink, non-http scheme) is rejected at write time; the mobile
+ * client stores exactly this shape, so parity holds.
+ */
+export function isAllowedAvatarUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const projectHost = projectUrl ? new URL(projectUrl).hostname : null;
+    return (
+      parsed.protocol === "https:" &&
+      !!projectHost &&
+      parsed.hostname === projectHost &&
+      parsed.pathname.startsWith("/object/public/avatars/")
+    );
+  } catch {
+    return false;
   }
 }
 
@@ -115,11 +164,15 @@ export async function ensureProfile(
   }
 
   const onboardingCurrency = localStorage.getItem("spendflow_onboarding_currency");
+  // Audit P3-3: the localStorage value is user-editable — apply the same
+  // 3-letter shape check the auth-metadata path enforces.
+  const safeCurrency =
+    onboardingCurrency && /^[A-Z]{3}$/.test(onboardingCurrency) ? onboardingCurrency : "NPR";
   const insert: ProfileInsert = {
     id: userId,
     email,
     display_name: displayName,
-    preferred_currency: onboardingCurrency ?? "NPR",
+    preferred_currency: safeCurrency,
   };
   const { data: created, error } = await supabase
     .from("users")
@@ -162,6 +215,14 @@ export async function updateProfile(
   userId: string,
   update: Database["public"]["Tables"]["users"]["Update"],
 ): Promise<Profile> {
+  if (update.avatar_url !== undefined && update.avatar_url !== null) {
+    if (!isAllowedAvatarUrl(update.avatar_url)) {
+      throw new Error("Avatar URL must point at the SpendFlow avatars bucket.");
+    }
+  }
+  if (update.display_name != null) {
+    update = { ...update, display_name: String(update.display_name).trim().slice(0, 60) || null };
+  }
   const { data, error } = await supabase
     .from("users")
     .update(update)

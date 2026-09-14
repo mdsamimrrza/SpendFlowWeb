@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<!-- SpendFlow · Auth email: Security code (Supabase template: Magic Link)
+     Used by the send-security-otp edge function (GoTrue /auth/v1/otp) for
+     account deletion + email change on BOTH web and mobile. The app asks the
+     user to TYPE the code (8 digits live: mailer_otp_length=8), so the code is
+     the hero element here — the link is only a fallback.
+     Subject: Your SpendFlow security code
+     Variables used: {{ .Code }} , {{ .ConfirmationURL }} -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Your SpendFlow security code</title>
+</head>
+<body style="margin:0; padding:0; background:#f3f5f3;">
+  <div style="display:none; max-height:0; overflow:hidden; opacity:0;">
+    Use this code to continue the security action in SpendFlow.
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f3f5f3;">
+    <tr>
+      <td align="center" style="padding:36px 16px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
+
+          <tr>
+            <td align="center" style="padding:0 0 26px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td width="38" height="38" align="center" valign="middle" bgcolor="#0b8457"
+                      style="border-radius:11px; background:#0b8457; color:#ffffff; font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:21px; font-weight:800; text-align:center;">S</td>
+                  <td style="padding-left:11px; font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:20px; font-weight:800; color:#0a0d0c; letter-spacing:-0.3px;">Spend<span style="color:#0b8457;">Flow</span></td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background:#ffffff; border:1px solid #e3e7e3; border-radius:18px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="padding:40px 40px 6px;">
+                    <h1 style="margin:0 0 14px; font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:23px; line-height:1.3; font-weight:800; color:#0a0d0c;">
+                      Your security code
+                    </h1>
+                    <p style="margin:0 0 24px; font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:15px; line-height:1.65; color:#3f4a44;">
+                      Enter this code in the SpendFlow app to continue. It can be used once and expires shortly.
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding:0 40px 26px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td align="center" bgcolor="#f3f5f3"
+                            style="background:#f3f5f3; border:1px dashed #b9c3bc; border-radius:14px; padding:18px 34px;">
+                          <span style="font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:34px; font-weight:800; letter-spacing:9px; text-indent:9px; color:#0a0d0c; display:inline-block; line-height:1.2;">{{ .Code }}</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:0 40px 16px;">
+                    <p style="margin:0; font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:13.5px; line-height:1.65; color:#68736d; text-align:center;">
+                      Never share this code with anyone. SpendFlow support will never ask for it.
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:0 40px 36px;">
+                    <p style="margin:0; font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12.5px; line-height:1.6; color:#8a938d; text-align:center;">
+                      Fallback verification link (opens the app):<br>
+                      <a href="{{ .ConfirmationURL }}" style="color:#0b8457; word-break:break-all; text-decoration:underline;">{{ .ConfirmationURL }}</a>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td align="center" style="padding:26px 32px 0;">
+              <p style="margin:0 0 6px; font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12.5px; line-height:1.6; color:#8a938d;">
+                Didn&rsquo;t request this code? Someone may be trying to use your account &mdash;
+              </p>
+              <p style="margin:0; font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12.5px; line-height:1.6; color:#8a938d;">
+                ignore this email and change your password from Profile &rarr; Security.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

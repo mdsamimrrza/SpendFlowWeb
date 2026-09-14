@@ -48,8 +48,19 @@ export function quantizeMoney(amount: number, currency: string): number {
     : -Math.round(-amount * factor) / factor;
 }
 
+/**
+ * Parse a date string as LOCAL time. Accepts bare YYYY-MM-DD (midnight) and
+ * datetime strings ("YYYY-MM-DDTHH:mm" or space-separated). Appending
+ * T00:00:00 blindly to a datetime string yields an Invalid Date, and
+ * space-separated forms fail in Safari — normalize both here.
+ */
+function parseLocalDate(date: string): Date {
+  const iso = date.replace(" ", "T");
+  return new Date(/^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso}T00:00:00` : iso);
+}
+
 export function formatDate(date: string | Date, locale = "en-US"): string {
-  const d = typeof date === "string" ? new Date(`${date}T00:00:00`) : date;
+  const d = typeof date === "string" ? parseLocalDate(date) : date;
   return new Intl.DateTimeFormat(locale, {
     weekday: "long",
     day: "numeric",
@@ -59,7 +70,7 @@ export function formatDate(date: string | Date, locale = "en-US"): string {
 }
 
 export function formatShortDate(date: string | Date, locale = "en-US"): string {
-  const d = typeof date === "string" ? new Date(`${date}T00:00:00`) : date;
+  const d = typeof date === "string" ? parseLocalDate(date) : date;
   return new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(d);
 }
 

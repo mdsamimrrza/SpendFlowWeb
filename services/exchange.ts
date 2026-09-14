@@ -71,6 +71,10 @@ function todayISO(): string {
 /** Provider APIs answer in units-per-USD; invert to the USD-per-unit basis. */
 async function fetchUnitsPerUsdFromApi(currency: string, date: string | null): Promise<number | null> {
   if (isPegged(currency) || currency === USD) return null;
+  // Audit P3: never interpolate an unvalidated value into the feed URL, even
+  // though callers today pre-check — this function is the last trust boundary.
+  if (!/^[A-Z]{3}$/.test(currency)) return null;
+  if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
   try {
     const url = date
       ? `https://api.frankfurter.app/${date}?from=USD&to=${currency}`

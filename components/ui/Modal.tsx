@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useLanguage } from "@/store/LanguageContext";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -93,6 +94,7 @@ interface ModalProps {
 
 /** Ledger modal: sharp panel with caps masthead rule. */
 export function Modal({ open, title, onClose, children, maxWidth = "max-w-lg" }: ModalProps) {
+  const { t } = useLanguage();
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -106,7 +108,7 @@ export function Modal({ open, title, onClose, children, maxWidth = "max-w-lg" }:
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[80] flex items-end justify-center bg-black/50 sm:items-center sm:p-4"
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4"
       onClick={onClose}
       role="presentation"
     >
@@ -122,7 +124,7 @@ export function Modal({ open, title, onClose, children, maxWidth = "max-w-lg" }:
           <span className="caps">{title}</span>
           <button
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t("close")}
             className="text-faint transition-colors hover:text-text"
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
@@ -130,7 +132,9 @@ export function Modal({ open, title, onClose, children, maxWidth = "max-w-lg" }:
             </svg>
           </button>
         </div>
-        <div style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))" }}>{children}</div>
+        <div style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))" }}>
+          {children}
+        </div>
       </div>
     </div>,
     document.body,

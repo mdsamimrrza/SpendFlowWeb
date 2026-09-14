@@ -28,11 +28,19 @@ export async function GET(request: NextRequest) {
   // bounce LAN/nip.io sessions to http://localhost:3000 — a host a phone can't
   // reach and a cookie jar without the just-exchanged session. The browser's
   // real host (and the PKCE cookies) live in the forwarded Host headers.
+  // Audit P3-1: forwarded headers are only trusted in development (LAN/nip.io
+  // need them there); in production they are attacker-influenceable if a proxy
+  // is misconfigured, so the request's own URL — set by the server on the real
+  // deployment host — is authoritative.
   const host =
-    request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ??
-    request.headers.get("host");
+    process.env.NODE_ENV === "development"
+      ? request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ??
+        request.headers.get("host")
+      : null;
   const proto =
-    request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() ?? "http";
+    process.env.NODE_ENV === "development"
+      ? request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() ?? "http"
+      : "https";
   const origin = host ? `${proto}://${host}` : new URL(request.url).origin;
 
   const safeNext = nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/";
@@ -50,6 +58,13 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     return NextResponse.redirect(`${origin}/sign-in?error=oauth`);
+  }
+
+  // Password-recovery codes land here too (services/auth.ts redirectTo is kept
+  // a bare allowlisted /auth/callback per docs/SUPABASE.md §7 — the flow type
+  // rides on GoTrue's own `type=recovery` param, not a nested query).
+  if (searchParams.get("type") === "recovery") {
+    return NextResponse.redirect(`${origin}/profile?recovery=1`);
   }
 
   return NextResponse.redirect(`${origin}${safeNext}`);

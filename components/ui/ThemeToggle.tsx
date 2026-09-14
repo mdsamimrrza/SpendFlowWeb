@@ -4,7 +4,7 @@ import { Moon, Sun, SunMoon } from "lucide-react";
 import { useTheme } from "@/store/ThemeContext";
 
 /** Cycles light → dark → system (mobile ThemeToggle parity). */
-export function ThemeToggle() {
+export function ThemeToggle({ className = "p-2" }: { className?: string }) {
   const { preference, setPreference } = useTheme();
   const next = preference === "light" ? "dark" : preference === "dark" ? "system" : "light";
   const Icon = preference === "light" ? Sun : preference === "dark" ? Moon : SunMoon;
@@ -14,7 +14,7 @@ export function ThemeToggle() {
       onClick={() => setPreference(next)}
       aria-label={label}
       title={label}
-      className="rounded-md p-2 text-text-muted transition hover:bg-surface-elevated active:scale-[0.97]"
+      className={`grid place-items-center rounded-md text-text-muted transition hover:bg-surface-elevated active:scale-[0.97] ${className}`}
     >
       <Icon size={18} />
     </button>

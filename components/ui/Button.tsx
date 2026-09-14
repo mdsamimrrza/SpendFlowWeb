@@ -9,8 +9,8 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 /**
- * Ledger button: sharp rectangle, small-caps text. Primary is solid brand;
- * secondary is hairline-outline; danger is solid rust; ghost is text-only.
+ * Neo button: rounded-full, sentence-case semibold. Primary is solid brand;
+ * secondary is quiet filled; danger is solid; ghost is text-only.
  */
 export function Button({
   variant = "primary",
@@ -21,16 +21,19 @@ export function Button({
   ...rest
 }: ButtonProps) {
   const VARIANTS = {
-    primary: "bg-primary text-white border border-primary hover:bg-primary-strong",
-    secondary: "bg-transparent text-text border border-border hover:border-text-muted",
-    danger: "bg-danger text-white border border-danger hover:opacity-90",
-    ghost: "bg-transparent text-primary border border-transparent hover:bg-primary-light",
+    primary:
+      "bg-primary text-white shadow-soft hover:bg-primary-strong active:scale-[0.98]",
+    secondary:
+      "bg-surface-elevated text-text border border-transparent hover:border-border",
+    danger:
+      "bg-danger text-white shadow-soft hover:opacity-90 active:scale-[0.98]",
+    ghost: "bg-transparent text-primary hover:bg-primary-light",
   } as const;
   return (
     <button
       {...rest}
       disabled={disabled || loading}
-      className={`inline-flex h-10 items-center justify-center gap-2 px-5 text-xs font-bold uppercase tracking-[0.08em] transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${VARIANTS[variant]} ${className}`}
+      className={`inline-flex h-10 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50 ${VARIANTS[variant]} ${className}`}
     >
       {loading && (
         <span

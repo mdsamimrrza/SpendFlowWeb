@@ -1,13 +1,12 @@
 import type { ReactNode } from "react";
 
 interface EmptyStateProps {
-  icon?: ReactNode;
   title: string;
   message?: string;
   action?: ReactNode;
 }
 
-export function EmptyState({ icon, title, message, action }: EmptyStateProps) {
+export function EmptyState({ title, message, action }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center border border-dashed border-border px-6 py-12 text-center">
       <p className="caps">{title}</p>

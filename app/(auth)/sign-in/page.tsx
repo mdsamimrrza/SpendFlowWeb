@@ -74,28 +74,12 @@ export default function SignInPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Dev-only: move the session onto 127.0.0.1 before any OAuth state exists.
-  // Supabase Auth auto-allows dotted loopback IPs for redirect_to (RFC 8252
-  // §7.3) but treats the `localhost` hostname as a normal domain that must be
-  // in the project's Redirect URL allowlist — and this project's Site URL is
-  // the mobile deep link (`spendflow://`), so an un-allowlisted origin gets
-  // silently rewritten to it (on Android the browser then opens the mobile
-  // APK instead of returning to the web app — see docs/SUPABASE.md §7 and
-  // scripts/verify-oauth-redirect.mjs). This must be a client-side location
-  // swap (not middleware): next dev collapses cross-host redirect Locations
-  // to relative paths, which loops. Running it here also keeps the PKCE
-  // verifier cookie on one host (localhost and 127.0.0.1 are separate cookie
-  // jars), so the code exchange in /auth/callback still finds it.
-  useEffect(() => {
-    if (
-      process.env.NODE_ENV === "development" &&
-      window.location.hostname === "localhost"
-    ) {
-      window.location.replace(
-        window.location.href.replace("//localhost:", "//127.0.0.1:"),
-      );
-    }
-  }, []);
+  // NOTE: The localhost→127.0.0.1 redirect was removed. It split the browser
+  // cookie jar across two origins (localhost ≠ 127.0.0.1) which caused the
+  // session cookies set after password sign-in to be invisible to the
+  // middleware on the next request, keeping authLoading=true and the dashboard
+  // stuck on skeleton forever. OAuth redirect issues should be handled via
+  // the Supabase project's Redirect URL allowlist instead.
 
   const signInForm = useForm<SignInValues>({ resolver: zodResolver(signInSchema) });
   const signUpForm = useForm<SignUpValues>({ resolver: zodResolver(signUpSchema) });
@@ -113,18 +97,36 @@ export default function SignInPage() {
     );
   }
 
-  const onSignIn = signInForm.handleSubmit(async (values) => {
-    setSubmitting(true);
-    setBanner(null);
-    const { error } = await signInWithEmail(supabase, values.email, values.password);
-    setSubmitting(false);
-    if (error) {
-      setBanner({ kind: "error", text: error.message });
-      return;
+  // Audit P3-9: never surface the IdP's raw credential errors (they can confirm
+  // account existence) — map known auth failures to generic text and pass
+  // through anything the user can act on (validation, rate limit, network).
+  const authErrorText = (err: unknown, generic: string): string => {
+    const e = err as { message?: string; status?: number; code?: string };
+    const msg = (e.message ?? "").toLowerCase();
+    if (
+      e.code === "invalid_credentials" ||
+      e.status === 400 && msg.includes("invalid login") ||
+      e.code === "email_not_confirmed" && msg.includes("not confirmed")
+    ) {
+      return generic;
     }
-    router.push("/overview");
-    router.refresh();
-  });
+    return e.message || generic;
+  };
+
+  const onSignIn = signInForm.handleSubmit(
+    async (values) => {
+      setSubmitting(true);
+      setBanner(null);
+      const { error } = await signInWithEmail(supabase, values.email, values.password);
+      setSubmitting(false);
+      if (error) {
+        setBanner({ kind: "error", text: authErrorText(error, t("invalidCredentials")) });
+        return;
+      }
+      router.push("/overview");
+    },
+    () => undefined,
+  );
 
   const onSignUp = signUpForm.handleSubmit(async (values) => {
     setSubmitting(true);
@@ -137,7 +139,15 @@ export default function SignInPage() {
     );
     setSubmitting(false);
     if (error) {
-      setBanner({ kind: "error", text: error.message });
+      const e = error as { message?: string; code?: string };
+      const msg = (e.message ?? "").toLowerCase();
+      // "already registered" would confirm the email exists — show the same
+      // neutral landing message as success instead (audit P3-9).
+      if (e.code === "user_already_exists" || msg.includes("already registered") || msg.includes("already been registered")) {
+        setBanner({ kind: "info", text: "Check your inbox to confirm your email, then sign in." });
+        return;
+      }
+      setBanner({ kind: "error", text: e.message || t("error") });
       return;
     }
     if (data.session) {
@@ -248,7 +258,15 @@ export default function SignInPage() {
 
           <div className="mt-6">
             {mode === "signIn" ? (
-              <form onSubmit={onSignIn} className="space-y-4" noValidate>
+              <form
+                method="POST"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void onSignIn(e);
+                }}
+                className="space-y-4"
+                noValidate
+              >
                 <Input
                   label={t("email")}
                   type="email"
@@ -277,7 +295,15 @@ export default function SignInPage() {
                 </Button>
               </form>
             ) : (
-              <form onSubmit={onSignUp} className="space-y-4" noValidate>
+              <form
+                method="POST"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void onSignUp(e);
+                }}
+                className="space-y-4"
+                noValidate
+              >
                 <Input
                   label={t("fullName")}
                   autoComplete="name"

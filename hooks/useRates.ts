@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
-import { getRate } from "@/services/exchange";
+import { getRate, NPR_PER_INR } from "@/services/exchange";
 import { useAuth } from "@/store/AuthContext";
 import { useEffect as useReactEffect } from "react";
 import { quantizeMoney } from "@/utils/format";
@@ -92,11 +92,12 @@ export interface ConvertibleRow {
 }
 
 /**
- * Per-date USD-per-INR rates used for NPR rows (mobile parity: NPR never
- * trusts its stored snapshot — pre-peg floating values are wrong under the
- * fixed 1 INR = 1.60 NPR rule — so its date's INR rate is resolved instead).
+ * Per-date USD-per-unit rates used when a row carries no snapshot (mobile
+ * useRateResolver parity), plus the NPR peg path which resolves its date's
+ * INR rate (NPR never trusts its stored snapshot — pre-peg floating values
+ * are wrong under the fixed 1 INR = 1.60 NPR rule).
  */
-const nprInrRateCache = new Map<string, number>();
+const dateRateCache = new Map<string, number>();
 
 /**
  * Convert a row to the display currency (mobile useRateResolver semantics):
@@ -108,40 +109,44 @@ export function useRowConverter(
 ) {
   const displayRate = useDisplayRate(displayCurrency);
   const supabase = getSupabaseBrowserClient();
-  // NPR rows resolve via their date's INR rate (fixed peg ÷ 1.6). Every NPR
-  // row needs its date resolved — stored NPR snapshots are never trusted, so
-  // the fetch list must not exclude rows that carry one.
-  const [inrByDate, setInrByDate] = useState<Map<string, number>>(new Map());
+  // Every row that needs a date-resolved rate gets one fetched: NPR rows
+  // (via their date's INR rate — stored NPR snapshots are never trusted) and
+  // non-display rows with no usable snapshot.
+  const [ratesByDate, setRatesByDate] = useState<Map<string, number>>(new Map());
 
-  const nprDatesKey = rows
-    ? Array.from(new Set(rows.filter((r) => r.currency === "NPR").map((r) => r.date))).sort().join(",")
-    : "";
+  const dateKeys = useMemo(() => {
+    if (!rows || !displayCurrency) return "";
+    const keys = new Set<string>();
+    for (const r of rows) {
+      if (r.currency === displayCurrency) continue;
+      if (r.currency === "NPR") keys.add(`INR:${r.date}`);
+      else if (!r.exchange_rate_to_usd || r.exchange_rate_to_usd <= 0)
+        keys.add(`${r.currency}:${r.date}`);
+    }
+    return Array.from(keys).sort().join(",");
+  }, [rows, displayCurrency]);
 
   useEffect(() => {
-    if (!nprDatesKey) return;
+    if (!dateKeys) return;
     let cancelled = false;
     (async () => {
-      const dates = nprDatesKey.split(",").filter((d) => d && !nprInrRateCache.has(d));
-      if (dates.length === 0) {
-        if (!cancelled) setInrByDate(new Map(nprInrRateCache));
-        return;
-      }
+      const missing = dateKeys.split(",").filter((k) => !dateRateCache.has(k));
       await Promise.all(
-        dates.map(async (date) => {
+        missing.map(async (key) => {
+          const [currency, date] = key.split(":");
           try {
-            const inr = await getRate(supabase, "INR", date);
-            nprInrRateCache.set(date, inr);
+            dateRateCache.set(key, await getRate(supabase, currency, date));
           } catch {
-            // leave uncached — falls back to raw amount
+            // leave uncached — convert() falls back to the raw amount
           }
         }),
       );
-      if (!cancelled) setInrByDate(new Map(nprInrRateCache));
+      if (!cancelled) setRatesByDate(new Map(dateRateCache));
     })();
     return () => {
       cancelled = true;
     };
-  }, [nprDatesKey, supabase]);
+  }, [dateKeys, supabase]);
 
   return useMemo(
     () => ({
@@ -150,11 +155,14 @@ export function useRowConverter(
         if (!displayCurrency) return row.amount;
         if (row.currency === displayCurrency) return row.amount;
 
-        // NPR peg parity (mobile): NPR rows never use stored snapshots.
+        // NPR peg parity (mobile): NPR rows never use stored snapshots —
+        // 1 NPR = 1/1.6 INR, so the INR rate must be divided by the peg
+        // before it prices an NPR amount (USD per unit × amount ÷ display).
         if (row.currency === "NPR") {
-          if (displayCurrency === "INR") return quantizeMoney(row.amount / 1.6, displayCurrency); // static peg
-          const inr = inrByDate.get(row.date);
-          if (inr && displayRate) return quantizeMoney((row.amount * inr) / displayRate, displayCurrency);
+          if (displayCurrency === "INR") return quantizeMoney(row.amount / NPR_PER_INR, displayCurrency); // static peg
+          const inr = ratesByDate.get(`INR:${row.date}`);
+          if (inr && displayRate)
+            return quantizeMoney((row.amount * (inr / NPR_PER_INR)) / displayRate, displayCurrency);
           return row.amount; // rate not resolved yet
         }
 
@@ -164,9 +172,14 @@ export function useRowConverter(
             ? quantizeMoney((row.amount * row.exchange_rate_to_usd) / displayRate, displayCurrency)
             : row.amount;
         }
+        // Resolver by row date (mobile parity): rows backfilled without a
+        // snapshot still convert correctly instead of counting raw.
+        const dated = ratesByDate.get(`${row.currency}:${row.date}`);
+        if (dated && displayRate)
+          return quantizeMoney((row.amount * dated) / displayRate, displayCurrency);
         return row.amount; // resolver miss — show raw rather than wrong
       },
     }),
-    [displayCurrency, displayRate, inrByDate],
+    [displayCurrency, displayRate, ratesByDate],
   );
 }

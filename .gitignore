@@ -73,7 +73,14 @@ Thumbs.db
 
 # Sensitive files (auto-detected)
 .env
-.env.example
+# NOTE: .env.example is the keyless template and SHOULD be committed —
+# do not ignore it here (the !.env.example un-ignore above must win).
 node_modules
 tsconfig.tsbuildinfo
 
+/.next-qa/
+
+# Local debug/verification artifacts — screenshots, smoke outputs, agent state
+# (emails/ is the COMMITTED template source; .smoke/ is only its render scratch dir)
+/.smoke/
+/.zcode/

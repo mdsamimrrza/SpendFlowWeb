@@ -39,9 +39,15 @@ const config: Config = {
         "rust-tint": "var(--sf-rust-tint)",
       },
       borderRadius: {
-        sm: "6px",
-        md: "10px",
+        sm: "8px",
+        md: "12px",
         lg: "16px",
+        xl: "20px",
+        "2xl": "24px",
+      },
+      boxShadow: {
+        soft: "0 1px 2px rgb(10 14 12 / 0.05), 0 8px 24px rgb(10 14 12 / 0.06)",
+        pop: "0 4px 12px rgb(10 14 12 / 0.10), 0 16px 40px rgb(10 14 12 / 0.14)",
       },
       fontFamily: {
         sans: [
@@ -52,7 +58,14 @@ const config: Config = {
           "Roboto",
           "sans-serif",
         ],
-        brand: ["Georgia", "Times New Roman", "serif"],
+        brand: [
+          "ui-sans-serif",
+          "system-ui",
+          "-apple-system",
+          "Segoe UI",
+          "Roboto",
+          "sans-serif",
+        ],
       },
       keyframes: {
         shimmer: {

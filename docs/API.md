@@ -64,7 +64,16 @@ except:
 
 ## 5. Auth requirements summary
 
-- All app pages require a session (middleware-enforced) except `/auth`, `/auth/callback`, `/onboarding`.
-- Session storage: httpOnly cookies via `@supabase/ssr` (web) — equivalent role to mobile's SecureStore adapter.
-- OAuth: Google only (PKCE). Email/password sign-in/up. Apple: skip on web.
+- All app pages require a session (middleware-enforced) except `/`, `/sign-in`, `/onboarding`,
+  `/auth/callback`, and the static design-preview routes (`/preview*` — mock data only, no auth,
+  no network; documented here since the audit as public surface — remove before public launch if
+  design previews are no longer needed).
+- Session storage: `@supabase/ssr` cookies (web) — equivalent role to mobile's SecureStore adapter.
+  Middleware verifies the JWT server-side per request (`auth.getUser()`, fails closed).
+- OAuth: Google only (PKCE). Email/password sign-in/up. Apple: skip on web. Password-reset and
+  signup-confirmation emails target the bare allowlisted `/auth/callback` (docs/SUPABASE.md §7);
+  the callback exchanges the code and routes `type=recovery` sessions to
+  `/profile?recovery=1` for the set-new-password step.
 - Sensitive flows (email change, account deletion) always require the OTP edge-function flow.
+- Every mutating Supabase call carries an explicit `.eq("user_id", …)` owner predicate (defense in
+  depth over the RLS boundary — 2026-09-14 audit P2-4); services take a **required** user id.

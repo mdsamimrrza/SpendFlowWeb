@@ -54,11 +54,29 @@ needs an update too.
 
 ## Brand & design
 
-- Do not alter the theme tokens (`docs/DESIGN-TOKEN-BRIDGE.md`): light = warm parchment `#EDEAE0` +
-  teal `#0F5C4D`; dark = deep slate `#0B0F19` + indigo `#818CF8`. All components consume tokens via
-  Tailwind CSS variables — no raw hex in components.
-- Chart series rule: income always `income` (green); expense series theme-conditional (indigo dark /
-  rust light) via a single `expenseColor` variable.
+- **Mobile canonical tokens** live in `docs/DESIGN-TOKEN-BRIDGE.md` (mirror of mobile
+  `constants/theme.ts`): light = warm parchment `#EDEAE0` + teal `#0F5C4D`; dark = deep slate
+  `#0B0F19` + indigo `#818CF8`. **The web client deliberately diverged** to a "Neo" palette
+  (light = porcelain `#f3f5f3` + emerald `#0b8457`; dark = near-black `#0a0d0c` + mint `#34d399`)
+  per the user's redesign direction — recorded in `docs/FEATURE-PARITY.md`, not a silent rewrite.
+  Do not change either palette without a user decision. All components consume tokens via Tailwind
+  CSS variables — no raw hex in components.
+- Chart series rule (web Neo): income always `income` (green); expense series theme-conditional
+  (red light / mint dark) via the single `--sf-expense-series` variable.
+- **Lucide icons only — never render emoji or text glyphs as icons.** Every icon in the web UI is a
+  `lucide-react` component. The shared DB stores category/account icons as emoji (mobile writes
+  them), so they must be resolved through `components/ui/Glyph.tsx` (`categoryGlyph` /
+  `accountGlyph`) — the stored glyph is data, never displayed as text. No `💡` `✨` `▲` `▼` `◆`
+  `→` characters in JSX either: use `Lightbulb`, `Sparkles`, `ArrowUpRight`/`ArrowDownRight` (or
+  `TrendingUp`/`TrendingDown`), `ArrowRight`, etc. Check for leaks with
+  `grep -n "💡\|✨\|▲\|▼\|◆" ` on any file you touch.
+- **Mobile-first, every screen.** All pages are designed at the 390 px phone width FIRST, then
+  enhanced upward (`sm:` / `md:` / `lg:`) — never desktop-first with shrink-to-fit. Concretely:
+  grids stack by default and only split at `sm`+; primary figures use `FitText`; interactive
+  rows/tap targets are ≥44 px tall; no horizontal overflow at 390 px; phones get the full feature
+  set (progressive enhancement, not a stripped mobile view). Verify before marking a screen done:
+  `node scripts/shot-preview-<screen>.mjs` (390 / 768 / 1280 / 1920, light + dark) must be overflow
+  -clean. This applies to new screens and to any touch on an existing screen.
 - Every user-facing string is added to **all three** i18n files (en, hi, ne) in the same change.
 - Privacy masking must never cause layout shift (lock the amount container width).
 

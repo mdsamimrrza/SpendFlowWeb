@@ -224,6 +224,8 @@ export type Database = {
           receipt_image_url: string | null;
           is_recurring: boolean;
           recurring_rule_id: string | null;
+          /** Installment slot (chain position) this payment satisfies. */
+          recurring_due_date: string | null;
           is_synced: boolean;
           deleted_at: string | null;
           bank_account_id: string | null;
@@ -248,6 +250,7 @@ export type Database = {
           receipt_image_url?: string | null;
           is_recurring?: boolean;
           recurring_rule_id?: string | null;
+          recurring_due_date?: string | null;
           is_synced?: boolean;
           bank_account_id?: string | null;
           exchange_rate_to_usd?: number | null;
@@ -260,6 +263,7 @@ export type Database = {
           currency?: string;
           description?: string | null;
           date?: string;
+          recurring_due_date?: string | null;
           time?: string | null;
           payment_method?: "Cash" | "Card" | "UPI" | "Other";
           notes?: string | null;
@@ -344,12 +348,20 @@ export type Database = {
           description: string | null;
           payment_method: "Cash" | "Card" | "UPI" | "Other";
           frequency: "daily" | "weekly" | "monthly" | "custom";
+          /** Used only when frequency === 'custom' (1–365 days). */
+          interval_days: number | null;
+          /** auto_charge posts itself; pay_on_due books only on an explicit tap. */
+          mode: "auto_charge" | "pay_on_due";
+          /** Chain anchor: due slots = plan_start_date + N × cycle. */
+          plan_start_date: string | null;
           next_due_date: string;
           is_active: boolean;
           exchange_rate_to_usd: number | null;
           base_currency: string | null;
           created_at: string;
           updated_at: string;
+          /** Bin trash column — set = in Bin, NULL = live (20260916 migration). */
+          deleted_at: string | null;
         };
         Insert: {
           id?: string;
@@ -360,10 +372,14 @@ export type Database = {
           description?: string | null;
           payment_method?: "Cash" | "Card" | "UPI" | "Other";
           frequency: "daily" | "weekly" | "monthly" | "custom";
+          interval_days?: number | null;
+          mode?: "auto_charge" | "pay_on_due";
+          plan_start_date?: string | null;
           next_due_date: string;
           is_active?: boolean;
           exchange_rate_to_usd?: number | null;
           base_currency?: string | null;
+          deleted_at?: string | null;
         };
         Update: Partial<RecurringRulesInsert>;
       };
@@ -527,9 +543,33 @@ export type Database = {
         Insert: never;
         Update: never;
       };
+      bin_receipt_orphans: {
+        Relationships: [
+          {
+            foreignKeyName: "bin_receipt_orphans_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+        Row: {
+          user_id: string;
+          path: string;
+          purged_at: string;
+        };
+        // RLS with zero policies — only the SECURITY DEFINER functions touch it.
+        Insert: never;
+        Update: never;
+      };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      /** Owner-scoped drain of the receipt-orphan queue (SECURITY DEFINER). */
+      claim_bin_receipt_orphans: {
+        Args: Record<string, never>;
+        Returns: string[];
+      };
+    };
     Enums: Record<string, never>;
   };
 };

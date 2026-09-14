@@ -55,6 +55,7 @@ FK note: `expenses.category_id` and `recurring_rules.category_id` are **ON DELET
 | receipt_image_url | text | NULL | Storage **path** in private `receipts` bucket |
 | is_recurring | boolean | false | NOT NULL |
 | recurring_rule_id | uuid | NULL | FK recurring_rules SET NULL |
+| recurring_due_date | date | NULL | Installment slot key (chain position this row satisfies; 20260915 model) |
 | is_synced | boolean | false | NOT NULL |
 | deleted_at | timestamptz | NULL | Soft delete |
 | bank_account_id | uuid | NULL | FK bank_accounts SET NULL |
@@ -65,7 +66,7 @@ FK note: `expenses.category_id` and `recurring_rules.category_id` are **ON DELET
 | search_vector | tsvector | generated (description + notes, english) STORED | GIN indexed |
 | created_at / updated_at | timestamptz | now() | NOT NULL |
 
-Indexes: `(user_id, date DESC) WHERE deleted_at IS NULL` (live list), `(user_id, deleted_at)`, `(category_id)`, GIN(search_vector), **UNIQUE (recurring_rule_id, date)** (recurring upsert conflict target).
+Indexes: `(user_id, date DESC) WHERE deleted_at IS NULL` (live list), `(user_id, deleted_at)`, `(category_id)`, GIN(search_vector), **UNIQUE (recurring_rule_id, recurring_due_date)** — recurring dedup conflict target (slot key; payment dates vary with late pays, slots don't). Non-partial by design: a soft-deleted occurrence keeps holding its slot, so "Not paid — undo" HARD-deletes the row to free it. The old `(recurring_rule_id, date)` index was dropped by the 20260915 migration.
 
 ## public.recurring_rules
 | Column | Type | Default | Constraints |
@@ -77,14 +78,18 @@ Indexes: `(user_id, date DESC) WHERE deleted_at IS NULL` (live list), `(user_id,
 | currency | text | 'NPR' | CHECK `^[A-Z]{3}$` |
 | description | text | NULL | |
 | payment_method | text | 'Cash' | CHECK in (Cash, Card, UPI, Other) |
-| frequency | text | — | CHECK in (daily, weekly, monthly, custom) |
+| frequency | text | 'monthly' | CHECK in (daily, weekly, monthly, custom) |
+| interval_days | integer | NULL | CHECK null or 1–365; cycle length when frequency = custom (20260915) |
+| mode | text | 'pay_on_due' | NOT NULL, CHECK in (auto_charge, pay_on_due). pay_on_due shows a due card + explicit Mark Paid; auto_charge posts itself. Existing rules backfilled to auto_charge (20260915) |
+| plan_start_date | date | NULL | Chain anchor: due slots = plan_start_date + N × cycle, never re-anchored on late payment (20260915) |
 | next_due_date | date | — | NOT NULL, CHECK ≥ 2000-01-01 |
 | is_active | boolean | true | NOT NULL |
 | bank_account_id | uuid | NULL | ⚠️ **in migration but never applied live — column may not exist** |
 | exchange_rate_to_usd / base_currency | | | FX snapshot columns (nullable) |
 | created_at / updated_at | timestamptz | now() | NOT NULL |
+| deleted_at | timestamptz | NULL | Bin trash flag (20260916): set = in Bin, NULL = live. Purged after 60 days |
 
-Index: `(user_id, next_due_date) WHERE is_active`.
+Indexes: `(user_id, next_due_date) WHERE is_active` (live), `(user_id, deleted_at)` (Bin listing). Live reads must add `.is("deleted_at", null)`; a binned rule never auto-charges and its `next_due_date` stays frozen for a clean restore.
 
 ## public.bank_accounts
 | Column | Type | Default | Constraints |
@@ -181,6 +186,9 @@ id uuid PK · user_id FK auth.users CASCADE · expo_push_token text UNIQUE NOT N
 id uuid PK · user_id FK auth.users CASCADE · type / title / body text NOT NULL · data jsonb NULL · is_read boolean false · created_at timestamptz timezone('utc', now()).
 Indexes: (user_id, created_at DESC); (user_id) WHERE NOT is_read.
 
+## public.bin_receipt_orphans (Bin purge queue — 20260916)
+user_id uuid FK public.users CASCADE · path text NOT NULL · purged_at timestamptz default now(). RLS enabled with **zero policies** — only the SECURITY DEFINER functions touch it. When the nightly `purge_expired_bin_items()` (pg_cron `spendflow-bin-purge`, 03:30 UTC) hard-deletes an expired binned expense, it queues the row's `<uid>/…` receipt path here; the owner's next Bin visit drains it via `claim_bin_receipt_orphans()` (authenticated-only, atomically deletes + returns the caller's paths) and removes the Storage objects client-side. The web never reads/writes this table directly.
+
 ## public.security_otp_sends (service-role only)
 user_id FK public.users CASCADE + purpose ('account_deletion'|'email_change') composite PK · last_sent_at timestamptz NOT NULL.
 
@@ -192,3 +200,5 @@ See **[SUPABASE.md](./SUPABASE.md) §1** — all 40+ policies are enumerated the
 2. `transfers_distinct_accounts` + `transfers_fee_nonnegative_check` — had drifted, re-asserted in migration 34; assume present.
 3. Storage size/MIME limits — migration 29 is the effective final state (receipts 4 MiB private, avatars 2 MiB public).
 4. `security_otp_sends.user_id` references `public.users`, not `auth.users` (unlike device_tokens/notifications).
+5. **20260915 recurring payment model** (`recurring_rules.interval_days/mode/plan_start_date`, `expenses.recurring_due_date`, slot dedup index swap) — verified applied live via REST probe 2026-09-14. The old `(recurring_rule_id, date)` unique index is GONE live: any web upsert targeting `recurring_rule_id,date` errors (42P10) — all recurring writes must use the slot key.
+6. **20260916 Bin (60-day trash)** — `recurring_rules.deleted_at`, `bin_receipt_orphans`, `purge_expired_bin_items()` + `claim_bin_receipt_orphans()` and the `spendflow-bin-purge` cron — verified applied live via REST probe 2026-09-14 (column + table readable under RLS, RPC registered). Deleting an expense or a recurring plan is a **soft delete** (`deleted_at = now()`), restorable for 60 days; the web must never hard-delete either row outside `services/bin.ts` (the undo-payment reversal on a just-booked occurrence stays a hard delete — a soft-deleted row would keep holding its slot).

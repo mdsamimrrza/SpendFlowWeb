@@ -111,7 +111,10 @@ export function useCategories(userId: string | undefined) {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    if (!userId) return;
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
     try {
       const rows = await listCategories(getSupabaseBrowserClient(), userId);
       setCategories(rows);

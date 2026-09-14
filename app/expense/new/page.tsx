@@ -1,13 +1,12 @@
+import type { Metadata } from "next";
 import { ExpenseForm } from "@/components/expense/ExpenseForm";
 
+export const metadata: Metadata = { title: "Add Transaction — SpendFlow" };
+
+/** Form owns the APK-style header bar; the page is just the 1080px canvas. */
 export default function NewExpensePage() {
   return (
-    <main className="mx-auto w-full max-w-[880px]">
-      <header className="mb-5">
-        <p className="caps !text-primary-strong">New entry</p>
-        <h1 className="mt-0.5 text-xl font-extrabold tracking-tight text-text">Record a transaction</h1>
-        <div className="mt-2 h-0.5 w-14 bg-brass" aria-hidden />
-      </header>
+    <main className="mx-auto w-full max-w-[1080px]">
       <ExpenseForm />
     </main>
   );
