@@ -142,8 +142,10 @@ export interface CreateExpenseInput {
   isRecurring?: boolean;
 }
 
-/** Amount/date rules mirrored by the create and update paths (DB CHECKs back up). */
-function assertAmountAndDate(amount: number, date: string): void {
+/** Amount/date rules mirrored by the create and update paths (DB CHECKs back up).
+ * Exported so the CSV import path validates with the SAME single-source rules —
+ * never re-implement money validation at component level (AGENTS.md §8). */
+export function assertAmountAndDate(amount: number, date: string): void {
   if (!Number.isFinite(amount) || !(amount > 0) || amount > 1_000_000_000_000) {
     throw new Error("Amount must be greater than zero");
   }

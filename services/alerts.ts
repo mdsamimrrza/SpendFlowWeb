@@ -1,19 +1,56 @@
 /**
  * Threshold alerts — mobile services/notifications.ts parity for web:
  * cycle-budget milestones (25/50/75/90/100%) and category budget thresholds
- * (90/100%) fire an in-app toast and persist a `notifications` row, deduped
- * per (user, month, key) in localStorage — the web equivalent of the
- * @spendflow_alert_sent_* suppression keys. "Reset alert history" clears it.
+ * (90/100%) fire an in-app toast and persist a `notifications` row.
+ *
+ * Dedup source of truth is the `notifications` table itself (this month's
+ * threshold rows), NOT localStorage: sign-out purges the per-user
+ * `sf_alert_sent_*` keys (audit P3-4), so a localStorage-only memory re-fired
+ * every crossed threshold on each new login. The localStorage flag stays as
+ * a within-session fast path. "Reset alert history" clears both.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/types/database.types";
 
 export const ALERT_THRESHOLDS = [25, 50, 75, 90, 100] as const;
 const CATEGORY_THRESHOLDS = [90, 100] as const;
+const THRESHOLD_TYPES = ["budget_threshold", "category_threshold"] as const;
 
 function monthKey(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthStartIso(): string {
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString();
+}
+
+/** Alert keys already recorded server-side for this calendar month. */
+async function dbSentKeys(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+): Promise<Set<string>> {
+  const keys = new Set<string>();
+  try {
+    const { data } = await supabase
+      .from("notifications")
+      .select("type,data")
+      .eq("user_id", userId)
+      .in("type", [...THRESHOLD_TYPES])
+      .gte("created_at", monthStartIso());
+    for (const row of data ?? []) {
+      const d = (row.data ?? {}) as { threshold?: number; category?: string };
+      if (typeof d.threshold !== "number") continue;
+      if (row.type === "budget_threshold") keys.add(`budget_${d.threshold}`);
+      if (row.type === "category_threshold" && typeof d.category === "string") {
+        keys.add(`category_${d.category}_${d.threshold}`);
+      }
+    }
+  } catch {
+    // Query failure degrades to localStorage-only dedup (old behavior).
+  }
+  return keys;
 }
 
 function wasSent(userId: string, key: string): boolean {
@@ -32,7 +69,15 @@ function markSent(userId: string, key: string): void {
   }
 }
 
-export function resetAlertHistory(userId: string): number {
+/**
+ * Re-arm this month's alerts: clear the session cache AND delete the month's
+ * threshold rows (the dedup ledger). Without the DB purge the reset would be
+ * a no-op now that the table is the source of truth.
+ */
+export async function resetAlertHistory(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+): Promise<number> {
   let cleared = 0;
   try {
     const prefix = `sf_alert_sent_${monthKey()}_${userId.slice(0, 8)}_`;
@@ -44,6 +89,17 @@ export function resetAlertHistory(userId: string): number {
     }
   } catch {
     // ignore
+  }
+  try {
+    const { count } = await supabase
+      .from("notifications")
+      .delete({ count: "exact" })
+      .eq("user_id", userId)
+      .in("type", [...THRESHOLD_TYPES])
+      .gte("created_at", monthStartIso());
+    cleared = Math.max(cleared, count ?? 0);
+  } catch {
+    // ledger purge is best-effort; session cache is already cleared
   }
   return cleared;
 }
@@ -77,14 +133,19 @@ export interface BudgetAlertInput {
   fire: (message: string, kind?: "success" | "error" | "info") => void;
 }
 
-/** Cycle-budget milestones — deduped per user/month/threshold. */
+/** Cycle-budget milestones — deduped per user/month/threshold (DB-backed). */
 export async function checkBudgetAlerts(input: BudgetAlertInput): Promise<void> {
   const { supabase, userId, budget, spent, fire } = input;
   if (!(budget > 0)) return;
   const pct = (spent / budget) * 100;
+  const sent = await dbSentKeys(supabase, userId);
   for (const t of ALERT_THRESHOLDS) {
     if (pct < t) continue;
     const key = `budget_${t}`;
+    if (sent.has(key)) {
+      markSent(userId, key); // re-sync the session cache with the ledger
+      continue;
+    }
     if (wasSent(userId, key)) continue;
     markSent(userId, key);
     const title = `Budget ${t}% used`;
@@ -109,15 +170,20 @@ export interface CategoryAlertInput {
   fire: (message: string, kind?: "success" | "error" | "info") => void;
 }
 
-/** Category thresholds (90/100%) — deduped per user/month/category. */
+/** Category thresholds (90/100%) — deduped per user/month/category (DB-backed). */
 export async function checkCategoryAlerts(input: CategoryAlertInput): Promise<void> {
   const { supabase, userId, categories, fire } = input;
+  const sent = await dbSentKeys(supabase, userId);
   for (const c of categories) {
     if (!(c.limit > 0)) continue;
     const pct = (c.spent / c.limit) * 100;
     for (const t of CATEGORY_THRESHOLDS) {
       if (pct < t) continue;
       const key = `category_${c.name}_${t}`;
+      if (sent.has(key)) {
+        markSent(userId, key);
+        continue;
+      }
       if (wasSent(userId, key)) continue;
       markSent(userId, key);
       const title = `${c.name} at ${t}%`;

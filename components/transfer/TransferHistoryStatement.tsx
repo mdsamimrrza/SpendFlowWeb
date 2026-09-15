@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { Panel } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { RangeField } from "@/components/ui/CalendarModal";
 import { formatMoney, toISODate } from "@/utils/format";
 import { deleteTransfer, listTransfers, type TransferRow } from "@/services/transfers";
 import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
@@ -217,7 +218,7 @@ export function TransferHistoryStatement({ inject }: TransferHistoryPageProps) {
               aria-pressed={preset === p.id}
               className={`h-8 rounded-full px-3 text-[11px] font-bold uppercase tracking-[0.06em] transition ${
                 preset === p.id
-                  ? "bg-primary text-white shadow-soft dark:text-background"
+                  ? "bg-primary text-white shadow-soft"
                   : "bg-surface-elevated text-text-muted hover:text-text"
               }`}
             >
@@ -227,20 +228,14 @@ export function TransferHistoryStatement({ inject }: TransferHistoryPageProps) {
         </div>
         {preset === "custom" && (
           <div className="flex items-center gap-1.5">
-            <input
-              type="date"
-              aria-label="From date"
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
-              className="h-8 rounded-full border border-border bg-input px-3 text-xs text-text focus:border-primary focus:outline-none"
-            />
-            <span className="text-faint">→</span>
-            <input
-              type="date"
-              aria-label="To date"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-              className="h-8 rounded-full border border-border bg-input px-3 text-xs text-text focus:border-primary focus:outline-none"
+            <RangeField
+              from={from}
+              to={to}
+              boxClassName="h-8 !min-h-8 rounded-full"
+              onChange={(f, t2) => {
+                setFrom(f);
+                setTo(t2);
+              }}
             />
           </div>
         )}

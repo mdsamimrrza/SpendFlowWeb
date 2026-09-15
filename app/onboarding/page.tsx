@@ -36,7 +36,7 @@ export default function OnboardingPage() {
       <div className="sf-ambient" aria-hidden />
       <div className="w-full max-w-md">
         <div className="mb-6 flex items-center justify-end">
-          <ThemeToggle />
+          <ThemeToggle className="h-9 w-9" />
         </div>
 
         <header className="mb-8 text-center">

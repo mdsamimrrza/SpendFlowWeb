@@ -126,6 +126,26 @@ const rules = [
   },
 ] as unknown as RecurringRuleRow[];
 
+/** A plan already denominated in the preview's display currency — it must
+ *  render without a conversion caption, proving both paths at once. */
+const usdRule = {
+  id: "r7",
+  category_id: "c7",
+  amount: 15.99,
+  currency: "USD",
+  description: "iCloud storage",
+  payment_method: "Card",
+  frequency: "monthly",
+  interval_days: null,
+  mode: "pay_on_due",
+  plan_start_date: "2026-06-01",
+  next_due_date: shift(9),
+  is_active: true,
+  exchange_rate_to_usd: 1,
+  base_currency: "USD",
+  categories: { id: "c7", name: "Subscriptions", icon: "", color: "#0EA5E9" },
+} as unknown as RecurringRuleRow;
+
 const occurrences = [
   { id: "o1", recurring_rule_id: "r1", recurring_due_date: shift(-28), date: shift(-28), amount: 15000, currency: "NPR", exchange_rate_to_usd: RATE },
   { id: "o2", recurring_rule_id: "r1", recurring_due_date: shift(-58), date: shift(-57), amount: 15000, currency: "NPR", exchange_rate_to_usd: RATE },
@@ -139,7 +159,10 @@ const occurrences = [
 export default function PreviewRecurringPage() {
   return (
     <DashboardShell>
-      <RecurringRegister inject={{ rules, occurrences }} />
+      {/* displayCurrency "USD" mirrors the account that surfaced the FX bug:
+          NPR plans must price into USD with their own figure as the caption,
+          while the USD plan needs no conversion at all. */}
+      <RecurringRegister inject={{ rules: [...rules, usdRule], occurrences, displayCurrency: "USD" }} />
     </DashboardShell>
   );
 }

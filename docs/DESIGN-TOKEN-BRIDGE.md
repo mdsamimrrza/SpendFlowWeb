@@ -4,6 +4,12 @@ Goal: the web app is visually indistinguishable from the mobile app in both them
 truth: `constants/theme.ts` in the mobile repo (tokens verified in audit, 2026-09-12). **Do not
 "improve" the palette.**
 
+> Status (2026-09-15): the web's "Neo" divergence has been reversed by user decision —
+> `app/globals.css` now mirrors this document token-for-token (plus fixed `--sf-hue-*` /
+> `--sf-tint-*` / `--sf-tile-*` / `--sf-track*` / `--sf-bar-*` / `--sf-set-*` tokens for the mobile
+> components' theme-invariant accent hues and component-level tints). See the Theme divergence note in
+> `FEATURE-PARITY.md`.
+
 ## 1. Strategy
 
 - Tailwind **CSS variables** in `globals.css` under `:root` (light values) and `.dark` (dark values).

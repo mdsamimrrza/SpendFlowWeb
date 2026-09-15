@@ -39,6 +39,12 @@ for (const width of WIDTHS) {
     console.log(`${width}px ${mode}: ${tag}`, overflow.wide.length ? overflow.wide : "");
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     await page.waitForTimeout(300);
+    // Freeze entrance/stagger animations so the full-page capture shows the
+    // settled state, not rows caught mid-fade.
+    await page.addStyleTag({
+      content: "*,*::before,*::after{animation:none !important;transition:none !important;}",
+    });
+    await page.waitForTimeout(150);
     await page.screenshot({ path: `shots/history-${width}-${mode}.png`, fullPage: true });
     await page.close();
   }

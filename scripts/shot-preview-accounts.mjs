@@ -16,7 +16,7 @@ for (const width of [390, 768, 1280]) {
       (pref) => localStorage.setItem("spendflow_theme_preference", pref),
       mode,
     );
-    await page.goto("http://127.0.0.1:3000/preview-accounts", { waitUntil: "networkidle" });
+    await page.goto("http://localhost:3000/preview-accounts", { waitUntil: "networkidle" });
     await page.waitForTimeout(2000);
     const overflow = await page.evaluate(() => {
       const el = document.documentElement;
@@ -25,7 +25,7 @@ for (const width of [390, 768, 1280]) {
     await page.screenshot({ path: `shots/accounts-${width}-${mode}.png`, fullPage: true });
 
     // Open the editor modal for the second shot.
-    await page.getByRole("button", { name: /new account/i }).first().click();
+    await page.getByRole("button", { name: /add account/i }).first().click();
     await page.waitForTimeout(600);
     await page.screenshot({ path: `shots/accounts-editor-${width}-${mode}.png` });
     console.log(

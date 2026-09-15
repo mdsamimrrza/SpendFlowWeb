@@ -25,6 +25,73 @@ is a scope decision for the user, recorded in `docs/FEATURE-PARITY.md` — not a
 3. Match the schema usage in `docs/SCHEMA.md` (column names, CHECK constraints, soft-delete, FX snapshot columns). Note the live-drift warnings (e.g. `recurring_rules.bank_account_id` must not be written).
 4. Implement mirroring the mobile module structure (`services/expenses.ts` on web ≈ same file on mobile).
 
+## Codebase intelligence — Graphify
+
+The `graphify` agent skill (user-scoped: `~/.agents/skills/graphify`, invoked as `/graphify`) turns
+this repo into a persistent knowledge graph with query/path/explain tools. Running it creates a
+local `graphify-out/` (interactive HTML, GraphRAG-ready JSON, `GRAPH_REPORT.md`); it is a
+navigation aid, not a source of truth — the "Priority of information" order above still governs.
+
+Use Graphify when the task requires understanding or analyzing the existing codebase, especially:
+
+- working in an unfamiliar area of the project
+- tracing relationships between modules/files
+- modifying functionality that spans multiple components
+- analyzing architecture or dependencies
+- investigating how data flows through the application
+- planning a large or cross-cutting change
+
+Understand the relevant relationships **before** making significant architectural or cross-file
+changes; re-run with `--update` for an incremental refresh instead of a full rebuild.
+
+**Do NOT run Graphify unnecessarily** for trivial changes where the relevant files and their
+relationships are already obvious.
+
+## Simplicity discipline — Ponytail
+
+The `ponytail` skill family (user-scoped: `~/.agents/skills/ponytail*`) keeps implementations the
+simplest that actually work. These are the *preventive* rules; the completion bar's item 6 is the
+matching *final* sweep. Before adding new abstractions, utilities, dependencies, wrappers,
+services, or duplicated functionality:
+
+- Check whether existing project code already provides the functionality (search `components/`,
+  `utils/`, `hooks/`, `services/`, `constants/` first).
+- Check whether the platform/framework already solves it (Next.js, React, Tailwind, the Supabase
+  client) or whether an existing dependency in `package.json` can be reused — no new packages for
+  a job the stack already covers.
+- Prefer the simplest maintainable implementation; avoid speculative abstractions and premature
+  generalization (YAGNI).
+
+When reviewing or simplifying existing code, use the appropriate skill:
+
+- `/ponytail` — simplest-solution mindset while coding (lite / full / ultra).
+- `/ponytail-review` — review a diff exclusively for over-engineering: what to delete (required by
+  completion bar item 6).
+- `/ponytail-audit` — whole-repo over-engineering audit (ranked report; changes nothing).
+- `/ponytail-debt` — harvest `ponytail:` shortcut comments into a tracked debt ledger.
+- `/ponytail-gain` — one-shot scoreboard of ponytail's measured impact.
+- `/ponytail-help` — quick reference for all ponytail modes and commands.
+
+**Ponytail must NOT be read as "make the code as short as possible."** Never remove necessary
+validation, error handling, security controls, accessibility, logging, tests, or maintainability
+merely to reduce code size. If minimalism ever conflicts with a rule in this file — mobile parity,
+security, i18n coverage, mobile-first design, the mobile-mirror module exemption in item 6, or the
+completion bar — the documented rule wins.
+
+## Recommended workflow for significant feature work
+
+1. Understand the relevant codebase and architecture with Graphify when appropriate.
+2. Inspect existing functionality before creating new code (the checks in "Before coding any
+   feature" above, plus Ponytail's search-first rules).
+3. Plan the smallest maintainable implementation that matches documented mobile behavior.
+4. Implement incrementally, one verifiable slice at a time.
+5. Apply Ponytail principles throughout to avoid unnecessary complexity.
+6. Run the relevant tests and validation (`npx tsc --noEmit`, tests, `shot-preview` screenshots).
+7. Review the final changes (ponytail review per completion bar item 6, then the full bar).
+8. Do not modify unrelated code.
+
+**Use these skills intelligently based on the task — do not invoke every skill on every request.**
+
 ## Ambiguity
 
 If a mobile behavior isn't documented in the audit and isn't obvious from it, **ask the user — don't
@@ -88,3 +155,9 @@ needs an update too.
 4. Docs updated: `FEATURE-PARITY.md` row, and any doc whose facts changed.
 5. No regression to the mobile-facing schema/RLS (if a migration was involved: mobile repo owns it,
    pgTAP suite re-run, types regenerated).
+6. **Ponytail pass done.** Every change ends with an over-engineering sweep before it is called
+   done: run the `ponytail-review` skill on the diff (use `ponytail-audit` for repo-wide or
+   directory-wide sweeps) and remove what it finds — dead components, clone-pasted scripts,
+   single-implementation abstractions, deps the platform already ships. Mobile-mirror module
+   structure (`services/*` parity with the mobile repo) is exempt: that layering is a documented
+   convention, not incidental complexity.

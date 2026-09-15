@@ -84,3 +84,4 @@ tsconfig.tsbuildinfo
 # (emails/ is the COMMITTED template source; .smoke/ is only its render scratch dir)
 /.smoke/
 /.zcode/
+dev-server.log

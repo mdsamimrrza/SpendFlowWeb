@@ -121,9 +121,25 @@ export function categoryGlyph(icon: string | null | undefined): LucideIcon {
   return EMOJI_TO_LUCIDE[trimmed] ?? Tag;
 }
 
+/** Lucide names the mobile account presets store in `bank_accounts.icon`. */
+const ACCOUNT_NAME_TO_LUCIDE: Record<string, LucideIcon> = {
+  landmark: Landmark,
+  smartphone: Smartphone,
+  banknote: Banknote,
+  "credit-card": CreditCard,
+  "piggy-bank": PiggyBank,
+  "trending-up": TrendingUp,
+  tag: Tag,
+  wallet: Wallet,
+  coins: Coins,
+};
+
 /** Account icon → Lucide, falling back to the account_type. */
 export function accountGlyph(icon: string | null | undefined, accountType?: string): LucideIcon {
   if (icon && EMOJI_TO_LUCIDE[icon.trim()]) return EMOJI_TO_LUCIDE[icon.trim()];
+  // Newer mobile rows store Lucide NAMES (e.g. 'landmark' from the account
+  // type presets) rather than emoji — resolve those too.
+  if (icon && ACCOUNT_NAME_TO_LUCIDE[icon.trim()]) return ACCOUNT_NAME_TO_LUCIDE[icon.trim()];
   switch (accountType) {
     case "bank":
       return Landmark;

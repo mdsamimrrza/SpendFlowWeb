@@ -11,7 +11,7 @@ export default async function EditExpensePage({
 }) {
   const { id } = await params;
   return (
-    <main className="mx-auto w-full max-w-[1080px]">
+    <main className="mx-auto w-full max-w-[1080px] px-4 pt-6 sm:px-6">
       <ExpenseForm expenseId={id} />
     </main>
   );

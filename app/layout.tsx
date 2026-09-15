@@ -1,11 +1,30 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Providers } from "@/store/Providers";
+import { ThemeFavicon } from "@/components/ui/ThemeFavicon";
 
 export const metadata: Metadata = {
   title: "SpendFlow — Your personal ledger",
   description:
     "Track expenses, income, budgets and transfers. Companion web app to the SpendFlow mobile app.",
+  icons: {
+    icon: [
+      {
+        url: "/icons/tab-dark.png",
+        media: "(prefers-color-scheme: dark)",
+        sizes: "64x64",
+        type: "image/png",
+      },
+      {
+        // Last + default: browsers without media-query icon support show
+        // the light parchment emblem.
+        url: "/icons/tab-light.png",
+        media: "(prefers-color-scheme: light)",
+        sizes: "64x64",
+        type: "image/png",
+      },
+    ],
+  },
 };
 
 export const viewport: Viewport = {
@@ -20,7 +39,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     // suppressHydrationWarning: ThemeContext toggles the `dark` class pre-hydration.
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-background text-text antialiased">
-        <Providers>{children}</Providers>
+        <Providers>
+          <ThemeFavicon />
+          {children}
+        </Providers>
       </body>
     </html>
   );

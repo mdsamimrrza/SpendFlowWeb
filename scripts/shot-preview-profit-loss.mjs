@@ -16,7 +16,7 @@ for (const width of [390, 1280]) {
       (pref) => localStorage.setItem("spendflow_theme_preference", pref),
       mode,
     );
-    await page.goto("http://127.0.0.1:3000/preview-profit-loss", { waitUntil: "networkidle" });
+    await page.goto("http://localhost:3000/preview-profit-loss", { waitUntil: "networkidle" });
     await page.waitForTimeout(2000);
     const overflow = await page.evaluate(() => {
       const el = document.documentElement;

@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { AlertCircle, CheckCircle2, ChevronRight } from "lucide-react";
+import { AlertCircle, CheckCircle2, ChevronRight, Repeat } from "lucide-react";
 import { useAuth } from "@/store/AuthContext";
 import { useLanguage } from "@/store/LanguageContext";
 import { useToast } from "@/store/ToastContext";
 import { notifyExpensesChanged, subscribeToExpenseChanges } from "@/hooks/useExpenses";
+import { useRowConverter } from "@/hooks/useRates";
+import { categoryGlyph } from "@/components/ui/Glyph";
 import {
   listRecurringRules,
   listRuleOccurrences,
@@ -84,6 +86,38 @@ export function BillsDueStrip() {
 
   const displayCurrency = profile?.preferred_currency ?? "NPR";
 
+  // The strip lists plans side by side, so each amount prices at today's rate
+  // into the display currency; a foreign plan keeps its own figure as the
+  // caption (History/Analytics convention).
+  const { convert, ready } = useRowConverter(
+    displayCurrency,
+    due.map(({ rule }) => ({
+      amount: Number(rule.amount) || 0,
+      currency: rule.currency || displayCurrency,
+      date: todayISO(),
+      exchange_rate_to_usd: null,
+    })),
+  );
+  const price = (rule: RecurringRuleRow) => {
+    const value = Number(rule.amount) || 0;
+    const native = rule.currency || displayCurrency;
+    if (native === displayCurrency || !ready) {
+      return { shown: formatMoney(value, native, locale), nativeText: null as string | null };
+    }
+    const converted = convert({
+      amount: value,
+      currency: native,
+      date: todayISO(),
+      exchange_rate_to_usd: null,
+    });
+    return converted === value
+      ? { shown: formatMoney(value, native, locale), nativeText: null }
+      : {
+          shown: formatMoney(converted, displayCurrency, locale),
+          nativeText: formatMoney(value, native, locale),
+        };
+  };
+
   async function handlePaid(rule: RecurringRuleRow) {
     if (!user) return;
     setBusyId(rule.id);
@@ -112,10 +146,12 @@ export function BillsDueStrip() {
 
   return (
     <section
-      className={`panel mb-4 border-2 ${hasOverdue ? "border-danger/50" : "border-border"}`}
+      className="panel mb-4 border-2"
+      style={{ borderColor: hasOverdue ? "color-mix(in srgb, var(--sf-danger) 50%, transparent)" : "var(--sf-border)" }}
       aria-label={t("recurring_bills_due")}
     >
-      <div className="flex items-center justify-between gap-3 border-b border-border/60 px-4 py-2.5 sm:px-5">
+      <div className="flex items-center justify-between gap-3 border-b px-4 py-2.5 sm:px-5"
+        style={{ borderColor: "color-mix(in srgb, var(--sf-border) 60%, transparent)" }}>
         <p
           className={`inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-[0.08em] ${
             hasOverdue ? "text-danger" : "text-primary"
@@ -129,20 +165,27 @@ export function BillsDueStrip() {
         </Link>
       </div>
       <div>
-        {visible.map(({ rule, overdueDays }) => (
+        {visible.map(({ rule, overdueDays }) => {
+          const Glyph = rule.categories?.icon ? categoryGlyph(rule.categories.icon) : Repeat;
+          const priced = price(rule);
+          return (
           <div
             key={rule.id}
-            className="flex items-center gap-3 border-b border-border/60 px-4 py-2.5 last:border-0 sm:px-5"
+            className="flex items-center gap-3 border-b px-4 py-2.5 last:border-0 sm:px-5"
+            style={{ borderColor: "color-mix(in srgb, var(--sf-border) 60%, transparent)" }}
           >
-            <span aria-hidden className="text-lg">
-              {rule.categories?.icon || "🔁"}
+            <span aria-hidden className="text-primary">
+              <Glyph size={18} />
             </span>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-bold text-text">
                 {rule.description?.trim() || rule.categories?.name || t("recurring")}
               </p>
               <p className="truncate text-[11px] text-faint">
-                <span className="numeric">{formatMoney(Number(rule.amount), rule.currency || displayCurrency, locale)}</span>{" "}
+                <span className="numeric">
+                  {priced.shown}
+                  {priced.nativeText ? ` (${priced.nativeText})` : ""}
+                </span>{" "}
                 ·{" "}
                 {overdueDays > 0 ? (
                   <span className="font-bold text-danger">
@@ -157,15 +200,17 @@ export function BillsDueStrip() {
               type="button"
               onClick={() => void handlePaid(rule)}
               disabled={busyId === rule.id}
-              className="inline-flex h-9 shrink-0 items-center gap-1.5 border border-income bg-income/10 px-3 text-[11px] font-black uppercase tracking-[0.06em] text-income transition hover:bg-income hover:text-white disabled:opacity-50"
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 border border-income bg-[var(--sf-tint-success)] px-3 text-[11px] font-black uppercase tracking-[0.06em] text-income transition hover:bg-income hover:text-white disabled:opacity-50"
             >
               <CheckCircle2 size={13} />
               {t("recurring_mark_paid")}
             </button>
           </div>
-        ))}
+          );
+        })}
         {extra > 0 && (
-          <div className="border-t border-border/60 px-4 py-2 text-[11px] italic text-faint sm:px-5">
+          <div className="border-t px-4 py-2 text-[11px] italic text-faint sm:px-5"
+            style={{ borderColor: "color-mix(in srgb, var(--sf-border) 60%, transparent)" }}>
             +{extra} {t("recurring_more_due")}
           </div>
         )}

@@ -3,10 +3,11 @@ import { cookies } from "next/headers";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 
+// `||` not `??`: present-but-blank env must fail closed, not build "" clients.
 const supabaseUrl =
-  process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://missing-supabase-config.invalid";
+  process.env.NEXT_PUBLIC_SUPABASE_URL || "https://missing-supabase-config.invalid";
 const supabaseAnonKey =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "missing-supabase-key";
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "missing-supabase-key";
 
 /** Server Component / Route Handler client (cookie read-write). */
 export async function getSupabaseServerClient(): Promise<SupabaseClient<Database>> {

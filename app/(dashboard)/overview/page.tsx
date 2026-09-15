@@ -201,7 +201,7 @@ export default function HomePage() {
     for (const row of rows) {
       if (row.type !== "expense" || row.date < startISO) continue;
       const name = row.categories?.name ?? "Other";
-      const color = row.categories?.color ?? "#8B978F";
+      const color = row.categories?.color ?? "var(--sf-faint)";
       const slice = byCategory.get(name) ?? { label: name, value: 0, color, icon: row.categories?.icon };
       slice.value += convert(row);
       byCategory.set(name, slice);

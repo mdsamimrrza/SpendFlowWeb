@@ -130,6 +130,9 @@ export type Database = {
           preferred_currency: string;
           theme_preference: "light" | "dark" | "system";
           monthly_budget: number | null;
+          /** Live DB column (docs/SCHEMA.md §users) — the currency the stored
+              monthly_budget figure is in; mobile writes it. */
+          budget_currency: string | null;
           cycle_start_day: number;
           cycle_end_day: number | null;
           deletion_pending: boolean;
@@ -144,6 +147,7 @@ export type Database = {
           preferred_currency?: string;
           theme_preference?: "light" | "dark" | "system";
           monthly_budget?: number | null;
+          budget_currency?: string | null;
           cycle_start_day?: number;
           cycle_end_day?: number | null;
         };
@@ -154,6 +158,7 @@ export type Database = {
           preferred_currency?: string;
           theme_preference?: "light" | "dark" | "system";
           monthly_budget?: number | null;
+          budget_currency?: string | null;
           cycle_start_day?: number;
           cycle_end_day?: number | null;
         };

@@ -1,73 +1,55 @@
 "use client";
 
+/**
+ * Categories & Budgets — 1:1 web mirror of mobile app/categories.tsx:
+ * left-aligned header (back chip + title, "New" pill), the Monthly Target
+ * Allocations hero card with the amber "Set Budgets" button and 3-cell stats
+ * bar, the red/teal 50/50 segmented Expense|Income switcher, and the 2-up
+ * category card grid (icon tile + name + edit glyph, budget/inflow line,
+ * Custom pill). Add/edit opens the APK-ported CategoryManageModal; "Set
+ * Budgets" opens the Category Budget Studio sheet.
+ */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  Pencil,
+  Plus,
+  Tag,
+  Target,
+  TrendingUp,
+} from "lucide-react";
 import { useAuth } from "@/store/AuthContext";
 import { useLanguage } from "@/store/LanguageContext";
-import { usePrivacy } from "@/store/PrivacyContext";
 import { useToast } from "@/store/ToastContext";
-import { Modal, ConfirmDialog } from "@/components/ui/Modal";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { Panel } from "@/components/ui/Card";
-import { EmptyState } from "@/components/ui/EmptyState";
+import {
+  MobileEmptyState,
+  MobileHeaderBar,
+} from "@/components/ui/MobileChrome";
+import { CategoryManageModal } from "@/components/expense/CategoryManageModal";
+import { CategoryBudgetStudio } from "@/components/category/CategoryBudgetStudio";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { formatMoney, toISODate } from "@/utils/format";
-import {
-  createCategory,
-  deleteCategory,
-  listCategories,
-  updateCategory,
-} from "@/services/categories";
-import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
 import { categoryGlyph } from "@/components/ui/Glyph";
-import { CURRENCY_DETAILS, type CurrencyCode } from "@/constants/app";
-import {
-  CATEGORY_ICONS,
-  EMOJI_TO_ICON_NAME,
-  INCOME_ICON_NAMES,
-  SELECTABLE_CATEGORY_ICONS,
-  categoryColorForIcon,
-} from "@/constants/categoryIcons";
+import { formatMoney } from "@/utils/format";
+import { listCategories } from "@/services/categories";
+import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
 import type { Category } from "@/types/database.types";
 
-const TYPE_COLORS = {
-  expense: "#a5442b",
-  income: "#047857",
-} as const;
-
-/**
- * Legacy rows store emoji icons (mobile parity); newer picks store Lucide
- * names. The editor always works in names, resolving any stored emoji once
- * on load so the strip shows a selection for old rows too.
- */
-function toIconName(stored: string | null | undefined): string {
-  if (!stored) return "tag";
-  const lower = stored.trim().toLowerCase();
-  if (CATEGORY_ICONS[lower]) return lower;
-  return EMOJI_TO_ICON_NAME[stored.trim()] ?? "tag";
-}
-
-/**
- * Categories — register of classification keys with optional monthly limits.
- * The flow switcher doubles as the summary band (each flow is a stat cell
- * with its own accent), and keys read as a tile grid: tinted glyph, name,
- * limit line, inline edit/delete. The editor opens with a live tile preview
- * so the key is seen exactly as it will file.
- */
 export default function CategoriesPage() {
   const { user, profile } = useAuth();
   const { t, locale } = useLanguage();
-  const { mask } = usePrivacy();
   const { showToast } = useToast();
   const supabase = getSupabaseBrowserClient();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-  const [flow, setFlow] = useState<"expense" | "income">("expense");
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [editing, setEditing] = useState<Category | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<Category | null>(null);
+  const [activeTab, setActiveTab] = useState<"expense" | "income">("expense");
+  const [manageOpen, setManageOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [studioOpen, setStudioOpen] = useState(false);
+
+  const currency = profile?.preferred_currency ?? "NPR";
+  const money = (n: number) => formatMoney(n, currency, locale);
 
   const load = useCallback(async () => {
     if (!user) {
@@ -87,510 +69,209 @@ export default function CategoriesPage() {
     void load();
   }, [load]);
 
-  const displayCurrency = profile?.preferred_currency ?? "NPR";
-  const currencySymbol =
-    CURRENCY_DETAILS[displayCurrency as CurrencyCode]?.symbol ?? displayCurrency;
-  const fmt = (n: number) => mask(formatMoney(n, displayCurrency, locale));
-  const visible = categories.filter((c) => c.type === flow);
-  const totalBudgets = visible.reduce((s, c) => s + (c.budget_monthly ?? 0), 0);
+  const expenseCategories = useMemo(
+    () => categories.filter((c) => c.type !== "income"),
+    [categories],
+  );
+  const incomeCategories = useMemo(
+    () => categories.filter((c) => c.type === "income"),
+    [categories],
+  );
+  const activeList = activeTab === "expense" ? expenseCategories : incomeCategories;
+
+  const totalAllocatedBudget = useMemo(
+    () => expenseCategories.reduce((acc, cat) => acc + (Number(cat.budget_monthly) || 0), 0),
+    [expenseCategories],
+  );
+  const budgetedExpenseCount = useMemo(
+    () => expenseCategories.filter((c) => (Number(c.budget_monthly) || 0) > 0).length,
+    [expenseCategories],
+  );
 
   const openNew = () => {
-    setEditing(null);
-    setEditorOpen(true);
+    setEditingCategory(null);
+    setManageOpen(true);
   };
-
-  const onDelete = async () => {
-    if (!confirmDelete || !user) return;
-    try {
-      await deleteCategory(supabase, user.id, confirmDelete.id);
-      setConfirmDelete(null);
-      showToast(t("deleted"), "success");
-      await load();
-    } catch (e) {
-      showToast(e instanceof Error ? e.message : t("error"), "error");
-    }
+  const openEdit = (category: Category) => {
+    setEditingCategory(category);
+    setManageOpen(true);
   };
 
   return (
-    <main className="mx-auto w-full max-w-[1080px]">
-      <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="caps !text-primary-strong">{t("catEyebrow")}</p>
-          <h1 className="mt-0.5 text-xl font-extrabold tracking-tight text-text">{t("category")}</h1>
-          <div className="mt-2 h-0.5 w-14 bg-brass" aria-hidden />
-        </div>
-        <Button onClick={openNew}>
-          <Plus size={14} /> {t("addNewCategory")}
-        </Button>
-      </header>
+    <main className="mx-auto w-full max-w-[560px]">
+      <MobileHeaderBar
+        title={t("rowCategoriesBudgets")}
+        right={
+          <button
+            onClick={openNew}
+            className="flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-[11.5px] font-extrabold text-white transition active:opacity-80"
+          >
+            <Plus size={14} strokeWidth={2.5} aria-hidden />
+            {t("catNew")}
+          </button>
+        }
+      />
 
-      {/* Flow statement band — the switcher IS the summary: tap a flow cell
-          to file by it; the third cell totals the active flow's limits.
-          Always three across, compact figures on narrow screens. */}
-      <div className="panel mb-4 grid grid-cols-3 divide-x divide-border">
-        {(["expense", "income"] as const).map((f) => {
-          const active = flow === f;
-          const count = categories.filter((c) => c.type === f).length;
-          return (
+      <div className="space-y-2 p-0.5">
+        {/* ── Summary hero card ── */}
+        <section className="space-y-1.5 rounded-[16px] border border-border bg-surface p-2.5 shadow-[0_2px_8px_var(--sf-set-card-shadow)]">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[10.5px] font-bold uppercase leading-4 tracking-[0.8px] text-text-muted">
+                {t("catKicker")}
+              </p>
+              <p className="text-[21px] font-black leading-[25px] text-text">
+                {money(totalAllocatedBudget)}
+              </p>
+              <p className="text-xs leading-4 text-text-muted">
+                {t("catAcrossBudgeted").replace("{count}", String(budgetedExpenseCount))}
+              </p>
+            </div>
             <button
-              key={f}
-              onClick={() => setFlow(f)}
-              aria-pressed={active}
-              className={`relative min-w-0 px-3 py-3.5 text-left transition-colors sm:px-5 sm:py-4 ${
-                active ? "bg-surface-elevated/50" : "hover:bg-surface-elevated/30"
-              }`}
+              onClick={() => setStudioOpen(true)}
+              className="flex shrink-0 items-center gap-1.5 rounded-[10px] border border-[var(--sf-set-chip-gold-line)] bg-[var(--sf-set-chip-gold)] px-3 py-2 transition active:opacity-80"
             >
-              <span
-                className="absolute inset-x-0 top-0 h-0.5 transition-opacity"
-                style={{ backgroundColor: TYPE_COLORS[f], opacity: active ? 1 : 0 }}
-                aria-hidden
-              />
-              <p className="caps flex items-center gap-1.5">
-                <span
-                  className="inline-block h-2 w-2 shrink-0 rounded-full"
-                  style={{ backgroundColor: TYPE_COLORS[f] }}
-                  aria-hidden
-                />
-                <span className="truncate">
-                  {t(f)}
-                  <span className="hidden sm:inline"> {t("catKeys")}</span>
-                </span>
-              </p>
-              <p className="figures mt-1.5 text-xl font-bold text-text sm:text-2xl">{count}</p>
-              <p className="stamp mt-0.5 hidden sm:block">
-                {count} {t("catKeys")}
-              </p>
+              <Target size={15} className="text-hue-amber" aria-hidden />
+              <span className="text-xs font-extrabold text-hue-amber">{t("catSetBudgets")}</span>
             </button>
-          );
-        })}
-        <div className="min-w-0 px-3 py-3.5 sm:px-5 sm:py-4">
-          <p className="caps truncate">{t("catLimitsSet")}</p>
-          <p className="figures mt-1.5 text-xl font-bold text-text sm:text-2xl">
-            {fmt(totalBudgets)}
-          </p>
-          <p className="stamp mt-0.5 truncate">
-            <span className="hidden sm:inline">{t(flow)} · </span>
-            {t("catPerMonth")}
-          </p>
-        </div>
-      </div>
+          </div>
 
-      {loading ? (
-        <div className="panel grid grid-cols-2 gap-2 p-4 sm:grid-cols-3 sm:gap-2.5 sm:p-5 xl:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-[66px] w-full" />
-          ))}
-        </div>
-      ) : visible.length === 0 ? (
-        <EmptyState
-          title={t("category")}
-          message={t("catAddFirst")}
-          action={
-            <Button onClick={openNew}>
-              <Plus size={14} /> {t("addNewCategory")}
-            </Button>
-          }
-        />
-      ) : (
-        <Panel
-          label={`${t("category")} — ${visible.length}`}
-          action={<span className="caps-faint">{t(flow)}</span>}
+          {/* Stats bar */}
+          <div className="flex items-center rounded-xl border border-border bg-surface-elevated px-3.5 py-2.5">
+            <div className="flex-1 border-r border-border text-center">
+              <p className="text-base font-extrabold text-text">{expenseCategories.length}</p>
+              <p className="text-[11px] font-semibold text-text-muted">{t("catExpenses")}</p>
+            </div>
+            <div className="flex-1 border-r border-border text-center">
+              <p className="text-base font-extrabold text-primary">{incomeCategories.length}</p>
+              <p className="text-[11px] font-semibold text-text-muted">{t("catIncomes")}</p>
+            </div>
+            <div className="flex-1 text-center">
+              <p className="text-base font-extrabold text-hue-amber">{budgetedExpenseCount}</p>
+              <p className="text-[11px] font-semibold text-text-muted">{t("catTargetsSet")}</p>
+            </div>
+          </div>
+        </section>
+
+        {/* ── 50/50 segmented switcher ── */}
+        <div
+          role="tablist"
+          className="flex h-[50px] w-full rounded-[14px] border border-border bg-surface-elevated p-1"
         >
-          {/* Compact register tiles — color chip + name + limit line, the
-              whole tile opens the editor, delete rides on hover (always
-              visible on touch). Mobile-first: 2 → 3 → 4 columns. */}
-          <div className="grid grid-cols-2 gap-2 p-4 sm:grid-cols-3 sm:gap-2.5 sm:p-5 xl:grid-cols-4">
-            {visible.map((c) => {
-              const G = categoryGlyph(c.icon);
-              return (
-                <div
-                  key={c.id}
-                  className="group relative flex items-center gap-3 border border-border bg-surface p-3 transition-colors hover:border-text-muted/50 hover:bg-surface-elevated/40"
-                >
-                  <span
-                    className="flex h-10 w-10 shrink-0 items-center justify-center border"
-                    style={{
-                      borderColor: `${c.color}55`,
-                      backgroundColor: `${c.color}14`,
-                      color: c.color ?? undefined,
-                    }}
-                    aria-hidden
-                  >
-                    <G size={18} />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-bold text-text sm:text-sm">
-                      {c.name}
-                    </p>
-                    <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-text-muted">
-                      {c.is_custom && (
-                        <span className="caps shrink-0 border border-brass/40 px-1 py-px !text-brass">
-                          {t("catCustom")}
-                        </span>
-                      )}
-                      <span className="truncate">
-                        {c.budget_monthly != null ? (
-                          <>
-                            <span className="numeric font-bold text-text">
-                              {c.budget_monthly.toLocaleString(locale)}
-                            </span>{" "}
-                            · {t("catPerMonth")}
-                          </>
-                        ) : (
-                          t("catNoLimit")
-                        )}
-                      </span>
-                    </p>
-                  </div>
-                  {/* Tile-wide tap target → editor. */}
-                  <button
-                    onClick={() => {
-                      setEditing(c);
-                      setEditorOpen(true);
-                    }}
-                    aria-label={`${t("catEdit")} — ${c.name}`}
-                    title={t("catEdit")}
-                    className="absolute inset-0"
-                  />
-                  {/* Delete sits above the tap target. */}
-                  <button
-                    onClick={() => setConfirmDelete(c)}
-                    aria-label={`${t("catDelete")} — ${c.name}`}
-                    title={t("catDelete")}
-                    className="relative z-10 shrink-0 p-1.5 text-faint transition-colors hover:text-danger focus-visible:text-danger sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              );
-            })}
-
-            {/* Dashed add-tile — one-tap key creation in the grid itself. */}
-            <button
-              onClick={openNew}
-              className="flex min-h-[66px] flex-col items-center justify-center gap-1 border border-dashed border-border bg-transparent text-text-muted transition-colors hover:border-primary hover:text-primary"
-            >
-              <Plus size={16} aria-hidden />
-              <span className="caps">{t("addNewCategory")}</span>
-            </button>
-          </div>
-        </Panel>
-      )}
-
-      <CategoryEditor
-        open={editorOpen}
-        category={editing}
-        flow={flow}
-        userId={user?.id}
-        currencySymbol={currencySymbol}
-        onClose={() => {
-          setEditorOpen(false);
-          setEditing(null);
-        }}
-        onSaved={async () => {
-          setEditorOpen(false);
-          setEditing(null);
-          showToast(t("saved"), "success");
-          await load();
-        }}
-      />
-
-      <ConfirmDialog
-        open={!!confirmDelete}
-        title={t("catDeleteConfirmTitle")}
-        body={t("catDeleteConfirmBody")}
-        confirmLabel={t("delete")}
-        cancelLabel={t("cancel")}
-        onConfirm={onDelete}
-        onCancel={() => setConfirmDelete(null)}
-      />
-    </main>
-  );
-}
-
-function CategoryEditor({
-  open,
-  category,
-  flow,
-  userId,
-  currencySymbol,
-  onClose,
-  onSaved,
-}: {
-  open: boolean;
-  category: Category | null;
-  flow: "expense" | "income";
-  userId?: string;
-  currencySymbol: string;
-  onClose: () => void;
-  onSaved: () => Promise<void>;
-}) {
-  const { showToast } = useToast();
-  const { t } = useLanguage();
-  const supabase = getSupabaseBrowserClient();
-  const [name, setName] = useState("");
-  const [icon, setIcon] = useState("tag");
-  const [color, setColor] = useState(() => categoryColorForIcon("tag"));
-  const [budget, setBudget] = useState("");
-  const [type, setType] = useState<"expense" | "income">(flow);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    setName(category?.name ?? "");
-    const seedIcon = toIconName(category?.icon);
-    setIcon(seedIcon);
-    setColor(category?.color || categoryColorForIcon(seedIcon));
-    setBudget(category?.budget_monthly != null ? String(category.budget_monthly) : "");
-    setType(category?.type ?? flow);
-  }, [open, category, flow]);
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!userId || !name.trim()) return;
-    setSaving(true);
-    try {
-      const budgetMonthly = budget.trim() === "" ? null : Number(budget);
-      if (category) {
-        await updateCategory(supabase, userId, category.id, {
-          name: name.trim(),
-          icon,
-          color,
-          budget_monthly: budgetMonthly,
-        });
-        if (budgetMonthly != null) {
-          await supabase.from("category_budget_history").insert({
-            user_id: userId,
-            category_id: category.id,
-            effective_from: toISODate(new Date()),
-            budget_monthly: budgetMonthly,
-          });
-        }
-      } else {
-        const created = await createCategory(supabase, userId, {
-          name: name.trim(),
-          icon,
-          color,
-          type,
-          budgetMonthly,
-        });
-        if (created.budget_monthly != null) {
-          await supabase.from("category_budget_history").insert({
-            user_id: userId,
-            category_id: created.id,
-            effective_from: toISODate(new Date()),
-            budget_monthly: created.budget_monthly,
-          });
-        }
-      }
-      await onSaved();
-    } catch (e) {
-      showToast(e instanceof Error ? e.message : t("catSaveFailed"), "error");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const PreviewGlyph = categoryGlyph(icon);
-  const accentColor = TYPE_COLORS[type];
-  const selectedIcon = SELECTABLE_CATEGORY_ICONS.find((i) => i.name === icon);
-
-  // Icon strip filtered by the key's register: money-inflow icons for income,
-  // spending icons for expense. When editing, a stored icon outside the set
-  // (e.g. legacy "tag" on an income row) is pinned to the front so the current
-  // value always shows. New keys auto-pick the first fitting icon on a flip.
-  const iconChoices = useMemo(() => {
-    const income = type === "income";
-    const list = SELECTABLE_CATEGORY_ICONS.filter(
-      (i) => INCOME_ICON_NAMES.has(i.name) === income,
-    );
-    if (category && icon && !list.some((i) => i.name === icon)) {
-      const stored = SELECTABLE_CATEGORY_ICONS.find((i) => i.name === icon);
-      if (stored) return [stored, ...list];
-    }
-    return list;
-  }, [type, category, icon]);
-
-  useEffect(() => {
-    if (category || !open) return;
-    if (iconChoices.length > 0 && !iconChoices.some((i) => i.name === icon)) {
-      const first = iconChoices[0].name;
-      setIcon(first);
-      setColor(categoryColorForIcon(first));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-pick only when the register flips
-  }, [type, open]);
-
-  return (
-    <Modal
-      open={open}
-      title={category ? t("catModalEdit") : t("catModalNew")}
-      onClose={onClose}
-      maxWidth="max-w-md"
-    >
-      <form onSubmit={submit} className="space-y-4 px-4 pt-4 sm:px-5">
-        {/* Flow strip — which register this key files under. Selectable when
-            creating; fixed when editing (moving a key between registers would
-            orphan its entries). */}
-        {category ? (
-          <div
-            className="flex items-center justify-between border px-3 py-2"
-            style={{ borderColor: `${accentColor}40`, backgroundColor: `${accentColor}0d` }}
+          <button
+            role="tab"
+            aria-selected={activeTab === "expense"}
+            onClick={() => setActiveTab("expense")}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-[10px] transition ${
+              activeTab === "expense"
+                ? "bg-[var(--sf-tab-expense)] text-white"
+                : "text-text-muted"
+            }`}
           >
-            <span className="caps flex items-center gap-1.5">
-              <span
-                className="inline-block h-2 w-2 rounded-full"
-                style={{ backgroundColor: accentColor }}
-                aria-hidden
-              />
-              {t(type === "expense" ? "expenseCategory" : "incomeCategory")}
+            <ArrowDownRight size={16} strokeWidth={2.5} aria-hidden />
+            <span className="text-[13.5px] font-extrabold leading-[18px]">
+              {t("expense")} ({expenseCategories.length})
             </span>
-            <span className="caps-faint">{t("catSaveChanges")}</span>
-          </div>
-        ) : (
-          <div>
-            <p className="caps mb-1.5">{t("category")}</p>
-            <div className="grid grid-cols-2 gap-2">
-              {(["expense", "income"] as const).map((f) => {
-                const active = type === f;
-                const c = TYPE_COLORS[f];
-                return (
-                  <button
-                    key={f}
-                    type="button"
-                    onClick={() => setType(f)}
-                    aria-pressed={active}
-                    className={`relative border px-3 py-2.5 text-left transition-colors ${
-                      active ? "" : "border-border bg-input hover:border-text-muted"
-                    }`}
-                    style={
-                      active
-                        ? { borderColor: `${c}80`, backgroundColor: `${c}14` }
-                        : undefined
-                    }
-                  >
-                    <span
-                      className="absolute inset-x-0 top-0 h-0.5 transition-opacity"
-                      style={{ backgroundColor: c, opacity: active ? 1 : 0 }}
-                      aria-hidden
-                    />
-                    <span className="caps flex items-center gap-1.5">
-                      <span
-                        className="inline-block h-2 w-2 shrink-0 rounded-full"
-                        style={{ backgroundColor: c }}
-                        aria-hidden
-                      />
-                      {t(f === "expense" ? "expenseCategory" : "incomeCategory")}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Live preview — the key exactly as it will file in the grid. */}
-        <div className="panel-flush relative px-4 py-4">
-          <span className="stamp absolute right-3 top-2">{t("catLivePreview")}</span>
-          <div className="mt-2 flex items-center gap-3.5">
-            <span
-              className="flex h-11 w-11 shrink-0 items-center justify-center border"
-              style={{
-                borderColor: `${color}55`,
-                backgroundColor: `${color}14`,
-                color,
-              }}
-              aria-hidden
-            >
-              <PreviewGlyph size={20} />
+          </button>
+          <button
+            role="tab"
+            aria-selected={activeTab === "income"}
+            onClick={() => setActiveTab("income")}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-[10px] transition ${
+              activeTab === "income" ? "bg-primary text-white" : "text-text-muted"
+            }`}
+          >
+            <ArrowUpRight size={16} strokeWidth={2.5} aria-hidden />
+            <span className="text-[13.5px] font-extrabold leading-[18px]">
+              {t("income")} ({incomeCategories.length})
             </span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-bold text-text">
-                {name.trim() || <span className="text-faint">{t("catModalName")}</span>}
-              </p>
-              <p className="mt-0.5 text-[11px] text-text-muted">
-                {budget.trim() !== "" && Number(budget) >= 0 ? (
-                  <>
-                    <span className="numeric font-bold text-text">
-                      {currencySymbol} {Number(budget).toLocaleString()}
-                    </span>{" "}
-                    · {t("catPerMonth")}
-                  </>
-                ) : (
-                  t("catNoLimit")
-                )}
-              </p>
-            </div>
-          </div>
+          </button>
         </div>
 
-        <Input
-          label={t("catModalName")}
-          required
-          maxLength={40}
-          placeholder={t("catNamePlaceholder")}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-
-        {/* Icon grid — compact tiles; picking an icon also seeds its color
-            (web-only divergence, see `categoryColorForIcon`). */}
-        <div>
-          <p className="caps mb-1">{t("selectIcon")}</p>
-          <div
-            role="group"
-            aria-label={t("selectIcon")}
-            className="flex flex-wrap gap-1.5"
-          >
-            {iconChoices.map((item) => {
-              const selected = icon === item.name;
+        {/* ── Category grid ── */}
+        {loading ? (
+          <div className="grid grid-cols-2 gap-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-[78px] w-full rounded-[16px]" />
+            ))}
+          </div>
+        ) : activeList.length === 0 ? (
+          <MobileEmptyState
+            icon={Tag}
+            title={activeTab === "expense" ? t("catNoExpenseCats") : t("catNoIncomeCats")}
+            message={t("catEmptyMsg")}
+            actionLabel={t("catAddCategoryCta")}
+            onAction={openNew}
+          />
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            {activeList.map((item) => {
+              const budget = Number(item.budget_monthly) || 0;
+              const G = categoryGlyph(item.icon);
               return (
                 <button
-                  key={item.name}
-                  type="button"
-                  onClick={() => {
-                    setIcon(item.name);
-                    setColor(categoryColorForIcon(item.name));
-                  }}
-                  aria-pressed={selected}
-                  aria-label={item.label}
-                  title={item.label}
-                  className={`relative flex h-9 w-9 items-center justify-center border-2 transition active:scale-[0.95] sm:h-10 sm:w-10 ${
-                    selected
-                      ? "border-primary bg-primary text-white"
-                      : "border-border bg-input text-text hover:border-text-muted"
-                  }`}
+                  key={item.id}
+                  onClick={() => openEdit(item)}
+                  className="flex min-h-[78px] flex-col justify-between gap-2 rounded-[16px] border-[1.5px] border-border bg-surface p-3 text-left transition active:opacity-85"
                 >
-                  <item.icon size={20} />
+                  <span className="flex items-center justify-between gap-1.5">
+                    <span className="flex min-w-0 flex-1 items-center gap-2">
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] border border-border bg-surface-elevated">
+                        <G
+                          size={16}
+                          style={{ color: item.type === "income" ? "var(--sf-hue-emerald)" : undefined }}
+                          className={item.type === "income" ? "" : "text-primary"}
+                          aria-hidden
+                        />
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-[13.5px] font-extrabold text-text">
+                        {item.name}
+                      </span>
+                    </span>
+                    <Pencil size={13} className="shrink-0 text-text-muted" aria-hidden />
+                  </span>
+                  <span className="flex items-center justify-between">
+                    {item.type === "expense" ? (
+                      budget > 0 ? (
+                        <span className="text-[12.5px] font-extrabold text-primary">
+                          {money(budget)}
+                          <span className="text-[10px] font-semibold text-text-muted"> /mo</span>
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-text-muted">{t("catNoLimitShort")}</span>
+                      )
+                    ) : (
+                      <span className="flex items-center gap-1 text-[11px] font-bold text-hue-emerald">
+                        <TrendingUp size={12} aria-hidden />
+                        {t("catInflowStream")}
+                      </span>
+                    )}
+                    {item.is_custom && (
+                      <span className="rounded-full bg-primary-light px-[5px] py-[1.5px] text-[9px] font-extrabold text-primary">
+                        {t("catCustom")}
+                      </span>
+                    )}
+                  </span>
                 </button>
               );
             })}
           </div>
-          <p className="caps-faint mt-1.5">
-            {t("catSelectedIcon")}: {selectedIcon?.label ?? "—"}
-          </p>
-        </div>
+        )}
+      </div>
 
-        <Input
-          label={t("catMonthlyBudget")}
-          type="number"
-          min="0"
-          step="any"
-          placeholder={t("catBudgetPlaceholder")}
-          leftAdornment={<span className="text-sm font-bold">{currencySymbol}</span>}
-          value={budget}
-          onChange={(e) => setBudget(e.target.value)}
-        />
-
-        <div className="end-rule flex justify-end gap-2 pt-3">
-          <Button type="button" variant="secondary" onClick={onClose} className="flex-1 sm:flex-none">
-            {t("cancel")}
-          </Button>
-          <Button type="submit" loading={saving} className="flex-1 sm:flex-none">
-            {category ? t("catSaveChanges") : t("catCreate")}
-          </Button>
-        </div>
-      </form>
-    </Modal>
+      <CategoryManageModal
+        open={manageOpen}
+        onClose={() => setManageOpen(false)}
+        category={editingCategory}
+        defaultType={activeTab}
+        userId={user?.id}
+        onSaved={() => void load()}
+      />
+      <CategoryBudgetStudio
+        open={studioOpen}
+        onClose={() => setStudioOpen(false)}
+        onSaved={() => void load()}
+      />
+    </main>
   );
 }

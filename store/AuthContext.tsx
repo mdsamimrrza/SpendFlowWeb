@@ -154,6 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             cycle_start_day: next.cycle_start_day,
             cycle_end_day: next.cycle_end_day,
             monthly_budget: next.monthly_budget,
+            budget_currency: next.budget_currency,
             avatar_url: next.avatar_url,
           },
         })

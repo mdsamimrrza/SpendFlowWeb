@@ -1,6 +1,7 @@
 /**
- * Screenshots of the redesigned Transfer form via /preview-transfer:
- * route cards, amount panel and FX strip, at mobile, tablet and desktop widths.
+ * Screenshots of the mirrored Transfer form via /preview-transfer: pickers,
+ * amount field and the "Recipient gets" card, at mobile, tablet and desktop
+ * widths, light and dark.
  * Run: node scripts/shot-preview-transfer.mjs  (needs dev server on :3000)
  */
 import { chromium } from "playwright-core";
@@ -16,7 +17,7 @@ for (const width of [390, 768, 1280]) {
       (pref) => localStorage.setItem("spendflow_theme_preference", pref),
       mode,
     );
-    await page.goto("http://127.0.0.1:3000/preview-transfer", { waitUntil: "networkidle" });
+    await page.goto("http://localhost:3000/preview-transfer", { waitUntil: "networkidle" });
     await page.waitForTimeout(2000);
     // Type an amount so the locked-rate FX strip renders in the shot.
     await page.locator('input[name="tr-amount"]').fill("25000");

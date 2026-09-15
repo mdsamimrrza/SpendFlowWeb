@@ -84,9 +84,9 @@ export function AlertBell({ buttonClassName }: { buttonClassName?: string }) {
     void refresh();
   };
 
-  const resetSuppress = () => {
+  const resetSuppress = async () => {
     if (!user) return;
-    const n = resetAlertHistory(user.id);
+    const n = await resetAlertHistory(supabase, user.id);
     showToast(n > 0 ? `${n} ${t("alertResetDone")}` : t("alertResetNone"), "info");
   };
 

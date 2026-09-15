@@ -67,5 +67,56 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/profile?recovery=1`);
   }
 
+  // Google photos live on lh*.googleusercontent.com, which this app can never
+  // render (avatar allowlist P3-2 + CSP img-src) and never hotlinks. Mirror
+  // the photo into the project's own avatars bucket once, at sign-in, when
+  // the user has no avatar yet — the resulting bucket URL passes every gate
+  // and lands in users.avatar_url (web) + auth metadata (mobile parity).
+  // Strictly best-effort: any failure must not block or slow the redirect.
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const googlePhoto = user?.user_metadata?.avatar_url;
+    if (
+      user &&
+      typeof googlePhoto === "string" &&
+      /^https:\/\/lh[0-9]\.googleusercontent\.com\/.+/.test(googlePhoto)
+    ) {
+      const { data: prof } = await supabase
+        .from("users")
+        .select("avatar_url")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (!prof?.avatar_url) {
+        const img = await fetch(googlePhoto);
+        const mime = img.headers.get("content-type") ?? "";
+        const ext = /png/i.test(mime) ? "png" : /webp/i.test(mime) ? "webp" : /image/i.test(mime) ? "jpg" : null;
+        const bytes = img.ok && ext ? await img.arrayBuffer() : null;
+        // Bucket limit (docs/SUPABASE.md): avatars ≤ 2 MiB, image MIME only.
+        if (bytes && bytes.byteLength > 0 && bytes.byteLength <= 2 * 1024 * 1024) {
+          const path = `${user.id}/avatar.${ext}`;
+          const { error: upErr } = await supabase.storage
+            .from("avatars")
+            .upload(path, bytes, {
+              contentType: ext === "jpg" ? "image/jpeg" : `image/${ext}`,
+              upsert: true,
+            });
+          if (!upErr) {
+            const {
+              data: { publicUrl },
+            } = supabase.storage.from("avatars").getPublicUrl(path);
+            // Row may not exist yet for a first-time OAuth user (ensureProfile
+            // creates it client-side) — the metadata write below covers that.
+            await supabase.from("users").update({ avatar_url: publicUrl }).eq("id", user.id);
+            await supabase.auth.updateUser({ data: { avatar_url: publicUrl } });
+          }
+        }
+      }
+    }
+  } catch {
+    // Cosmetic mirror — sign-in succeeds regardless.
+  }
+
   return NextResponse.redirect(`${origin}${safeNext}`);
 }

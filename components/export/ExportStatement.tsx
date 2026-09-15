@@ -1,15 +1,23 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Download, FileSpreadsheet, FileUp, Printer } from "lucide-react";
+import {
+  ArrowDownToLine,
+  FileSpreadsheet,
+  FileText,
+  Printer,
+  Share2,
+  Upload,
+  Wallet,
+  X,
+} from "lucide-react";
 import { useAuth } from "@/store/AuthContext";
 import { useLanguage } from "@/store/LanguageContext";
 import { usePrivacy } from "@/store/PrivacyContext";
 import { useToast } from "@/store/ToastContext";
 import { useRowConverter, useBudget } from "@/hooks/useRates";
-import { Button } from "@/components/ui/Button";
-import { Panel } from "@/components/ui/Card";
-import { listExpenses } from "@/services/expenses";
+import { listExpenses, assertAmountAndDate } from "@/services/expenses";
 import { getRateSnapshot } from "@/services/exchange";
 import {
   generateExportFileName,
@@ -19,9 +27,19 @@ import {
   stripExportQuote,
 } from "@/services/export";
 import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
+import type { TranslationKey } from "@/constants/i18n/dictionaries";
 import { formatMoney, todayISO, isValidISODate, toISODate, getCycleWindow } from "@/utils/format";
 
-type Period = "month" | "year" | "all";
+type Period = "today" | "week" | "month" | "year" | "all";
+
+/** Mobile PERIODS list (app/export.tsx) — label keys resolve via t(). */
+const PERIODS: { value: Period; labelKey: TranslationKey }[] = [
+  { value: "today", labelKey: "periodToday" },
+  { value: "week", labelKey: "periodWeek" },
+  { value: "month", labelKey: "periodMonth" },
+  { value: "year", labelKey: "periodYear" },
+  { value: "all", labelKey: "periodAll" },
+];
 
 /** Mock dataset for the static design preview (no auth, no network). */
 export interface ExportInject {
@@ -74,6 +92,20 @@ export function ExportStatement({ inject }: ExportPageProps) {
 
   const range = useMemo((): { from: string; to: string } => {
     const now = new Date();
+    if (period === "today") {
+      const d = todayISO();
+      return { from: d, to: d };
+    }
+    if (period === "week") {
+      // Monday–Sunday of the current week (mobile filterExpensesByPeriod parity).
+      const dayOfWeek = now.getDay();
+      const distanceToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      const monday = new Date(now);
+      monday.setDate(now.getDate() - distanceToMonday);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      return { from: toISODate(monday), to: toISODate(sunday) };
+    }
     if (period === "month") {
       // "This month" = the user's current billing cycle (History/analytics
       // parity), not the calendar month — custom cycle starts (cycle_start_day
@@ -102,10 +134,16 @@ export function ExportStatement({ inject }: ExportPageProps) {
     [scoped, convert],
   );
   const expenseTotal = incomeTotal - total;
-  const incomeShare = incomeTotal + expenseTotal > 0 ? incomeTotal / (incomeTotal + expenseTotal) : 0;
+
+  const periodLabel = t(PERIODS.find((p) => p.value === period)?.labelKey ?? "periodMonth");
 
   const onExportCsv = async () => {
+    if (scoped.length === 0) {
+      showToast(t("expNoData"), "error");
+      return;
+    }
     setBusy("csv");
+    showToast(t("expGeneratingCsv"));
     try {
       // APK services/export.ts parity: full column set (Date, Type, Time,
       // Amount, Currency, Category, Payment Method, Description, Notes) +
@@ -120,7 +158,12 @@ export function ExportStatement({ inject }: ExportPageProps) {
   };
 
   const onExportExcel = async () => {
+    if (scoped.length === 0) {
+      showToast(t("expNoData"), "error");
+      return;
+    }
     setBusy("excel");
+    showToast(t("expGeneratingExcel"));
     try {
       const { default: writeXlsxFile } = await import("write-excel-file/browser");
       const [ledger, summary] = excelSheets(scoped, convert, displayCurrency);
@@ -138,7 +181,12 @@ export function ExportStatement({ inject }: ExportPageProps) {
   };
 
   const onExportPdf = () => {
+    if (scoped.length === 0) {
+      showToast(t("expNoData"), "error");
+      return;
+    }
     setBusy("pdf");
+    showToast(t("expGeneratingPdf"));
     try {
       const win = window.open("", "_blank", "width=900,height=700");
       if (!win) {
@@ -236,15 +284,25 @@ export function ExportStatement({ inject }: ExportPageProps) {
         const c = parseLine(line);
         const date = c[iDate]?.trim() ?? "";
         const amount = Number(c[iAmount]);
-        if (!isValidISODate(date) || !Number.isFinite(amount) || amount <= 0) continue;
+        // isValidISODate first (real calendar day — the shared validator only
+        // compares ranges), then the same money/date rules as every other
+        // write path (services/expenses.ts). Invalid rows are skipped, as before.
+        if (!isValidISODate(date)) continue;
+        try {
+          assertAmountAndDate(amount, date);
+        } catch {
+          continue;
+        }
         const category = stripExportQuote((iCat >= 0 ? c[iCat]?.trim() : "") || "Other");
-        categoryNames.add(category);
+        // Categories mirror services/categories.ts 1–40-char cap; over-long names
+        // are left uncapped in the row and fall back to an existing category.
+        if (category && category.length <= 40) categoryNames.add(category);
         const rawTime = iTime >= 0 ? (c[iTime]?.trim() ?? "") : "";
         parsed.push({
           date,
           type: (iType >= 0 ? c[iType]?.trim().toLowerCase() : "expense") === "income" ? "income" : "expense",
           category,
-          description: iDesc >= 0 ? stripExportQuote(c[iDesc]?.trim() ?? "") : "",
+          description: (iDesc >= 0 ? stripExportQuote(c[iDesc]?.trim() ?? "") : "").slice(0, 200),
           method: iMethod >= 0 ? c[iMethod]?.trim() || "Cash" : "Cash",
           amount,
           currency:
@@ -252,7 +310,7 @@ export function ExportStatement({ inject }: ExportPageProps) {
               ? c[iCurrency].trim().toUpperCase()
               : displayCurrency,
           time: /^\d{1,2}:\d{2}(:\d{2})?$/.test(rawTime) ? rawTime : null,
-          notes: iNotes >= 0 ? stripExportQuote(c[iNotes]?.trim() ?? "") || null : null,
+          notes: iNotes >= 0 ? stripExportQuote(c[iNotes]?.trim() ?? "").slice(0, 2000) || null : null,
         });
       }
       if (parsed.length === 0) {
@@ -333,121 +391,179 @@ export function ExportStatement({ inject }: ExportPageProps) {
   };
 
   return (
-    <main className="mx-auto w-full max-w-[880px]">
-      <header className="mb-5">
-        <p className="caps !text-primary-strong">{t("recordsEyebrow")}</p>
-        <h1 className="mt-0.5 text-xl font-extrabold tracking-tight text-text">{t("exportImportTitle")}</h1>
-        <div className="mt-2 h-0.5 w-14 bg-brass" aria-hidden />
-      </header>
+    <main className="mx-auto w-full max-w-[560px] space-y-4 p-0.5 pb-6">
+      {/* ── 1. HEADER ── */}
+      <div className="flex items-center justify-between pt-1">
+        <div>
+          <p className="text-[11px] font-bold uppercase leading-4 tracking-[0.6px] text-text-muted">
+            {t("expKicker")}
+          </p>
+          <h1 className="mt-0.5 text-[28px] font-extrabold leading-[34px] tracking-tight text-text">
+            {t("expCenter")}
+          </h1>
+        </div>
+        <Link
+          href="/settings"
+          aria-label={t("close")}
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border bg-surface-elevated text-text transition active:opacity-70"
+        >
+          <X size={18} aria-hidden />
+        </Link>
+      </div>
 
-      <Panel label={t("statementLabel")}>
-        <div className="p-4 sm:p-5">
-          {/* Period selector — pill tray */}
-          <div className="flex rounded-full bg-surface-elevated p-1" role="group" aria-label="Statement period">
-            {(["month", "year", "all"] as Period[]).map((p) => (
+      {/* ── 2. PERIOD SELECTOR PILLS ── */}
+      <div className="space-y-2">
+        <p className="text-sm font-extrabold text-text">{t("expSelectPeriod")}</p>
+        <div className="scroll-x flex gap-2 overflow-x-auto py-0.5">
+          {PERIODS.map((p) => {
+            const active = period === p.value;
+            return (
               <button
-                key={p}
-                onClick={() => setPeriod(p)}
-                aria-pressed={period === p}
-                className={`h-9 flex-1 rounded-full text-xs font-semibold transition ${
-                  period === p ? "bg-primary text-white shadow-soft dark:text-background" : "text-text-muted hover:text-text"
+                key={p.value}
+                onClick={() => setPeriod(p.value)}
+                aria-pressed={active}
+                className={`shrink-0 rounded-full border px-4 py-2 text-[13px] transition active:opacity-80 ${
+                  active
+                    ? "border-primary bg-primary font-extrabold text-white"
+                    : "border-border bg-surface-elevated font-semibold text-text-muted"
                 }`}
               >
-                {p === "month" ? t("filterThisMonth") : p === "year" ? t("filterThisYear") : t("filterAll")}
+                {t(p.labelKey)}
               </button>
-            ))}
-          </div>
-
-          {/* Preview — range + shape + net */}
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-[1.4fr_1fr] sm:items-end">
-            <div>
-              <p className="caps">{t("previewLabel")}</p>
-              <p className="numeric mt-1 text-sm font-bold text-text">
-                {range.from} → {range.to}
-              </p>
-              <p className="mt-0.5 text-[11px] text-faint">
-                {scoped.length} {scoped.length === 1 ? "entry" : "entries"} · {displayCurrency}
-              </p>
-              {/* Inflow vs outflow split — the period at a glance. */}
-              {scoped.length > 0 && (
-                <>
-                  <div className="mt-3 flex h-2 w-full gap-px overflow-hidden rounded-full bg-surface-elevated" role="img" aria-label="Inflow vs outflow split">
-                    <span className="h-full bg-income" style={{ width: `${incomeShare * 100}%` }} />
-                    <span className="h-full" style={{ width: `${(1 - incomeShare) * 100}%`, backgroundColor: "var(--sf-danger)" }} />
-                  </div>
-                  <div className="mt-1.5 flex flex-wrap gap-x-4 text-[11px] text-text-muted">
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className="h-1.5 w-1.5 rounded-full bg-income" aria-hidden /> {t("inShort")} {fmt(incomeTotal)}
-                    </span>
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className="h-1.5 w-1.5 rounded-full bg-danger" aria-hidden /> {t("outShort")} {fmt(expenseTotal)}
-                    </span>
-                  </div>
-                </>
-              )}
-            </div>
-            <div className="rounded-2xl border border-border bg-surface-elevated/50 px-4 py-3 sm:text-right">
-              <p className="caps">{t("netLabel")}</p>
-              <p className={`figures mt-1 text-2xl font-bold ${total >= 0 ? "text-income" : "text-danger"}`}>
-                {fmt(total)}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Button onClick={onExportPdf} loading={busy === "pdf"} disabled={scoped.length === 0}>
-              <Printer size={15} /> {t("printPdf")}
-            </Button>
-            <Button variant="secondary" onClick={onExportExcel} loading={busy === "excel"} disabled={scoped.length === 0}>
-              <FileSpreadsheet size={15} /> {t("exportExcel")}
-            </Button>
-            <Button variant="secondary" onClick={onExportCsv} loading={busy === "csv"} disabled={scoped.length === 0}>
-              <Download size={15} /> {t("downloadCsv")}
-            </Button>
-          </div>
+            );
+          })}
         </div>
-      </Panel>
+      </div>
 
-      <Panel label={t("importLabel")} className="mt-4">
-        <div className="p-4 sm:p-5">
-          {/* Dropzone-style chooser — the whole tile is the label. */}
-          <label className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-border px-6 py-8 text-center transition-colors hover:border-primary hover:bg-surface-elevated">
-            {busy === "import" ? (
-              <span aria-hidden className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-            ) : (
-              <FileUp size={26} className="text-faint" aria-hidden />
-            )}
-            <span className="mt-1 text-sm font-bold text-text">
-              {busy === "import" ? t("importing") : t("chooseCsv")}
+      {/* ── 3. STATEMENT PREVIEW CARD ── */}
+      <section className="space-y-3 rounded-[16px] border-[1.5px] border-primary bg-[var(--sf-studio-gauge-bg)] p-4">
+        <div className="flex items-center justify-between gap-2">
+          <span className="flex min-w-0 items-center gap-1.5">
+            <Wallet size={16} className="shrink-0 text-primary" aria-hidden />
+            <span className="truncate text-[11px] font-extrabold uppercase tracking-[0.6px] text-primary">
+              {t("expSummary").replace("{period}", periodLabel)}
             </span>
-            <span className="max-w-sm text-[11px] leading-relaxed text-text-muted">
-              Columns <code className="font-bold text-text">date, type, time, amount, currency, category, payment_method, description, notes</code> — only{" "}
-              <code className="font-bold text-text">date</code> and <code className="font-bold text-text">amount</code> are required. Our own CSV export round-trips.
+          </span>
+          <span className="shrink-0 text-[11px] text-text-muted">
+            {t("expTransactionsIncluded").replace("{count}", String(scoped.length))}
+          </span>
+        </div>
+        <div>
+          <p className="truncate text-[32px] font-extrabold leading-9 tracking-[-0.5px] text-text tabular-nums">
+            {fmt(expenseTotal)}
+          </p>
+          <p className="mt-0.5 text-xs text-text-muted">
+            {t("expVerifiedRecord")} • {displayCurrency}
+          </p>
+        </div>
+      </section>
+
+      {/* ── 4. EXPORT ACTION BUTTONS ── */}
+      <div className="space-y-3">
+        <p className="text-sm font-extrabold text-text">{t("expGenerate")}</p>
+
+        {/* PDF Statement (primary highlight) */}
+        <button
+          onClick={() => void onExportPdf()}
+          disabled={!!busy}
+          className="flex w-full items-center justify-between gap-3 rounded-2xl bg-primary p-4 text-left shadow-[0_6px_10px_color-mix(in_srgb,var(--sf-primary)_35%,transparent)] transition active:opacity-90 disabled:opacity-70"
+        >
+          <span className="flex min-w-0 items-center gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white/20 text-white">
+              {busy === "pdf" ? <BusyRing /> : <Printer size={22} aria-hidden />}
             </span>
-            <span className="mt-1 flex flex-wrap justify-center gap-1.5">
-              {["≤ 2 MB", "≤ 1000 rows", "ISO dates", "Positive amounts"].map((g) => (
-                <span key={g} className="rounded-full border border-border px-2 py-0.5 text-[10px] font-semibold text-faint">
-                  {g}
+            <span className="min-w-0">
+              <span className="flex items-center gap-1.5">
+                <span className="text-base font-extrabold text-white">{t("expPdfTitle")}</span>
+                <span className="rounded bg-white px-1.5 py-px text-[10px] font-extrabold text-primary">
+                  {t("expRecommended")}
                 </span>
-              ))}
+              </span>
+              <span className="block truncate text-xs text-white/80">{t("expPdfSub")}</span>
             </span>
-            <input
-              type="file"
-              accept=".csv,text/csv"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void onImportCsv(f);
-                e.target.value = "";
-              }}
-            />
-          </label>
-          {importResult && (
-            <p className="mt-3 rounded-xl bg-primary-light px-3 py-2 text-xs font-bold text-income">{importResult}</p>
+          </span>
+          <ArrowDownToLine size={20} className="shrink-0 text-white" aria-hidden />
+        </button>
+
+        {/* Excel XLSX */}
+        <button
+          onClick={() => void onExportExcel()}
+          disabled={!!busy}
+          className="flex w-full items-center justify-between gap-3 rounded-2xl border border-border bg-surface-elevated p-4 text-left transition active:opacity-80 disabled:opacity-70"
+        >
+          <span className="flex min-w-0 items-center gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[var(--sf-export-excel-bg)] text-success">
+              {busy === "excel" ? <BusyRing tone="text-success" /> : <FileSpreadsheet size={22} aria-hidden />}
+            </span>
+            <span className="min-w-0">
+              <span className="block text-[15px] font-extrabold text-text">{t("expExcelTitle")}</span>
+              <span className="block truncate text-xs text-text-muted">{t("expExcelSub")}</span>
+            </span>
+          </span>
+          <Share2 size={18} className="shrink-0 text-text-muted" aria-hidden />
+        </button>
+
+        {/* CSV */}
+        <button
+          onClick={() => void onExportCsv()}
+          disabled={!!busy}
+          className="flex w-full items-center justify-between gap-3 rounded-2xl border border-border bg-surface-elevated p-4 text-left transition active:opacity-80 disabled:opacity-70"
+        >
+          <span className="flex min-w-0 items-center gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[var(--sf-export-csv-bg)] text-hue-sky">
+              {busy === "csv" ? <BusyRing tone="text-hue-sky" /> : <FileText size={22} aria-hidden />}
+            </span>
+            <span className="min-w-0">
+              <span className="block text-[15px] font-extrabold text-text">{t("expCsvTitle")}</span>
+              <span className="block truncate text-xs text-text-muted">{t("expCsvSub")}</span>
+            </span>
+          </span>
+          <Share2 size={18} className="shrink-0 text-text-muted" aria-hidden />
+        </button>
+      </div>
+
+      {/* ── 5. IMPORT SECTION ── */}
+      <div className="space-y-2.5 pt-1">
+        <p className="text-sm font-extrabold text-text">{t("expBackupTitle")}</p>
+        <label className="flex cursor-pointer items-center justify-center gap-2 rounded-[10px] border border-dashed border-border bg-surface-elevated p-3.5 transition active:opacity-75">
+          {busy === "import" ? (
+            <BusyRing tone="text-primary" />
+          ) : (
+            <Upload size={16} className="text-primary" aria-hidden />
           )}
-        </div>
-      </Panel>
+          <span className="text-xs font-bold text-primary">{t("expImportCsv")}</span>
+          <input
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void onImportCsv(f);
+              e.target.value = "";
+            }}
+          />
+        </label>
+        {importResult && (
+          <p className="rounded-xl bg-primary-light px-3 py-2 text-xs font-bold text-income">
+            {importResult}
+          </p>
+        )}
+      </div>
+
+      <p className="text-center text-[10px] text-text-muted opacity-55">
+        Export build v7 · web
+      </p>
     </main>
+  );
+}
+
+/** Mobile ActivityIndicator parity — small ring inside action chips. */
+function BusyRing({ tone = "text-white" }: { tone?: string }) {
+  return (
+    <span
+      aria-hidden
+      className={`block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent ${tone}`}
+    />
   );
 }
 

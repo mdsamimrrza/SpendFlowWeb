@@ -31,13 +31,15 @@ export function useDisplayRate(displayCurrency: string | undefined) {
 
 /**
  * Budget in the display currency (mobile getMonthlyBudget parity): the stored
- * monthly_budget is resolved against its own budget_currency (latest
- * user_settings_history row, falling back to preferred_currency) and
- * converted for display ONLY — the stored figure is never rewritten.
+ * monthly_budget is expressed in the budget's OWN currency — resolved
+ * profile.budget_currency (users column) → auth metadata → latest
+ * user_settings_history row that HAS a currency (cycle-only rows store NULL,
+ * so "latest row" alone is not enough) → preferred_currency — and converted
+ * for display ONLY; the stored figure is never rewritten.
  */
 export function useBudget(): number | null {
-  const { profile } = useAuth();
-  const displayCurrency = profile?.preferred_currency ?? "NPR";
+  const { profile, session } = useAuth();
+  const displayCurrency = (profile?.preferred_currency ?? "NPR").toUpperCase();
   const supabase = getSupabaseBrowserClient();
   const [budget, setBudget] = useState<number | null>(null);
 
@@ -53,19 +55,25 @@ export function useBudget(): number | null {
     }
     let cancelled = false;
     (async () => {
-      let from = profile.preferred_currency;
-      try {
-        const { data } = await supabase
-          .from("user_settings_history")
-          .select("budget_currency")
-          .eq("user_id", profile.id)
-          .order("effective_from", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (data?.budget_currency) from = data.budget_currency;
-      } catch {
-        // fall back to preferred currency
+      const metaCurrency = (session?.user?.user_metadata?.budget_currency as string | undefined)
+        ?.toUpperCase();
+      let from = profile.budget_currency?.toUpperCase() || metaCurrency || null;
+      if (!from) {
+        try {
+          const { data } = await supabase
+            .from("user_settings_history")
+            .select("budget_currency")
+            .eq("user_id", profile.id)
+            .not("budget_currency", "is", null)
+            .order("effective_from", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (data?.budget_currency) from = data.budget_currency.toUpperCase();
+        } catch {
+          // fall through to the preferred-currency fallback
+        }
       }
+      from = from || displayCurrency;
       if (from === displayCurrency) {
         setBudget(stored);
         return;
@@ -79,7 +87,7 @@ export function useBudget(): number | null {
     return () => {
       cancelled = true;
     };
-  }, [profile?.id, profile?.monthly_budget, profile?.preferred_currency, displayCurrency, supabase]);
+  }, [profile?.id, profile?.monthly_budget, profile?.budget_currency, profile?.preferred_currency, session?.user?.user_metadata, displayCurrency, supabase]);
 
   return budget;
 }

@@ -5,9 +5,10 @@ import { TransferStatement, type TransferInject } from "@/components/transfer/Tr
 import type { BankAccountRow } from "@/services/bankAccounts";
 
 /**
- * Static design preview of the Transfer form (mock data, no auth, no
- * network) — route cards, locked-rate FX strip and notes, screenshottable
- * without an account.
+ * Static design preview of the mirrored Transfer form (mock data, no auth, no
+ * network): From/To pickers, the big amount field with quick-add chips, the
+ * "Recipient gets" conversion card, fee and note rows. Screenshottable without
+ * an account.
  */
 const accounts = [
   {
@@ -70,7 +71,7 @@ const inject: TransferInject = {
     ["a2", 2760],
     ["a4", 420],
   ]),
-  // NPR → USD units-per-USD ratio (NPR per USD ≈ 133.45).
+  // NPR to USD: units of USD per 1 NPR (1 USD ≈ 133.45 NPR).
   rate: 0.0074945,
 };
 

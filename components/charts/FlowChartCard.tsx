@@ -8,7 +8,7 @@ import { usePrivacy } from "@/store/PrivacyContext";
 import { useRowConverter } from "@/hooks/useRates";
 import { subscribeToExpenseChanges } from "@/hooks/useExpenses";
 import { Panel } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
+import { RangeField } from "@/components/ui/CalendarModal";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { FitText } from "@/components/ui/FitText";
 import type { TrendPoint } from "@/components/charts/TrendChart";
@@ -304,22 +304,16 @@ export function FlowChartCard({ label = "Cash flow", bare = false, rows: injecte
   const inner = (
     <div className={`p-4 ${compact ? "sm:p-4" : "sm:p-5"}`}>
       {range === "CUSTOM" && (
-        <div className="mb-4 flex flex-col items-stretch gap-3 border border-border bg-surface-elevated/40 p-3 sm:flex-row sm:items-end sm:flex-wrap">
-          <Input
-            label="From"
-            type="date"
-            value={customFrom}
+        <div className="mb-4 flex items-center gap-3 border border-border bg-surface-elevated/40 p-3">
+          <RangeField
+            from={customFrom}
+            to={customTo}
             max={today()}
-            onChange={(e) => setCustomFrom(e.target.value)}
-            className="!h-9 w-full sm:w-40"
-          />
-          <Input
-            label="To"
-            type="date"
-            value={customTo}
-            max={today()}
-            onChange={(e) => setCustomTo(e.target.value)}
-            className="!h-9 w-full sm:w-40"
+            boxClassName="!h-9 w-full sm:w-auto"
+            onChange={(f, t2) => {
+              setCustomFrom(f);
+              setCustomTo(t2);
+            }}
           />
         </div>
       )}

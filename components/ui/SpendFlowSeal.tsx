@@ -1,29 +1,33 @@
-/** SpendFlow brand mark — gradient tile with a flow curve (all themes). */
+/**
+ * SpendFlow brand mark — the app's "S" medallion, matching the mobile icon
+ * and the tab favicon. Two renderings swap with the theme via the `dark:`
+ * variant (class strategy): brass-on-parchment light, brass-on-navy dark.
+ * Artwork: public/icons/brand-{light,dark}.png (scripts/generate-web-icons.cjs).
+ */
 export function SpendFlowSeal({ size = 72 }: { size?: number }) {
-  const id = `sf-mark-${size}`;
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 96 96"
+    <span
       role="img"
       aria-label="SpendFlow mark"
+      className="relative inline-block shrink-0 align-middle"
+      style={{ width: size, height: size }}
     >
-      <defs>
-        <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="var(--sf-primary)" />
-          <stop offset="1" stopColor="var(--sf-primary-strong)" />
-        </linearGradient>
-      </defs>
-      <rect x="4" y="4" width="88" height="88" rx="26" fill={`url(#${id})`} />
-      <path
-        d="M22 62c10-22 18-4 26-14s16-16 26-14"
-        fill="none"
-        stroke="#fff"
-        strokeWidth="8"
-        strokeLinecap="round"
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/icons/brand-light.png"
+        alt=""
+        width={size}
+        height={size}
+        className="absolute inset-0 h-full w-full rounded-[22%] dark:hidden"
       />
-      <circle cx="70" cy="66" r="5" fill="#fff" opacity="0.85" />
-    </svg>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/icons/brand-dark.png"
+        alt=""
+        width={size}
+        height={size}
+        className="absolute inset-0 hidden h-full w-full rounded-[22%] dark:block"
+      />
+    </span>
   );
 }

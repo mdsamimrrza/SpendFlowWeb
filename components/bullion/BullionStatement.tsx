@@ -1,36 +1,79 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+/**
+ * Bullion — 1:1 web mirror of mobile app/bullion.tsx: back-chip header with
+ * privacy-eye + theme-flip, the two-market segmented switcher, the centered
+ * last-updated pill, the 2×2 benchmark cards (gold/silver × tola/10g) with
+ * metal-tinted selected states and day-over-day change, the synchronized
+ * interactive spline chart (gridlines, y/x labels, gradient area, tap
+ * tooltip, Period Low/High badges), the Instant Metal Valuation calculator,
+ * and the Bullion Standards & Buyer Guide card.
+ */
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Calculator,
+  ChevronLeft,
+  CircleDollarSign,
+  Clock,
+  Coins,
+  Eye,
+  EyeOff,
+  Info,
+  Moon,
+  Scale,
+  ShieldCheck,
+  Sun,
+} from "lucide-react";
 import { useAuth } from "@/store/AuthContext";
 import { useLanguage } from "@/store/LanguageContext";
 import { usePrivacy } from "@/store/PrivacyContext";
+import { useTheme } from "@/store/ThemeContext";
 import { useToast } from "@/store/ToastContext";
-import { Panel } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
+import { CurrencyFlag } from "@/components/ui/CurrencyFlag";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { TrendChart, type TrendPoint } from "@/components/charts/TrendChart";
 import { formatMoney } from "@/utils/format";
+import { countryForCurrency } from "@/constants/countries";
 import {
+  buildMarketHistorySeries,
   computeBoard,
   fetchBullionHistory,
+  fetchOfficialNepalHistory,
   fetchOfficialNepalRate,
   fetchSpotRates,
-  valueGrams,
+  getMarketSessionInfo,
+  officialBenchmarkPrice,
+  type BenchmarkKey,
+  type BenchmarkSeries,
   type BoardPrices,
   type HistoryRow,
   type OfficialNepalRate,
 } from "@/services/bullion";
 import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
 
-type Market = "NP" | "IN";
+/** NP = the permanent FENEGOSIDA official board; SEC = the user's own market. */
+type Market = "NP" | "SEC";
+type TrendPeriod = 1 | 3 | 6 | 12;
+
+const TOLA_G = 11.6638;
+
+export interface BullionSeriesPoint {
+  date: string;
+  price: number;
+}
+
+const EMPTY_SERIES: BenchmarkSeries = {
+  gold_tola: [],
+  silver_tola: [],
+  gold_10g: [],
+  silver_10g: [],
+};
 
 /** Mock dataset for the static design preview (no auth, no network). */
 export interface BullionInject {
   board: BoardPrices;
   official: OfficialNepalRate | null;
-  historyLocal: TrendPoint[];
-  fixesRows: { date: string; gold: number; silver: number }[];
-  dayChangePct: number | null;
+  series: BenchmarkSeries;
 }
 
 interface BullionPageProps {
@@ -38,58 +81,66 @@ interface BullionPageProps {
   inject?: BullionInject;
 }
 
-/**
- * Bullion — benchmark board calibrated to FENEGOSIDA (NP) or IBJA (IN),
- * history from the shared edge function, instant valuation calculator.
- */
-/** Statement implementation — the default page export renders it bare;
- *  preview harnesses pass inject (mock data, no auth, no network). */
 export function BullionStatement({ inject }: BullionPageProps) {
   const { profile } = useAuth();
-  const { t, locale } = useLanguage();
-  const { mask } = usePrivacy();
+  const { t, locale, language } = useLanguage();
+  const { isDark, setPreference } = useTheme();
+  const { isPrivacyMode, toggle } = usePrivacy();
   const { showToast } = useToast();
+  const router = useRouter();
   const supabase = getSupabaseBrowserClient();
 
-  const homeCurrency = profile?.preferred_currency ?? "NPR";
-  const [market, setMarket] = useState<Market>(homeCurrency === "INR" ? "IN" : "NP");
-  const currency = market === "IN" ? "INR" : "NPR";
+  // Mobile parity (app/bullion.tsx): Nepal is always the fixed primary
+  // market (FENEGOSIDA official fix). The secondary market follows the
+  // profile currency from Settings — change it there and this board follows.
+  // NPR users would get Nepal twice, so they fall back to India (IBJA).
+  const secondaryCurrency = useMemo(() => {
+    const preferred = (profile?.preferred_currency || "INR").toUpperCase();
+    return preferred === "NPR" ? "INR" : preferred;
+  }, [profile?.preferred_currency]);
+  const secondaryCountry = countryForCurrency(secondaryCurrency);
+  const secondaryLabel = secondaryCountry
+    ? `${secondaryCountry.name} (${secondaryCurrency})`
+    : `Global (${secondaryCurrency})`;
+
+  // Nepali users start on the Nepal board; everyone else on their own market.
+  const [market, setMarket] = useState<Market>(() => (language === "ne" ? "NP" : "SEC"));
+  const currency = market === "NP" ? "NPR" : secondaryCurrency;
 
   const [board, setBoard] = useState<BoardPrices | null>(null);
   const [official, setOfficial] = useState<OfficialNepalRate | null>(null);
-  const [history, setHistory] = useState<HistoryRow[]>([]);
+  const [series, setSeries] = useState<BenchmarkSeries>(EMPTY_SERIES);
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState(120);
-  const [series, setSeries] = useState<"gold" | "silver">("gold");
-  const [calcKind, setCalcKind] = useState<"gold" | "tejabi" | "silver">("gold");
-  const [grams, setGrams] = useState("10");
+  const [selectedKey, setSelectedKey] = useState<BenchmarkKey>("gold_tola");
+  const [trendMonths, setTrendMonths] = useState<TrendPeriod>(6);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [calcMetal, setCalcMetal] = useState<"24k" | "22k" | "silver">("24k");
+  const [calcWeight, setCalcWeight] = useState("10");
 
-  const fmt = (n: number) => mask(formatMoney(n, currency, locale));
+  const fmt = (n: number) => formatMoney(n, currency, locale);
+  const masked = (n: number) => (isPrivacyMode ? "•••••" : fmt(n));
 
-  const load = useEffect(() => {
+  useEffect(() => {
     if (inject) {
       setBoard(inject.board);
       setOfficial(inject.official);
-      setHistoryLocal(inject.historyLocal);
-      setUnitsPerUsd(1);
-      setHistory([]);
+      setSeries(inject.series);
       setLoading(false);
       return;
     }
     let cancelled = false;
     (async () => {
       setLoading(true);
+      // A market switch must never paint the other market's stale series.
+      setSeries(EMPTY_SERIES);
       try {
         const spot = await fetchSpotRates();
-        const [computed, officialNp, h] = await Promise.all([
-          computeBoard(supabase, market, currency, spot),
+        const [computed, officialNp] = await Promise.all([
+          computeBoard(supabase, currency, spot),
           market === "NP"
             ? fetchOfficialNepalRate(supabase).catch(() => null)
             : Promise.resolve(null),
-          fetchBullionHistory(supabase, period).catch(() => [] as HistoryRow[]),
         ]);
-        // Official FENEGOSIDA fix wins for Nepal when fresh (mobile parity);
-        // missing sub-columns fall back to the computed board.
         const b: BoardPrices = officialNp
           ? {
               goldTola: officialNp.fineGoldPerTola,
@@ -100,10 +151,29 @@ export function BullionStatement({ inject }: BullionPageProps) {
               silver10g: officialNp.silverPer10g ?? computed.silver10g,
             }
           : computed;
+        // Mobile parity: Nepal charts/badges read ONLY the verified official
+        // daily fixes; markets without an official fix use real futures
+        // closes converted at historical FX through the same calibration.
+        let s: BenchmarkSeries;
+        if (market === "NP") {
+          const history = await fetchOfficialNepalHistory(supabase).catch(() => []);
+          const keys: BenchmarkKey[] = ["gold_tola", "silver_tola", "gold_10g", "silver_10g"];
+          s = Object.fromEntries(
+            keys.map((k) => [
+              k,
+              history
+                .map((r) => ({ date: r.rateDate, price: Math.round(officialBenchmarkPrice(r, k)) }))
+                .filter((p) => p.price > 0),
+            ]),
+          ) as BenchmarkSeries;
+        } else {
+          const rows = await fetchBullionHistory(supabase, 365).catch(() => [] as HistoryRow[]);
+          s = await buildMarketHistorySeries(supabase, currency, rows);
+        }
         if (!cancelled) {
           setBoard(b);
           setOfficial(officialNp);
-          setHistory(h);
+          setSeries(s);
         }
       } catch (e) {
         if (!cancelled) showToast(e instanceof Error ? e.message : "Rate feed unavailable", "error");
@@ -115,332 +185,598 @@ export function BullionStatement({ inject }: BullionPageProps) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inject, market, currency, period, supabase, showToast]);
+  }, [inject, market, currency, supabase, showToast]);
 
-  // The gold/silver history is quoted in USD/oz; render it as-is on a second
-  // axis-free chart in local currency by scaling with the current USD rate.
-  // Calibration matches computeBoard: NP fine-gold ×1.20649 / silver ×1.22765;
-  // IN (IBJA) ×1.0918 for both.
-  const [liveHistoryLocal, setHistoryLocal] = useState<TrendPoint[]>([]);
-  const [unitsPerUsd, setUnitsPerUsd] = useState<number | null>(null);
-  const historyLocal = inject ? inject.historyLocal : liveHistoryLocal;
-  const ozTolaFactor = market === "NP" ? (series === "gold" ? 1.20649 : 1.22765) : 1.0918;
-  useEffect(() => {
-    if (inject || history.length === 0) {
-      if (!inject) setHistoryLocal([]);
-      return;
+  // ── Benchmarks for the active market ──
+  const benchmarks = useMemo(() => {
+    const goldLabel = t("bullion_hallmark_gold");
+    const silverLabel = t("bullion_silver");
+    const tolaLabel = t("bullion_per_tola");
+    const gram10Label = t("bullion_per_10g");
+    const zero = { price: 0, change: null as number | null, pct: null as number | null };
+    if (!board) {
+      return {
+        gold_tola: { label: goldLabel, unit: tolaLabel, metal: "gold" as const, ...zero },
+        silver_tola: { label: silverLabel, unit: tolaLabel, metal: "silver" as const, ...zero },
+        gold_10g: { label: goldLabel, unit: gram10Label, metal: "gold" as const, ...zero },
+        silver_10g: { label: silverLabel, unit: gram10Label, metal: "silver" as const, ...zero },
+      };
     }
-    let cancelled = false;
-    (async () => {
-      const { getRate } = await import("@/services/exchange");
-      const upu = await getRate(supabase, currency);
-      if (cancelled) return;
-      setUnitsPerUsd(upu);
-      setHistoryLocal(
-        history.map((h) => ({
-          date: h.date,
-          income: 0,
-          expense:
-            ((series === "gold" ? h.goldUsdPerOz : h.silverUsdPerOz) / 31.1035) *
-            11.6638 *
-            upu *
-            ozTolaFactor,
-        })),
-      );
-    })();
-    return () => {
-      cancelled = true;
+    // Day-over-day change per benchmark — each card uses its OWN real series
+    // (mobile nepalChange/buildBullionMarketHistoryAll parity), never a
+    // scaling of the tola delta.
+    const delta = (key: BenchmarkKey) => {
+      const ss = series[key];
+      if (ss.length < 2) return { change: null as number | null, pct: null as number | null };
+      const latest = ss[ss.length - 1].price;
+      const prev = ss[ss.length - 2].price;
+      if (!latest || !prev) return { change: null, pct: null };
+      return { change: Math.round(latest - prev), pct: ((latest - prev) / prev) * 100 };
     };
-  }, [inject, history, currency, market, series, ozTolaFactor, supabase]);
+    const g = delta("gold_tola");
+    const g10 = delta("gold_10g");
+    const sv = delta("silver_tola");
+    const s10 = delta("silver_10g");
+    return {
+      gold_tola: { label: goldLabel, unit: tolaLabel, metal: "gold" as const, price: board.goldTola, change: g.change, pct: g.pct },
+      silver_tola: { label: silverLabel, unit: tolaLabel, metal: "silver" as const, price: board.silverTola, change: sv.change, pct: sv.pct },
+      gold_10g: { label: goldLabel, unit: gram10Label, metal: "gold" as const, price: board.gold10g, change: g10.change, pct: g10.pct },
+      silver_10g: { label: silverLabel, unit: gram10Label, metal: "silver" as const, price: board.silver10g, change: s10.change, pct: s10.pct },
+    };
+  }, [board, series, t]);
 
-  // Recent fixes — the official daily board as a register (mobile chart-only).
-  const fixesRows = useMemo(() => {
-    if (inject) return inject.fixesRows;
-    if (history.length === 0 || unitsPerUsd == null) return [];
-    const goldF = market === "NP" ? 1.20649 : 1.0918;
-    const silverF = market === "NP" ? 1.22765 : 1.0918;
-    const perTola = (usdOz: number, f: number) => (usdOz / 31.1035) * 11.6638 * unitsPerUsd * f;
-    return [...history]
-      .sort((a, b) => b.date.localeCompare(a.date))
-      .slice(0, 10)
-      .map((h) => ({
-        date: h.date,
-        gold: perTola(h.goldUsdPerOz, goldF),
-        silver: perTola(h.silverUsdPerOz, silverF),
-      }));
-  }, [inject, history, market, unitsPerUsd]);
+  const activeBenchmark = benchmarks[selectedKey];
+  const isGold = activeBenchmark.metal === "gold";
+  const rawSeries = series[selectedKey];
 
-  const calcValue =
-    board != null && grams !== ""
-      ? valueGrams(board, calcKind, Number(grams) || 0)
-      : null;
-  const calcPerGram =
-    calcValue != null && Number(grams) > 0 ? calcValue / Number(grams) : null;
+  // ── Chart history (trendMonths window, mobile parity) ──
+  const historyPoints = useMemo(() => {
+    const cutoff = Date.now() - trendMonths * 30 * 86_400_000;
+    const pts = rawSeries
+      .filter((p) => new Date(`${p.date}T00:00:00`).getTime() >= cutoff)
+      .filter((p) => p.price > 0);
+    return pts.length >= 2 ? pts : [];
+  }, [rawSeries, trendMonths]);
 
-  const first = historyLocal[0]?.expense ?? 0;
-  const last = historyLocal[historyLocal.length - 1]?.expense ?? 0;
-  const dayChangePct = inject
-    ? inject.dayChangePct
-    : first > 0
-      ? Math.round(((last - first) / first) * 100)
-      : null;
+  const { minPrice, maxPrice } = useMemo(() => {
+    if (historyPoints.length === 0) return { minPrice: 0, maxPrice: 0 };
+    const list = historyPoints.map((p) => p.price);
+    return { minPrice: Math.min(...list), maxPrice: Math.max(...list) };
+  }, [historyPoints]);
 
-  const metalName = (k: "gold" | "tejabi" | "silver") =>
-    k === "tejabi" ? (market === "IN" ? "Gold 22K" : "Tejabi 22K") : k === "gold" ? "Gold 24K" : "Silver";
+  // ── Calculator ──
+  const weightNum = parseFloat(calcWeight) || 0;
+  const perGram =
+    calcMetal === "24k"
+      ? (board?.goldTola ?? 0) / TOLA_G
+      : calcMetal === "22k"
+        ? (board?.tejabiTola ?? 0) / TOLA_G
+        : (board?.silverTola ?? 0) / TOLA_G;
+  const calculatedValue = board && weightNum > 0 ? perGram * weightNum : 0;
+
+  const updatedReadable = useMemo(() => {
+    if (official?.rateDate) {
+      const d = new Date(`${official.rateDate}T00:00:00`);
+      return `Market Rate · ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" }).format(d)}`;
+    }
+    // Mobile parity: session fixing label (IBJA AM/PM Fix, FENEGOSIDA Daily
+    // Fix, or Daily Market Benchmark for global-spot currencies).
+    const session = getMarketSessionInfo(currency);
+    return `${session.fixingLabel}${session.isClosed ? " · Closed Today" : ""}`;
+  }, [official, currency]);
 
   return (
-    <main className="mx-auto w-full max-w-[1100px]">
-      <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="caps !text-primary-strong">{t("benchmarksEyebrow")}</p>
-          <h1 className="mt-0.5 text-xl font-extrabold tracking-tight text-text">
-            {t("bullionTitle")}
+    <main className="mx-auto w-full max-w-[560px] space-y-4 p-0.5">
+      {/* ── 1. TOP APP BAR ── */}
+      <div className="flex items-center justify-between pt-1">
+        <div className="flex min-w-0 items-center gap-3">
+          <button
+            onClick={() => router.back()}
+            aria-label="Back"
+            className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-full border border-border bg-surface text-text transition active:opacity-70"
+          >
+            <ChevronLeft size={20} aria-hidden />
+          </button>
+          <h1 className="truncate text-[22px] font-extrabold leading-7 tracking-[-0.5px] text-text">
+            {t("bullion_title")}
           </h1>
-          <div className="mt-2 h-0.5 w-14 bg-brass" aria-hidden />
         </div>
-        {/* Market switcher — pill tray, one bench per market. */}
-        <div className="flex rounded-full bg-surface-elevated p-1" role="group" aria-label="Benchmark market">
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            onClick={toggle}
+            aria-label={isPrivacyMode ? "Show balances" : "Hide balances"}
+            aria-pressed={isPrivacyMode}
+            className={`grid h-10 w-10 place-items-center rounded-full bg-surface transition active:opacity-70 ${
+              isPrivacyMode ? "border border-primary" : "border border-border"
+            }`}
+          >
+            {isPrivacyMode ? (
+              <EyeOff size={24} className="text-primary" aria-hidden />
+            ) : (
+              <Eye size={24} className="text-text-muted" aria-hidden />
+            )}
+          </button>
+          <button
+            onClick={() => setPreference(isDark ? "light" : "dark")}
+            aria-label="Toggle light/dark theme"
+            className="grid h-10 w-10 place-items-center rounded-full border border-border bg-surface transition active:opacity-70"
+          >
+            {isDark ? (
+              <Sun size={20} className="text-hue-amber" aria-hidden />
+            ) : (
+              <Moon size={20} className="text-text" aria-hidden />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* ── 2. MARKET SWITCHER ── */}
+      <div className="flex gap-1.5 rounded-[10px] border border-border bg-surface p-1">
+        {(
+          [
+            { id: "NP" as Market, currency: "NPR", label: t("bullion_market_nepal") },
+            { id: "SEC" as Market, currency: secondaryCurrency, label: secondaryLabel },
+          ] as const
+        ).map((m) => (
+          <button
+            key={m.id}
+            onClick={() => {
+              setMarket(m.id);
+              setSelectedIndex(null);
+            }}
+            className={`flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-md py-2 text-[13px] font-extrabold transition ${
+              market === m.id ? "bg-primary text-white" : "text-text-muted"
+            }`}
+          >
+            <CurrencyFlag currency={m.currency} size={14} />
+            <span className="truncate">{m.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* ── 3. LAST UPDATED PILL ── */}
+      <div className="flex items-center justify-center">
+        <span className="flex items-center gap-1.5 rounded-full border border-border bg-[var(--sf-bull-pill-bg)] px-3.5 py-[7px]">
+          {loading ? (
+            <span
+              aria-hidden
+              className="block h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent"
+            />
+          ) : (
+            <Clock size={13} className="text-text-muted" aria-hidden />
+          )}
+          <span className="text-[11px] font-semibold text-text-muted">
+            {loading ? t("bullion_updating") : updatedReadable}
+          </span>
+        </span>
+      </div>
+
+      {/* ── 4. 2×2 BENCHMARK CARDS ── */}
+      <div className="space-y-2.5">
+        {(["row1", "row2"] as const).map((row) => (
+          <div key={row} className="flex gap-2.5">
+            {(row === "row1"
+              ? (["gold_tola", "silver_tola"] as BenchmarkKey[])
+              : (["gold_10g", "silver_10g"] as BenchmarkKey[])
+            ).map((key) => {
+              const b = benchmarks[key];
+              const selected = selectedKey === key;
+              const gold = b.metal === "gold";
+              return (
+                <button
+                  key={key}
+                  onClick={() => {
+                    setSelectedKey(key);
+                    setSelectedIndex(null);
+                  }}
+                  className={`flex-1 space-y-1.5 rounded-2xl border-2 p-3 text-left transition active:opacity-85 ${
+                    selected
+                      ? gold
+                        ? "border-[var(--sf-bull-gold-line)] bg-[var(--sf-bull-gold-bg)]"
+                        : "border-[var(--sf-bull-sil-line)] bg-[var(--sf-bull-sil-bg)]"
+                      : "border-border bg-surface"
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    {gold ? (
+                      <Coins size={20} className="text-hue-amber" aria-hidden />
+                    ) : (
+                      <CircleDollarSign size={20} className="text-faint" aria-hidden />
+                    )}
+                    <span
+                      className={`min-w-0 truncate text-[12.5px] font-extrabold ${
+                        selected && gold
+                          ? "text-[var(--sf-bull-gold-ink)]"
+                          : selected
+                            ? "text-primary"
+                            : "text-text"
+                      }`}
+                    >
+                      {b.label}
+                    </span>
+                  </span>
+                  <span className="block">
+                    <span className="text-base font-black text-text">
+                      {masked(b.price)}{" "}
+                      <span className="text-[11px] font-semibold text-text-muted">
+                        / {b.unit}
+                      </span>
+                    </span>
+                    {b.change == null || b.pct == null ? (
+                      <span className="mt-0.5 block text-[11px] font-bold text-text-muted">
+                        {t("bullion_change_pending")}
+                      </span>
+                    ) : (
+                      <span
+                        className="mt-0.5 block text-[11px] font-bold"
+                        style={{ color: b.change >= 0 ? "#10B981" : "#EF4444" }}
+                      >
+                        {b.change >= 0 ? `+${b.change}` : b.change} ({b.pct.toFixed(2)}%)
+                      </span>
+                    )}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+
+      {/* ── 5. SYNCHRONIZED INTERACTIVE CHART ── */}
+      <section className="panel space-y-3 rounded-2xl p-4">
+        <div className="flex flex-wrap items-start justify-between gap-1.5">
+          <div className="min-w-0">
+            <p
+              className="text-base font-black uppercase tracking-[0.5px]"
+              style={{
+                color: isGold
+                  ? isDark
+                    ? "var(--sf-bull-gold-ink)"
+                    : "var(--sf-bull-gold-accent)"
+                  : "var(--sf-text)",
+              }}
+            >
+              {activeBenchmark.label} / {activeBenchmark.unit}
+            </p>
+            <p className="text-[11px] text-text-muted">
+              {historyPoints.length >= 2
+                ? market === "NP"
+                  ? t("bullion_nepal_history_note")
+                  : t("bullion_market_history_note").replace("{currency}", currency)
+                : t("bullion_history_unavailable")}
+            </p>
+          </div>
+          {historyPoints.length >= 2 && (
+            <div className="flex shrink-0 gap-1">
+              {([1, 3, 6, 12] as TrendPeriod[]).map((m) => {
+                const active = trendMonths === m;
+                return (
+                  <button
+                    key={m}
+                    onClick={() => {
+                      setTrendMonths(m);
+                      setSelectedIndex(null);
+                    }}
+                    className={`rounded-full border px-2 py-[3.5px] text-[11px] transition ${
+                      active
+                        ? "border-transparent font-extrabold text-white"
+                        : "border-border bg-surface-elevated font-semibold text-text-muted"
+                    }`}
+                    style={active ? { backgroundColor: isGold ? "var(--sf-bull-gold-accent)" : "var(--sf-bull-sil-accent)" } : undefined}
+                  >
+                    {m === 1 ? "1M" : m === 3 ? "3M" : m === 6 ? "6M" : "1Y"}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {loading ? (
+          <Skeleton className="h-[190px] w-full" />
+        ) : historyPoints.length >= 2 ? (
+          <>
+            <TrendSvg
+              points={historyPoints}
+              accent={isGold ? "var(--sf-bull-gold-accent)" : "var(--sf-bull-sil-accent)"}
+              grad={isGold ? "var(--sf-bull-gold-grad)" : "var(--sf-bull-sil-grad)"}
+              minPrice={minPrice}
+              maxPrice={maxPrice}
+              selectedIndex={selectedIndex}
+              onSelect={(i) => setSelectedIndex(i === selectedIndex ? null : i)}
+              labelOf={(date) =>
+                new Intl.DateTimeFormat("en-GB", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                }).format(new Date(`${date}T00:00:00`))
+              }
+              fmtPrice={masked}
+            />
+            <div className="flex gap-2 pt-1">
+              <div className="flex-1 space-y-px rounded-[10px] border border-border bg-surface-elevated p-2 text-center">
+                <p className="text-[10px] font-semibold text-text-muted">{t("bullion_period_low")}</p>
+                <p className="text-[12.5px] font-extrabold text-text">{masked(minPrice)}</p>
+              </div>
+              <div className="flex-1 space-y-px rounded-[10px] border border-border bg-surface-elevated p-2 text-center">
+                <p className="text-[10px] font-semibold text-text-muted">{t("bullion_period_high")}</p>
+                <p
+                  className="text-[12.5px] font-extrabold"
+                  style={{ color: isGold ? "var(--sf-bull-gold-accent)" : "var(--sf-bull-sil-accent)" }}
+                >
+                  {masked(maxPrice)}
+                </p>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="flex h-[190px] flex-col items-center justify-center gap-1.5 rounded-[10px] border border-border bg-surface-elevated px-6 text-center">
+            <Clock size={20} className="text-text-muted" aria-hidden />
+            <p className="text-[13px] font-extrabold text-text">{t("bullion_history_unavailable")}</p>
+            <p className="text-[11px] leading-[15px] text-text-muted">
+              {t("bullion_history_unavailable_hint")}
+            </p>
+          </div>
+        )}
+      </section>
+
+      {/* ── 6. INSTANT METAL VALUATION CALCULATOR ── */}
+      <section className="panel space-y-3 rounded-2xl p-4">
+        <p className="flex items-center gap-2 text-[15px] font-extrabold text-text">
+          <Calculator size={17} className="shrink-0 text-primary" aria-hidden />
+          {t("bullion_calc_title")}
+        </p>
+        <div className="flex gap-2">
           {(
             [
-              { id: "NP" as Market, labelKey: "marketNepal" as const },
-              { id: "IN" as Market, labelKey: "marketIndia" as const },
-            ]
-          ).map((m) => (
-            <button
-              key={m.id}
-              onClick={() => setMarket(m.id)}
-              aria-pressed={market === m.id}
-              className={`flex h-8 items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold transition ${
-                market === m.id
-                  ? "bg-primary text-white shadow-soft dark:text-background"
-                  : "text-text-muted hover:text-text"
-              }`}
-            >
-              {t(m.labelKey)}
-              <span className="hidden text-[10px] font-bold uppercase tracking-[0.08em] opacity-70 sm:inline">
-                · {m.id === "NP" ? "FENEGOSIDA" : "IBJA"}
-              </span>
-            </button>
-          ))}
+              { key: "24k", label: t("bullion_calc_gold24") },
+              { key: "22k", label: t("bullion_calc_gold22") },
+              { key: "silver", label: t("bullion_calc_silver999") },
+            ] as const
+          ).map((m) => {
+            const active = calcMetal === m.key;
+            return (
+              <button
+                key={m.key}
+                onClick={() => setCalcMetal(m.key)}
+                className={`min-w-0 flex-1 truncate rounded-[10px] border py-2 text-center text-xs transition active:opacity-85 ${
+                  active
+                    ? "border-primary bg-primary font-extrabold text-white"
+                    : "border-border bg-surface-elevated font-semibold text-text"
+                }`}
+              >
+                {m.label}
+              </button>
+            );
+          })}
         </div>
-      </header>
-
-      {loading || !board ? (
-        <div className="space-y-4">
-          <Skeleton className="h-36 w-full" />
-          <Skeleton className="h-72 w-full" />
+        <div className="flex h-[50px] items-center rounded-[10px] border-[1.5px] border-primary bg-background px-3.5">
+          <Scale size={18} className="mr-2 shrink-0 text-text-muted" aria-hidden />
+          <input
+            inputMode="numeric"
+            placeholder={t("bullion_weight_placeholder")}
+            value={calcWeight}
+            onChange={(e) => setCalcWeight(e.target.value.replace(/[^0-9.]/g, ""))}
+            className="min-w-0 flex-1 bg-transparent text-base font-extrabold text-text outline-none placeholder:font-normal placeholder:text-text-muted"
+            aria-label={t("weightGrams")}
+          />
+          <span className="ml-2 shrink-0 text-[13px] font-extrabold text-primary">
+            {t("bullion_grams")}
+          </span>
         </div>
-      ) : (
-        <div className="space-y-4">
-          {/* Benchmark board — metal-tinted tiles, gold bench then silver. */}
-          <Panel
-            label={`${t("boardLabel")} — ${market === "NP" ? "FENEGOSIDA calibration" : "IBJA calibration"} · ${currency}`}
-            action={
-              dayChangePct != null ? (
-                <span
-                  className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold ${
-                    dayChangePct >= 0 ? "bg-primary-light text-income" : "bg-rust-tint text-danger"
-                  }`}
-                  title={t("periodWord")}
-                >
-                  {dayChangePct >= 0 ? "▲" : "▼"} {Math.abs(dayChangePct)}%
-                </span>
-              ) : undefined
-            }
-          >
-            <div className="grid grid-cols-2 gap-2 p-4 sm:gap-3 lg:grid-cols-4">
-              <BoardCell
-                tone="gold"
-                label="Gold 24K / tola"
-                unit="11.6638 g"
-                value={fmt(board.goldTola)}
-              />
-              <BoardCell tone="gold" label="Gold 24K / 10 g" unit="per 10 grams" value={fmt(board.gold10g)} />
-              <BoardCell
-                tone="gold"
-                label={market === "NP" ? "Tejabi 22K / tola" : "Gold 22K / tola"}
-                unit="11.6638 g"
-                value={fmt(board.tejabiTola)}
-              />
-              <BoardCell
-                tone="gold"
-                label={market === "NP" ? "Tejabi 22K / 10 g" : "Gold 22K / 10 g"}
-                unit="per 10 grams"
-                value={fmt(board.tejabi10g)}
-              />
-              <BoardCell tone="silver" label="Silver / tola" unit="11.6638 g" value={fmt(board.silverTola)} />
-              <BoardCell tone="silver" label="Silver / 10 g" unit="per 10 grams" value={fmt(board.silver10g)} />
-              <div className="hidden lg:block" aria-hidden />
-              <div className="hidden lg:block" aria-hidden />
-            </div>
-            <p className="border-t border-border px-4 py-2.5 text-[11px] leading-relaxed text-faint sm:px-5">
-              {market === "NP" && official
-                ? `Official FENEGOSIDA fix for ${official.rateDate} — as published.`
-                : market === "NP"
-                ? "Fine gold ×1.20649 · Tejabi at 92.5588% of fine · silver ×1.22765 (computed from spot)"
-                : "24K ×1.0918 (6% customs + 3% GST) · 22K (916) at 91.67% of fine"}
-            </p>
-          </Panel>
-
-          {/* History */}
-          <Panel
-            label={`${series === "gold" ? "Gold" : "Silver"} trend — local per tola`}
-            action={
-              <div className="flex items-center gap-2">
-                <div className="flex rounded-full bg-surface-elevated p-0.5" role="group" aria-label="Metal series">
-                  {(["gold", "silver"] as const).map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => setSeries(s)}
-                      aria-pressed={series === s}
-                      className={`flex h-7 items-center gap-1 rounded-full px-3 text-[11px] font-bold uppercase tracking-wide transition ${
-                        series === s
-                          ? s === "gold"
-                            ? "bg-brass text-white"
-                            : "bg-text text-background"
-                          : "text-text-muted hover:text-text"
-                      }`}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex rounded-full bg-surface-elevated p-0.5" role="group" aria-label="Trend period">
-                  {[30, 120, 365].map((d) => (
-                    <button
-                      key={d}
-                      onClick={() => setPeriod(d)}
-                      aria-pressed={period === d}
-                      className={`h-7 rounded-full px-3 text-[11px] font-bold uppercase tracking-wide transition ${
-                        period === d ? "bg-primary text-white dark:text-background" : "text-text-muted hover:text-text"
-                      }`}
-                    >
-                      {d === 30 ? "1M" : d === 120 ? "4M" : "1Y"}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            }
-          >
-            <div className="p-4 sm:p-5">
-              <TrendChart points={historyLocal} locale={locale} />
-            </div>
-          </Panel>
-
-          {/* Recent fixes register */}
-          {fixesRows.length > 0 && (
-            <Panel label={`${t("recentFixes")} — per tola`}>
-              <div>
-                <div className="flex items-center border-b border-border px-4 py-2 sm:px-5" aria-hidden>
-                  <span className="caps-faint flex-1">Date</span>
-                  <span className="caps-faint w-[104px] text-right">Gold 24K</span>
-                  <span className="caps-faint w-[96px] text-right">Silver</span>
-                </div>
-                {fixesRows.map((r, i) => (
-                  <div
-                    key={r.date}
-                    className={`flex items-center px-4 py-2.5 sm:px-5 ${i < fixesRows.length - 1 ? "border-b border-border/50" : ""}`}
-                  >
-                    <span className="min-w-0 flex-1 truncate text-sm text-text-muted">
-                      {new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" }).format(
-                        new Date(`${r.date}T00:00:00`),
-                      )}
-                    </span>
-                    <span className="numeric w-[104px] text-right text-sm font-bold text-text">
-                      <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-brass align-middle" aria-hidden />
-                      {fmt(r.gold)}
-                    </span>
-                    <span className="numeric w-[96px] text-right text-sm font-bold text-text">
-                      <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-faint align-middle" aria-hidden />
-                      {fmt(r.silver)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </Panel>
-          )}
-
-          {/* Calculator */}
-          <Panel label={t("instantValuation")}>
-            <div className="grid grid-cols-1 gap-4 p-4 sm:p-5 md:grid-cols-[1.2fr_1fr_1.4fr] md:items-end">
-              <div>
-                <p className="caps mb-1.5">{t("metalLabel")}</p>
-                <div className="flex rounded-full bg-surface-elevated p-0.5" role="group" aria-label="Valuation metal">
-                  {(["gold", "tejabi", "silver"] as const).map((k) => (
-                    <button
-                      key={k}
-                      onClick={() => setCalcKind(k)}
-                      aria-pressed={calcKind === k}
-                      className={`h-9 flex-1 rounded-full text-[11px] font-bold uppercase tracking-wide transition ${
-                        calcKind === k
-                          ? k === "silver"
-                            ? "bg-text text-background"
-                            : "bg-brass text-white"
-                          : "text-text-muted hover:text-text"
-                      }`}
-                    >
-                      {k === "tejabi" && market === "IN" ? "22K" : k}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <Input
-                label={t("weightGrams")}
-                type="number"
-                min="0"
-                step="any"
-                value={grams}
-                onChange={(e) => setGrams(e.target.value)}
-              />
-              <div className="rounded-2xl border border-brass/50 bg-brass-tint/50 px-4 py-3">
-                <p className="caps !text-brass">{t("valueLabel")}</p>
-                <p className="figures mt-1 text-2xl font-bold text-text">
-                  {calcValue != null ? fmt(calcValue) : "—"}
-                </p>
-                {calcPerGram != null && (
-                  <p className="numeric mt-0.5 text-[11px] text-text-muted">
-                    {metalName(calcKind)} · {fmt(calcPerGram)} / g
-                  </p>
-                )}
-              </div>
-            </div>
-          </Panel>
-
-          <p className="text-[11px] text-faint">
-            Prices match the SpendFlow mobile app exactly. 1 tola = 11.6638 g.
+        <div className="space-y-[3px] rounded-[10px] border border-[var(--sf-bull-result-line)] bg-[var(--sf-bull-result-bg)] p-3.5 text-center">
+          <p className="text-[11px] font-semibold text-text-muted">
+            {t("bullion_est_value").replace("{weight}", String(weightNum))}
+          </p>
+          <p className="text-[26px] font-black leading-8 text-primary">
+            {board ? masked(calculatedValue) : "—"}
           </p>
         </div>
-      )}
+      </section>
+
+      {/* ── 7. BULLION STANDARDS & BUYER GUIDE ── */}
+      <section className="panel space-y-2.5 rounded-2xl p-4">
+        <p className="flex items-center gap-1.5 text-sm font-extrabold text-text">
+          <Info size={16} className="shrink-0 text-primary" aria-hidden />
+          {t("bullion_guide_title")}
+        </p>
+        <div className="space-y-2 pt-1">
+          <div className="flex gap-2">
+            <ShieldCheck size={16} style={{ color: "#10B981" }} className="mt-0.5 shrink-0" aria-hidden />
+            <div className="min-w-0">
+              <p className="text-[13px] font-bold text-text">{t("bullion_guide_24k_title")}</p>
+              <p className="text-[11.5px] leading-4 text-text-muted">{t("bullion_guide_24k_body")}</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Scale size={16} style={{ color: "#F59E0B" }} className="mt-0.5 shrink-0" aria-hidden />
+            <div className="min-w-0">
+              <p className="text-[13px] font-bold text-text">{t("bullion_guide_tola_title")}</p>
+              <p className="text-[11.5px] leading-4 text-text-muted">{t("bullion_guide_tola_body")}</p>
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
   );
 }
 
-function BoardCell({
-  tone,
-  label,
-  unit,
-  value,
+/**
+ * Mobile's SVG spline chart — Catmull-Rom curve, dashed gridlines, y/x axis
+ * labels, gradient area fill, per-point touch rects and a floating tooltip.
+ */
+function TrendSvg({
+  points,
+  accent,
+  grad,
+  minPrice,
+  maxPrice,
+  selectedIndex,
+  onSelect,
+  labelOf,
+  fmtPrice,
 }: {
-  tone: "gold" | "silver";
-  label: string;
-  unit: string;
-  value: string;
+  points: { date: string; price: number }[];
+  accent: string;
+  grad: string;
+  minPrice: number;
+  maxPrice: number;
+  selectedIndex: number | null;
+  onSelect: (i: number) => void;
+  labelOf: (date: string) => string;
+  fmtPrice: (n: number) => string;
 }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const H = 190;
+  const padLeft = 46;
+  const padRight = 10;
+  const padTop = 20;
+  const padBottom = 26;
+  const W = Math.max(Math.min(width || 360, 720), 280);
+  const drawW = W - padLeft - padRight;
+  const drawH = H - padTop - padBottom;
+  const range = Math.max(maxPrice - minPrice, 1);
+
+  const coords = points.map((p, i) => ({
+    x: padLeft + (i * drawW) / Math.max(points.length - 1, 1),
+    y: H - padBottom - ((p.price - minPrice) / range) * drawH,
+    point: p,
+    index: i,
+  }));
+
+  let line = `M ${coords[0].x},${coords[0].y}`;
+  for (let i = 0; i < coords.length - 1; i++) {
+    const p0 = coords[i === 0 ? 0 : i - 1];
+    const p1 = coords[i];
+    const p2 = coords[i + 1];
+    const p3 = coords[i + 2] || p2;
+    const tension = 4.5;
+    line += ` C ${p1.x + (p2.x - p0.x) / tension},${p1.y + (p2.y - p0.y) / tension} ${p2.x - (p3.x - p1.x) / tension},${p2.y - (p3.y - p1.y) / tension} ${p2.x},${p2.y}`;
+  }
+  const area = `${line} L ${coords[coords.length - 1].x},${H - padBottom} L ${coords[0].x},${H - padBottom} Z`;
+
+  const ticks = Array.from({ length: 5 }, (_, i) => ({
+    price: Math.round(minPrice + (range * i) / 4),
+    y: H - padBottom - (i / 4) * drawH,
+  }));
+  const xLabelEvery = Math.max(Math.floor(coords.length / 4), 1);
+  const sel = selectedIndex != null ? coords[selectedIndex] : null;
+
   return (
-    <div
-      className={`rounded-xl border p-3 sm:p-4 ${
-        tone === "gold" ? "border-brass/30 bg-brass-tint/40" : "border-border bg-surface-elevated/60"
-      }`}
-    >
-      <p className="flex items-center gap-1.5">
-        <span
-          className={`h-1.5 w-1.5 shrink-0 rounded-full ${tone === "gold" ? "bg-brass" : "bg-faint"}`}
-          aria-hidden
-        />
-        <span className="caps truncate">{label}</span>
-      </p>
-      <p className="figures mt-1.5 text-lg font-bold text-text sm:text-xl">{value}</p>
-      <p className="stamp mt-0.5">{unit}</p>
+    <div ref={wrapRef} className="relative w-full" style={{ height: H }}>
+      {width > 0 && (
+        <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Price history chart">
+          <defs>
+            <linearGradient id="bullionGridGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={grad} stopOpacity="0.4" />
+              <stop offset="100%" stopColor={grad} stopOpacity="0.02" />
+            </linearGradient>
+          </defs>
+          {ticks.map((t, i) => (
+            <g key={i}>
+              <line
+                x1={padLeft}
+                y1={t.y}
+                x2={W - padRight}
+                y2={t.y}
+                stroke="var(--sf-bull-grid)"
+                strokeDasharray="3, 3"
+                strokeWidth={1}
+              />
+              <text
+                x={padLeft - 6}
+                y={t.y + 3}
+                fill="var(--sf-bull-grid-ink)"
+                fontSize={9}
+                fontWeight={600}
+                textAnchor="end"
+              >
+                {t.price >= 100000 ? `${Math.round(t.price / 1000)}k` : t.price.toLocaleString()}
+              </text>
+            </g>
+          ))}
+          {coords
+            .filter((_, i) => i % 5 === 0)
+            .map((c, i) => (
+              <line
+                key={i}
+                x1={c.x}
+                y1={padTop}
+                x2={c.x}
+                y2={H - padBottom}
+                stroke="var(--sf-bull-grid-v)"
+                strokeDasharray="2, 4"
+                strokeWidth={1}
+              />
+            ))}
+          <path d={area} fill="url(#bullionGridGrad)" />
+          <path d={line} fill="none" stroke={accent} strokeWidth={2.8} strokeLinecap="round" />
+          {coords.map((c) => {
+            const isSel = selectedIndex === c.index;
+            const show = isSel || (selectedIndex === null && c.index === coords.length - 1);
+            if (!show) return null;
+            return (
+              <circle
+                key={c.point.date}
+                cx={c.x}
+                cy={c.y}
+                r={isSel ? 6 : 4}
+                fill={isSel ? "var(--sf-primary)" : accent}
+                stroke="var(--sf-surface)"
+                strokeWidth={2}
+              />
+            );
+          })}
+          {coords
+            .filter((_, i) => i % xLabelEvery === 0 || i === coords.length - 1)
+            .map((c, i) => (
+              <text
+                key={i}
+                x={c.x}
+                y={H - 6}
+                fill="var(--sf-bull-grid-ink)"
+                fontSize={8}
+                fontWeight={700}
+                textAnchor="middle"
+              >
+                {labelOf(c.point.date)}
+              </text>
+            ))}
+          {coords.map((c) => (
+            <rect
+              key={c.point.date}
+              x={c.x - drawW / Math.max(coords.length - 1, 1) / 2}
+              y={0}
+              width={drawW / Math.max(coords.length - 1, 1)}
+              height={H}
+              fill="transparent"
+              onClick={() => onSelect(c.index)}
+              style={{ cursor: "pointer" }}
+            />
+          ))}
+        </svg>
+      )}
+      {sel && (
+        <div
+          className="pointer-events-none absolute rounded-lg border border-[var(--sf-bull-tooltip-line)] bg-[var(--sf-bull-tooltip-bg)] px-2.5 py-[5px] text-center shadow-[0_3px_6px_rgb(0_0_0/0.3)]"
+          style={{
+            top: Math.max(sel.y - 48, 2),
+            left: `min(max(${(sel.x / W) * 100}% - 65px, ${padLeft}px), calc(100% - 135px))`,
+          }}
+        >
+          <p className="text-xs font-black text-white">{fmtPrice(sel.point.price)}</p>
+          <p className="text-[9.5px] font-bold text-[#94A3B8]">{labelOf(sel.point.date)}</p>
+        </div>
+      )}
     </div>
   );
 }

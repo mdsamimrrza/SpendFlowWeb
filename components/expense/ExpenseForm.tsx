@@ -19,6 +19,7 @@ import {
   Coins,
   CreditCard,
   ExternalLink,
+  LayoutGrid,
   Paperclip,
   Pencil,
   Plus,
@@ -28,14 +29,17 @@ import {
   Smartphone,
   Tag,
   Trash2,
+  Wallet,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
+import { DateField } from "@/components/ui/CalendarModal";
 import { ConfirmDialog, Modal } from "@/components/ui/Modal";
 import { accountGlyph, categoryGlyph } from "@/components/ui/Glyph";
 import { AmountKeypad } from "./AmountKeypad";
 import { CategoryManageModal } from "./CategoryManageModal";
+import { AccountManageModal } from "@/components/account/AccountManageModal";
 import { RecordPreviewRail, type RailPreview } from "./RecordPreviewRail";
 import { useToast } from "@/store/ToastContext";
 import { useLanguage } from "@/store/LanguageContext";
@@ -85,7 +89,7 @@ import {
   toISODate,
   todayISO,
 } from "@/utils/format";
-import type { ExpenseRow } from "@/services/expenses";
+import { getCachedExpenses, type ExpenseRow } from "@/services/expenses";
 import type { Category } from "@/types/database.types";
 
 interface ExpenseFormProps {
@@ -119,6 +123,31 @@ function addDaysISO(iso: string, days: number): string {
  * column + sticky 360px record-preview rail below `min-[900px]`. Every emoji
  * the stored data carries is rendered through the Lucide glyph layer.
  */
+/**
+ * Dynamic circle-row capacity: how many 60px items fit the measured row
+ * width, minus one slot reserved for the ▦ All button. Re-measures on
+ * resize, so phones get fewer circles and laptops fill the card.
+ */
+function useFitCount() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [count, setCount] = useState(3);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      const gap = 10;
+      const item = 60;
+      const inner = el.clientWidth - 8; // px-1 padding
+      setCount(Math.max(1, Math.floor((inner + gap) / (item + gap)) - 1));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return { ref, count };
+}
+
 export function ExpenseForm({ expenseId }: ExpenseFormProps) {
   const router = useRouter();
   const { t, locale } = useLanguage();
@@ -177,6 +206,10 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
   const [catModalOpen, setCatModalOpen] = useState(false);
   const [catToEdit, setCatToEdit] = useState<Category | null>(null);
   const [accOpen, setAccOpen] = useState(false);
+  // In-form account editor (APK "Manage Account" pill).
+  const [accModalOpen, setAccModalOpen] = useState(false);
+  const [accToEdit, setAccToEdit] = useState<BankAccountRow | null>(null);
+  const [accountsReload, setAccountsReload] = useState(0);
   const [currencyOpen, setCurrencyOpen] = useState(false);
   const [rateOpen, setRateOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(!!expenseId);
@@ -233,7 +266,7 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
     return () => {
       cancelled = true;
     };
-  }, [userId, supabase, existing?.updated_at]);
+  }, [userId, supabase, existing?.updated_at, accountsReload]);
 
   // ── Active plans for the pay-from-plan row (add mode only — mobile §6). ──
   useEffect(() => {
@@ -371,6 +404,79 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
     () => categories.filter((c) => c.type === flowType),
     [categories, flowType],
   );
+
+  // ── APK circle-row ordering ──
+  const catFit = useFitCount();
+  const accFit = useFitCount();
+  // Category usage from the read-cache (mobile derives the same from the
+  // cached expenses page): count desc, last-used date desc.
+  const categoryUsage = useMemo(() => {
+    const by = new Map<string, { count: number; last: string }>();
+    if (!userId) return by;
+    for (const e of getCachedExpenses(userId)) {
+      if (e.deleted_at) continue;
+      const cur = by.get(e.category_id);
+      if (cur) {
+        cur.count += 1;
+        if (e.date > cur.last) cur.last = e.date;
+      } else by.set(e.category_id, { count: 1, last: e.date });
+    }
+    return by;
+  }, [userId]);
+
+  // Circle row = current pick first (always visible + ringed), then the
+  // most-used categories; the rendered slice is dynamic — as many as fit
+  // the card width (see useFitCount) with one slot reserved for ▦ All.
+  const categoryRow = useMemo(() => {
+    const selected = categories.find((c) => c.id === categoryId) ?? null;
+    const seen = new Set<string>();
+    const list: Category[] = [];
+    if (selected && selected.type === flowType) {
+      list.push(selected);
+      seen.add(selected.id);
+    }
+    const top = [...categoryUsage.entries()]
+      .map(([id, v]) => ({ c: visibleCategories.find((x) => x.id === id), last: v.last, count: v.count }))
+      .filter((x) => !!x.c)
+      .sort((a, b) => b.count - a.count || b.last.localeCompare(a.last))
+      .slice(0, 5);
+    for (const u of top) {
+      if (u.c && !seen.has(u.c.id)) {
+        list.push(u.c);
+        seen.add(u.c.id);
+      }
+    }
+    // Fill the rest of the row with the remaining categories in list order
+    // so wide screens show more picks before ▦ All.
+    for (const c of visibleCategories) {
+      if (!seen.has(c.id)) {
+        list.push(c);
+        seen.add(c.id);
+      }
+    }
+    return list;
+  }, [categories, categoryId, flowType, categoryUsage, visibleCategories]);
+
+  // Account circle row = current pick first, then the richest accounts
+  // (live balance desc); rendered slice is dynamic via useFitCount.
+  const accountRow = useMemo(() => {
+    const selected = accounts.find((a) => a.id === bankAccountId) ?? null;
+    const seen = new Set<string>();
+    const list: BankAccountRow[] = [];
+    if (selected) {
+      list.push(selected);
+      seen.add(selected.id);
+    }
+    for (const a of [...accounts].sort(
+      (x, y) => (balances.get(y.id) ?? 0) - (balances.get(x.id) ?? 0),
+    )) {
+      if (!seen.has(a.id)) {
+        list.push(a);
+        seen.add(a.id);
+      }
+    }
+    return list;
+  }, [accounts, bankAccountId, balances]);
 
   // Default category: first of the matching type (mobile parity, new entry).
   useEffect(() => {
@@ -1034,28 +1140,28 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
     },
   };
 
-  const accountLiveBalance = selectedAccount ? balances.get(selectedAccount.id) : undefined;
-
   return (
     <form ref={formRef} onSubmit={onSubmit} className="pb-28">
-      {/* ══ Header bar (APK app bar; type-aware title) ══ */}
+      {/* ══ Header bar (app pattern: round close + kicker/title, type-aware) ══ */}
       <header className="mb-5 flex items-start gap-3">
         <Link
           href="/overview"
           aria-label={t("cancel")}
-          className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center border border-border text-text-muted transition-colors hover:border-text-muted hover:text-text"
+          className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-surface text-text-muted transition hover:border-text-muted hover:text-text active:opacity-70"
         >
           <X size={16} />
         </Link>
         <div>
-          <p className="caps !text-primary-strong">{t("transactionEntry")}</p>
-          <h1 className="mt-0.5 text-xl font-extrabold tracking-tight text-text">
+          <p className="text-[11px] font-bold uppercase leading-4 tracking-[0.1em] text-text-muted">
+            {t("transactionEntry")}
+          </p>
+          <h1 className="mt-0.5 text-2xl font-extrabold tracking-tight text-text">
             {existing
               ? t(flowType === "income" ? "editIncome" : "editExpense")
               : t(flowType === "income" ? "addIncome" : "addExpense")}
           </h1>
           {existing && (
-            <p className="stamp mt-0.5">
+            <p className="stamp mt-1">
               {t("recordRef")} {existing.id.slice(0, 8).toUpperCase()} · {t("recorded")}{" "}
               <span className="numeric">
                 {new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(
@@ -1064,7 +1170,6 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
               </span>
             </p>
           )}
-          <div className="mt-2 h-0.5 w-14 bg-brass" aria-hidden />
         </div>
       </header>
 
@@ -1289,45 +1394,101 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
             </section>
           )}
 
-          {/* ══ 3+4. Category & bank account — one compact card ══ */}
+          {/* ══ 3. CATEGORY — APK circle-row card (icon circles + ▦ All) ═ */}
           <div ref={categoryCardRef}>
             <section className="panel">
               <div className="space-y-2 p-3 sm:p-4">
-                <div className="relative" data-popover-host>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCatOpen((o) => !o);
-                    setCatSearch("");
-                  }}
-                  aria-haspopup="listbox"
-                  aria-expanded={catOpen}
-                  className={`flex w-full items-center gap-3 border bg-surface-elevated p-2.5 text-left transition hover:border-text-muted ${
-                    errors.category ? "border-danger" : "border-border"
-                  }`}
-                >
-                  <span
-                    className="flex h-9 w-9 shrink-0 items-center justify-center border border-border"
-                    style={{ color: selectedCategory?.color ?? undefined }}
-                    aria-hidden
-                  >
-                    {selectedCategory ? (() => {
-                      const G = categoryGlyph(selectedCategory.icon);
-                      return <G size={18} />;
-                    })() : (
-                      <Tag size={16} className="text-faint" />
-                    )}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="caps-faint block text-[9px]">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="flex min-w-0 items-center gap-1.5 text-sm font-extrabold text-text">
+                    <Tag size={16} className="shrink-0 text-primary" aria-hidden />
+                    <span className="truncate">
                       {t(flowType === "income" ? "incomeCategory" : "expenseCategory")}
                     </span>
-                    <span className={`block truncate text-sm font-bold ${selectedCategory ? "text-text" : "text-faint"}`}>
-                      {selectedCategory?.name ?? t("placeholderCategory")}
+                  </p>
+                  {selectedCategory && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCatToEdit(selectedCategory);
+                        setCatModalOpen(true);
+                      }}
+                      className="flex shrink-0 items-center gap-[5px] rounded-full border border-border bg-surface-elevated px-2 py-[3px] text-[11px] font-bold text-primary transition hover:border-primary"
+                    >
+                      {(() => {
+                        const G = categoryGlyph(selectedCategory.icon);
+                        return <G size={13} className="text-primary" aria-hidden />;
+                      })()}
+                      {t("editCategory")}
+                      <Pencil size={11} aria-hidden />
+                    </button>
+                  )}
+                </div>
+
+                <div className="relative" data-popover-host>
+                <div ref={catFit.ref} className="-mx-1 flex gap-2.5 overflow-x-auto px-1 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {categoryRow.slice(0, catFit.count).map((c) => {
+                    const G = categoryGlyph(c.icon);
+                    const active = categoryId === c.id;
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => {
+                          setCategoryId(c.id);
+                          setCatOpen(false);
+                        }}
+                        aria-pressed={active}
+                        className="flex w-[60px] shrink-0 flex-col items-center gap-[5px]"
+                      >
+                        <span
+                          className={`grid h-[46px] w-[46px] place-items-center rounded-full border bg-surface-elevated transition ${
+                            active
+                              ? "border-2 border-primary bg-primary/10"
+                              : "border-border"
+                          }`}
+                        >
+                          <G size={20} className={active ? "text-primary" : "text-text"} aria-hidden />
+                        </span>
+                        <span
+                          className={`w-[60px] truncate text-center text-[10.5px] leading-4 ${
+                            active
+                              ? "font-extrabold text-primary"
+                              : "font-semibold text-text-muted"
+                          }`}
+                        >
+                          {c.name}
+                        </span>
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCatOpen((o) => !o);
+                      setCatSearch("");
+                    }}
+                    aria-haspopup="listbox"
+                    aria-expanded={catOpen}
+                    className="flex w-[60px] shrink-0 flex-col items-center gap-[5px]"
+                  >
+                    <span
+                      className={`grid h-[46px] w-[46px] place-items-center rounded-full border-[1.6px] border-dashed transition ${
+                        catOpen
+                          ? "border-primary bg-primary/[0.06] text-primary"
+                          : "border-text-muted text-text-muted"
+                      }`}
+                    >
+                      <LayoutGrid size={18} aria-hidden />
                     </span>
-                  </span>
-                  <ChevronDown size={15} className={catOpen ? "rotate-180 text-text-muted" : "text-faint"} />
-                </button>
+                    <span
+                      className={`w-[60px] text-center text-[10.5px] font-extrabold leading-4 ${
+                        catOpen ? "text-primary" : "text-text-muted"
+                      }`}
+                    >
+                      {t("expense_all")}
+                    </span>
+                  </button>
+                </div>
 
                 {catOpen && (
                   <div className="absolute inset-x-0 top-full z-30 mt-1 border border-border bg-surface-elevated shadow-lg">
@@ -1413,45 +1574,113 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
                   <p className="mt-2 text-xs font-bold text-danger">{errors.category}</p>
                 )}
                 </div>
+              </div>
+            </section>
+          </div>
 
-                <div ref={accountCardRef} className="relative" data-popover-host>
-                <button
-                  type="button"
-                  onClick={() => setAccOpen((o) => !o)}
-                  aria-haspopup="listbox"
-                  aria-expanded={accOpen}
-                  className="flex w-full items-center gap-3 border border-border bg-surface-elevated p-2.5 text-left transition hover:border-text-muted"
-                >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center border border-border text-text-muted" aria-hidden>
-                    {selectedAccount ? (() => {
-                      const G = accountGlyph(selectedAccount.icon, selectedAccount.account_type);
-                      return <G size={17} style={{ color: selectedAccount.color }} />;
-                    })() : (
-                      <Banknote size={16} className="text-faint" />
-                    )}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="caps-faint block text-[9px]">
-                      {t(flowType === "income" ? "receivedInto" : "paidFrom")}
-                    </span>
-                    <span className="block truncate text-sm font-bold text-text">
-                      {selectedAccount?.name ?? t("notTracked")}
-                    </span>
-                  </span>
-                  {selectedAccount && accountLiveBalance != null && (
+          {/* ══ 4. BANK ACCOUNT / WALLET — APK circle-row card ══ */}
+          <div ref={accountCardRef}>
+            <section className="panel">
+              <div className="space-y-2 p-3 sm:p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="flex min-w-0 items-center gap-1.5 text-sm font-extrabold text-text">
+                    <Wallet size={16} className="shrink-0 text-primary" aria-hidden />
+                    <span className="truncate">{t("bankAccountWallet")}</span>
+                  </p>
+                  {selectedAccount && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAccToEdit(selectedAccount);
+                        setAccModalOpen(true);
+                      }}
+                      className="flex shrink-0 items-center gap-[5px] rounded-full border border-border bg-surface-elevated px-2 py-[3px] text-[11px] font-bold text-primary transition hover:border-primary"
+                    >
+                      {(() => {
+                        const G = accountGlyph(selectedAccount.icon, selectedAccount.account_type);
+                        return <G size={13} className="text-primary" aria-hidden />;
+                      })()}
+                      {t("manageAccount")}
+                      <Pencil size={11} aria-hidden />
+                    </button>
+                  )}
+                </div>
+
+                <div className="relative" data-popover-host>
+                <div ref={accFit.ref} className="-mx-1 flex gap-2.5 overflow-x-auto px-1 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {accountRow.slice(0, accFit.count).map((a) => {
+                    const G = accountGlyph(a.icon, a.account_type);
+                    const active = bankAccountId === a.id;
+                    const accent = a.color || "var(--sf-primary)";
+                    return (
+                      <button
+                        key={a.id}
+                        type="button"
+                        onClick={() => {
+                          setBankAccountId(a.id);
+                          setAccOpen(false);
+                        }}
+                        aria-pressed={active}
+                        className="flex w-[60px] shrink-0 flex-col items-center gap-[5px]"
+                      >
+                        <span
+                          className={`grid h-[46px] w-[46px] place-items-center rounded-full border bg-surface-elevated transition ${
+                            active ? "border-2" : "border-border"
+                          }`}
+                          style={
+                            active
+                              ? {
+                                  borderColor: accent,
+                                  backgroundColor: a.color
+                                    ? `${a.color}18`
+                                    : "color-mix(in srgb, var(--sf-primary) 10%, transparent)",
+                                }
+                              : undefined
+                          }
+                        >
+                          <G
+                            size={20}
+                            className={active ? undefined : "text-text"}
+                            style={active ? { color: accent } : undefined}
+                            aria-hidden
+                          />
+                        </span>
+                        <span
+                          className={`w-[60px] truncate text-center text-[10.5px] leading-4 ${
+                            active ? "font-extrabold" : "font-semibold text-text-muted"
+                          }`}
+                          style={active ? { color: accent } : undefined}
+                        >
+                          {a.name}
+                        </span>
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => setAccOpen((o) => !o)}
+                    aria-haspopup="listbox"
+                    aria-expanded={accOpen}
+                    className="flex w-[60px] shrink-0 flex-col items-center gap-[5px]"
+                  >
                     <span
-                      className={`numeric shrink-0 text-right text-xs font-bold ${
-                        accountLiveBalance < 0 ? "text-danger" : "text-income"
+                      className={`grid h-[46px] w-[46px] place-items-center rounded-full border-[1.6px] border-dashed transition ${
+                        accOpen
+                          ? "border-primary bg-primary/[0.06] text-primary"
+                          : "border-text-muted text-text-muted"
                       }`}
                     >
-                      <span className="block text-[9px] font-semibold uppercase tracking-wide text-faint">
-                        {t("available")}
-                      </span>
-                      {mask(formatMoney(accountLiveBalance, selectedAccount.currency, locale))}
+                      <LayoutGrid size={18} aria-hidden />
                     </span>
-                  )}
-                  <ChevronDown size={15} className={accOpen ? "rotate-180 text-text-muted" : "text-faint"} />
-                </button>
+                    <span
+                      className={`w-[60px] text-center text-[10.5px] font-extrabold leading-4 ${
+                        accOpen ? "text-primary" : "text-text-muted"
+                      }`}
+                    >
+                      {t("expense_all")}
+                    </span>
+                  </button>
+                </div>
 
                 {accOpen && (
                   <div className="absolute inset-x-0 top-full z-30 mt-1 border border-border bg-surface-elevated shadow-lg">
@@ -1532,76 +1761,82 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
             <section className="panel">
               <div className="space-y-3 p-3 sm:p-4">
                 <div className="flex flex-wrap items-end gap-2 sm:gap-3">
-                <div className="min-w-[170px] flex-[1.2]">
-                  <Input
+                <div className="min-w-[150px] flex-1">
+                  <DateField
                     label={t("date")}
-                    type="date"
                     required
+                    value={date}
                     min="2000-01-01"
                     max={addDaysISO(todayISO(), 1)}
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
+                    error={errors.date ?? null}
+                    onChange={setDate}
                   />
-                  {errors.date && <p className="mt-1 text-xs font-bold text-danger">{errors.date}</p>}
                 </div>
-                <div className="flex flex-[1.5] items-end gap-2">
-                  <div>
-                    <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-text-muted">
+                <div className="min-w-[160px] flex-1">
+                  <p className="mb-1 flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-bold uppercase tracking-wide text-text-muted">
                       <Clock size={10} className="mr-1 inline" aria-hidden />
                       {t("time")}
-                    </p>
-                    <div className="flex h-11 items-center gap-1.5 border border-border bg-surface-elevated px-2">
-                      <input
-                        ref={hourRef}
-                        aria-label={t("hour")}
-                        inputMode="numeric"
-                        value={hour === "" ? "" : hour.padStart(2, "0")}
-                        onFocus={(e) => e.currentTarget.select()}
-                        onChange={(e) => handleHourInput(e.target.value)}
-                        placeholder="--"
-                        className="figures h-9 w-12 border-b border-transparent bg-transparent text-center text-lg font-bold text-text placeholder:text-faint/40 focus:border-primary focus:outline-none"
-                      />
-                      <span className="text-lg font-bold text-faint" aria-hidden>:</span>
-                      <input
-                        ref={minuteRef}
-                        aria-label={t("minute")}
-                        inputMode="numeric"
-                        value={minute === "" ? "" : minute.padStart(2, "0")}
-                        onFocus={(e) => e.currentTarget.select()}
-                        onChange={(e) => handleMinuteInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          // APK parity: backspace on an empty minute returns to
-                          // the hour box and reselects it.
-                          if (e.key === "Backspace" && minute === "") {
-                            e.preventDefault();
-                            hourRef.current?.focus();
-                            hourRef.current?.select();
-                          }
-                        }}
-                        placeholder="--"
-                        className="figures h-9 w-12 border-b border-transparent bg-transparent text-center text-lg font-bold text-text placeholder:text-faint/40 focus:border-primary focus:outline-none"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAmpm((a) => (a === "AM" ? "PM" : "AM"));
-                          setTimeSet(true);
-                        }}
-                        className="h-9 w-14 border border-border text-xs font-extrabold transition hover:border-primary"
-                        style={{ color: ampm === "AM" ? "var(--sf-primary)" : "var(--sf-income)" }}
-                      >
-                        {ampm}
-                      </button>
-                    </div>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={setNow}
+                      className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-text-muted transition hover:text-primary sm:hidden"
+                    >
+                      <RotateCcw size={11} /> {t("now")}
+                    </button>
+                  </p>
+                  <div className="flex h-11 w-full items-center gap-1.5 border border-border bg-surface-elevated px-2">
+                    <input
+                      ref={hourRef}
+                      aria-label={t("hour")}
+                      inputMode="numeric"
+                      value={hour === "" ? "" : hour.padStart(2, "0")}
+                      onFocus={(e) => e.currentTarget.select()}
+                      onChange={(e) => handleHourInput(e.target.value)}
+                      placeholder="--"
+                      className="figures h-9 min-w-0 flex-1 border-b border-transparent bg-transparent text-center text-lg font-bold text-text placeholder:text-faint/40 focus:border-primary focus:outline-none"
+                    />
+                    <span className="text-lg font-bold text-faint" aria-hidden>:</span>
+                    <input
+                      ref={minuteRef}
+                      aria-label={t("minute")}
+                      inputMode="numeric"
+                      value={minute === "" ? "" : minute.padStart(2, "0")}
+                      onFocus={(e) => e.currentTarget.select()}
+                      onChange={(e) => handleMinuteInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        // APK parity: backspace on an empty minute returns to
+                        // the hour box and reselects it.
+                        if (e.key === "Backspace" && minute === "") {
+                          e.preventDefault();
+                          hourRef.current?.focus();
+                          hourRef.current?.select();
+                        }
+                      }}
+                      placeholder="--"
+                      className="figures h-9 min-w-0 flex-1 border-b border-transparent bg-transparent text-center text-lg font-bold text-text placeholder:text-faint/40 focus:border-primary focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAmpm((a) => (a === "AM" ? "PM" : "AM"));
+                        setTimeSet(true);
+                      }}
+                      className="h-9 w-11 border border-border text-xs font-extrabold transition hover:border-primary sm:w-14"
+                      style={{ color: ampm === "AM" ? "var(--sf-primary)" : "var(--sf-income)" }}
+                    >
+                      {ampm}
+                    </button>
                   </div>
+                </div>
                   <button
                     type="button"
                     onClick={setNow}
-                    className="flex h-11 items-center gap-1.5 border border-border bg-surface px-3 text-xs font-bold uppercase tracking-wide text-text-muted transition hover:border-primary hover:text-primary"
+                    className="hidden h-11 shrink-0 items-center gap-1.5 border border-border bg-surface px-3 text-xs font-bold uppercase tracking-wide text-text-muted transition hover:border-primary hover:text-primary sm:flex"
                   >
                     <RotateCcw size={12} /> {t("now")}
                   </button>
-                  </div>
                 </div>
 
                 {/* Payment channel (expense only — hidden for income, APK §6) */}
@@ -1652,7 +1887,7 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
                 onChange={(e) => setDescription(e.target.value)}
               />
               <div
-                className="mt-2.5 flex gap-1.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                className="scroll-x mt-2.5 flex gap-1.5 overflow-x-auto pb-1"
                 role="group"
                 aria-label={t("quickTags")}
               >
@@ -1749,18 +1984,14 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
                       )}
                     </div>
                   )}
-                  <label htmlFor="expense-snapshot" className="mb-1 block text-[13px] font-bold text-text-muted">
-                    {t("snapshotDate")}
-                  </label>
                   <div className="flex items-center gap-2">
                     <div className="min-w-0 flex-1">
-                      <Input
-                        id="expense-snapshot"
-                        type="date"
+                      <DateField
+                        label={t("snapshotDate")}
+                        value={effectiveSnapshot}
                         min="2000-01-01"
                         max={todayISO()}
-                        value={effectiveSnapshot}
-                        onChange={(e) => setSnapshotDate(e.target.value || "")}
+                        onChange={(v) => setSnapshotDate(v)}
                       />
                     </div>
                     {snapshotDate && (
@@ -2078,6 +2309,17 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
           void reloadCategories().then(() => {
             if (cat) setCategoryId(cat.id);
           });
+        }}
+      />
+
+      {/* ══ In-form account editor (APK "Manage Account" pill) ══ */}
+      <AccountManageModal
+        open={accModalOpen}
+        onClose={() => setAccModalOpen(false)}
+        account={accToEdit}
+        onSaved={() => {
+          setAccModalOpen(false);
+          setAccountsReload((n) => n + 1);
         }}
       />
 

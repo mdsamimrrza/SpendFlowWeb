@@ -1,7 +1,7 @@
 /**
- * Screenshots of the redesigned Recurring page via /preview-recurring:
- * commitment strip, plan register and the open rule editor, at mobile, tablet
- * and desktop widths.
+ * Screenshots of the mirrored Recurring screen via /preview-recurring: the app
+ * bar, MONTHLY RECURRING hero and grouped plan register at mobile, tablet and
+ * desktop, plus the two sheets (subscription detail, bill editor) at phone width.
  * Run: node scripts/shot-preview-recurring.mjs  (needs dev server on :3000)
  */
 import { chromium } from "playwright-core";
@@ -29,6 +29,31 @@ for (const width of [390, 768, 1280]) {
     console.log(
       `${width}px ${mode}: page overflow=${overflow.pageOverflow} (${overflow.scrollW}>${overflow.clientW})`,
     );
+    await page.close();
+  }
+}
+
+// The two sheets, at phone width in both themes.
+for (const mode of ["light", "dark"]) {
+  for (const [sheet, name] of [
+    ["detail", "recurring-390-detail"],
+    ["form", "recurring-390-form"],
+  ]) {
+    const page = await browser.newPage({ viewport: { width: 390, height: 1000 } });
+    await page.addInitScript((pref) => localStorage.setItem("spendflow_theme_preference", pref), mode);
+    await page.goto(`${BASE}/preview-recurring`, { waitUntil: "networkidle" });
+    await page.waitForTimeout(1500);
+    if (sheet === "detail") {
+      await page.locator("main button", { hasText: "House rent" }).first().click();
+    } else {
+      await page.getByRole("button", { name: /Add Recurring Bill/ }).click();
+    }
+    await page.waitForTimeout(400);
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    await page.screenshot({ path: `shots/${name}-${mode}.png` });
+    console.log(`${name} ${mode}: overflow=${overflow}px`);
     await page.close();
   }
 }

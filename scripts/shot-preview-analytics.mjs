@@ -64,13 +64,15 @@ for (const width of [1280, 390]) {
   await page.close();
 }
 
-// Section-tab states (390 light): click each tab, verify the layout stays
-// overflow-clean and capture the filtered sheet.
-for (const pick of ["Overview", "Categories", "Habits"]) {
+// Section-dropdown states (390 light): open the section select, pick each
+// option, verify the layout stays overflow-clean and capture the view.
+for (const pick of ["Overview", "Categories", "Habits", "All"]) {
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
   await page.goto(`${BASE}/preview-analytics`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1500);
-  await page.getByRole("button", { name: pick, exact: true }).first().click();
+  // second listbox trigger = the section-focus dropdown
+  await page.locator('button[aria-haspopup="listbox"]').nth(1).click();
+  await page.getByRole("option", { name: pick, exact: true }).click();
   await page.waitForTimeout(500);
   const overflow = await page.evaluate(() => {
     const el = document.documentElement;
@@ -81,13 +83,14 @@ for (const pick of ["Overview", "Categories", "Habits"]) {
   await page.close();
 }
 
-// Custom-period state (390 light): click the Custom chip, verify the inline
-// date inputs appear without overflow.
+// Custom-period state (390 light): pick Custom in the period dropdown — the
+// range calendar should open overflow-free.
 {
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
   await page.goto(`${BASE}/preview-analytics`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1500);
-  await page.getByRole("button", { name: "Custom", exact: true }).first().click();
+  await page.locator('button[aria-haspopup="listbox"]').nth(0).click(); // period dropdown
+  await page.getByRole("option", { name: "Custom", exact: true }).click();
   await page.waitForTimeout(400);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   await page.screenshot({ path: `shots/analytics-period-custom-390.png` });
