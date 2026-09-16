@@ -62,6 +62,7 @@ import { isAllowedAvatarUrl } from "@/services/auth";
 import { formatMoney, formatShortDate, toISODate, todayISO } from "@/utils/format";
 import { notifyExpensesChanged, useCategories } from "@/hooks/useExpenses";
 import { useRowConverter, type ConvertibleRow } from "@/hooks/useRates";
+import { CurrencyBreakdown, type CurrencyPart } from "@/components/ui/CurrencyBreakdown";
 import { CURRENCIES, CURRENCY_DETAILS, PAYMENT_METHODS, type CurrencyCode, type PaymentMethod } from "@/constants/app";
 import type { TranslationKey } from "@/constants/i18n/dictionaries";
 import {
@@ -296,6 +297,29 @@ export function RecurringRegister({
     }
     return total;
   }, [rules, toDisplay]);
+
+  // Currency-consistency: raw per-currency parts under the blended total
+  // (same mini-ledger card as Overview/History/P&L).
+  const planParts = useMemo<CurrencyPart[]>(() => {
+    const by = new Map<string, { raw: number; converted: number }>();
+    for (const rule of rules) {
+      if (!rule.is_active) continue;
+      const c = String(rule.currency || preferredCurrency).toUpperCase();
+      const amt = Number(rule.amount) || 0;
+      const p = by.get(c) ?? { raw: 0, converted: 0 };
+      p.raw += amt;
+      p.converted += toDisplay(amt, rule.currency).value;
+      by.set(c, p);
+    }
+    return [...by.entries()]
+      .sort((a, b) => b[1].converted - a[1].converted)
+      .map(([currency, p]) => ({
+        currency,
+        rawText: money(p.raw, currency),
+        convertedText:
+          currency === String(preferredCurrency).toUpperCase() ? undefined : money(p.converted),
+      }));
+  }, [rules, preferredCurrency, toDisplay, money]);
 
   const activeRules = rules.filter((r) => r.is_active);
   const activeCount = activeRules.length;
@@ -587,6 +611,7 @@ export function RecurringRegister({
             )}
           </p>
         </div>
+        <CurrencyBreakdown parts={planParts} className="mt-2.5" />
       </section>
 
       {/* ── 3. GROUPED SUBSCRIPTIONS ── */}

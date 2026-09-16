@@ -1296,11 +1296,7 @@ function StockChartCard({
         </span>
         <span className="numeric shrink-0 text-sm font-extrabold text-income">{money(totalIncome)}</span>
       </div>
-      {incomeParts && incomeParts.length > 1 && (
-        <div className="pr-1">
-          <CurrencyBreakdown parts={incomeParts} />
-        </div>
-      )}
+      <CurrencyBreakdown parts={incomeParts ?? []} />
       <div className="flex items-center justify-between gap-2">
         <span className="flex min-w-0 items-center gap-2">
           <TrendingDown size={15} className="shrink-0 text-danger" aria-hidden />
@@ -1308,11 +1304,7 @@ function StockChartCard({
         </span>
         <span className="numeric shrink-0 text-sm font-extrabold text-danger">{money(totalExpense)}</span>
       </div>
-      {expenseParts && expenseParts.length > 1 && (
-        <div className="pr-1">
-          <CurrencyBreakdown parts={expenseParts} />
-        </div>
-      )}
+      <CurrencyBreakdown parts={expenseParts ?? []} />
       {todayLine}
       <div className="h-px bg-border" aria-hidden />
       <div className="flex items-center justify-between gap-2">

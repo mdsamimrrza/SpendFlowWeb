@@ -1216,16 +1216,8 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
                           })}
                 </p>
               </div>
-              {kpiModal === "total" && spentCurrencyParts.length > 1 && (
-                <div
-                  className="space-y-1.5 rounded-xl border border-border p-3"
-                  style={{ backgroundColor: "var(--sf-surface-elevated)" }}
-                >
-                  <p className="text-xs font-extrabold uppercase tracking-[0.5px] text-primary">
-                    {t("curBreakdownAria")}
-                  </p>
-                  <CurrencyBreakdown parts={spentCurrencyParts} />
-                </div>
+              {kpiModal === "total" && (
+                <CurrencyBreakdown label={t("curBreakdownAria")} parts={spentCurrencyParts} />
               )}
               {kpiModal === "total" && spentTodayRate != null && Math.abs(spentTodayRate - stats.spent) >= 0.01 && (
                 <p className="text-[11px] leading-4 text-faint">
