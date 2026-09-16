@@ -262,7 +262,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       </header>
 
       {/* ===== Content ===== */}
-      <main className="mx-auto w-full max-w-[1400px] px-4 pb-36 pt-6 sm:px-6 md:pb-10">
+      <main className="mx-auto w-full max-w-[1400px] px-4 pb-36 pt-3 sm:px-6 sm:pt-6 md:pb-10">
         {children}
       </main>
 

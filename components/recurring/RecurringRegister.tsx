@@ -580,7 +580,8 @@ export function RecurringRegister({
           </h1>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <ThemeToggle className="p-2" />
+          {/* Mobile shows the shell's global toggle (user request 2026-09-16). */}
+          <ThemeToggle className="hidden p-2 sm:grid" />
           {profile?.avatar_url && isAllowedAvatarUrl(profile.avatar_url) ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={profile.avatar_url} alt="" className="h-[38px] w-[38px] rounded-full object-cover" />

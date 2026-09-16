@@ -874,7 +874,8 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <PrivacyEyeButton />
-            <ThemeToggle />
+            {/* Mobile shows the shell's global toggle (user request 2026-09-16). */}
+            <ThemeToggle className="hidden p-2 sm:grid" />
           </div>
         </header>
 

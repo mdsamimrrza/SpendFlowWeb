@@ -370,7 +370,9 @@ export function HistoryRegister({
             {totalCount} {t("entriesLabel")}
           </span>
           <PrivacyEyeButton />
-          <ThemeToggle />
+          {/* Mobile shows the shell's global toggle — hide this page-level one
+              there only (user request 2026-09-16); desktop keeps the APK header. */}
+          <ThemeToggle className="hidden p-2 sm:grid" />
         </div>
       </header>
 
