@@ -834,7 +834,7 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
 
   if (loading) {
     return (
-      <main className="mx-auto w-full max-w-[720px] px-4 py-6 sm:px-6">
+      <main className="mx-auto w-full max-w-[1200px] px-4 py-6 sm:px-6">
         <Skeleton className="mb-6 h-9 w-56" />
         <Skeleton className="h-40 w-full" />
         <Skeleton className="mt-4 h-28 w-full" />
@@ -846,7 +846,7 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
   const chartColor = flowType === "income" ? "var(--sf-income)" : "var(--sf-primary)";
 
   return (
-    <main className="mx-auto w-full max-w-[720px] px-4 pb-28 pt-4 sm:px-6 xl:max-w-[1200px]">
+    <main className="mx-auto w-full max-w-[1200px] px-4 pb-28 pt-4 sm:px-6">
       <div className="space-y-4">
         {/* ── 1. TOP APP BAR ── */}
         <header className="flex items-center justify-between gap-3">
