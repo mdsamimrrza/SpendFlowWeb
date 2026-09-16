@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { ArrowDownRight, ArrowUpRight, Flame, Plus, Wallet } from "lucide-react";
 import { FitText } from "@/components/ui/FitText";
 import { ProgressRing } from "@/components/charts/ProgressRing";
@@ -28,6 +29,8 @@ interface MoneyPulseHeroProps {
   delta?: { text: string; positive: boolean } | null;
   /** Entries in the current cycle. */
   entries?: number;
+  /** Optional footer band inside the card (currency breakdown / today's-rate). */
+  footer?: ReactNode;
 }
 
 /**
@@ -47,6 +50,7 @@ export function MoneyPulseHero({
   cycleLabel,
   delta = null,
   entries,
+  footer,
 }: MoneyPulseHeroProps) {
   const { t } = useLanguage();
   const totalFlow = income + expense;
@@ -247,6 +251,8 @@ export function MoneyPulseHero({
             <span className="numeric">{outflowPct}%</span>
           </div>
         </div>
+
+        {footer && <div className="mt-3 space-y-2">{footer}</div>}
       </div>
     </section>
   );

@@ -387,16 +387,15 @@ export function HistoryRegister({
           setPage(0);
         }}
       />
-      <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 px-1">
+      <div className="mt-2 space-y-2 px-1">
         <CurrencyBreakdown label={t("expense")} parts={spentParts} />
         <CurrencyBreakdown label={t("income")} parts={incomeParts} />
+        <TodayRateLine
+          frozen={{ income: summary.inflow, expense: summary.outflow }}
+          today={historyTodayTotals}
+          fmt={fmt}
+        />
       </div>
-      <TodayRateLine
-        frozen={{ income: summary.inflow, expense: summary.outflow }}
-        today={historyTodayTotals}
-        fmt={fmt}
-        className="mt-1 px-1"
-      />
 
       {/* ── Control bar ── */}
       <div className="panel mt-4 overflow-hidden" ref={panelRef}>

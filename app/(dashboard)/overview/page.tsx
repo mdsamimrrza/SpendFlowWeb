@@ -429,17 +429,18 @@ export default function HomePage() {
           cycleLabel={cycleLabel}
           delta={prevDelta}
           entries={stats.entriesInCycle}
+          footer={
+            <>
+              <CurrencyBreakdown label={t("expense")} parts={spentParts} />
+              <CurrencyBreakdown label={t("income")} parts={incomeParts} />
+              <TodayRateLine
+                frozen={{ income: stats.income, expense: stats.spent }}
+                today={todayTotals}
+                fmt={fmt}
+              />
+            </>
+          }
         />
-        <div className="mt-1.5 flex flex-col gap-1">
-          <CurrencyBreakdown label={t("expense")} parts={spentParts} className="px-1" />
-          <CurrencyBreakdown label={t("income")} parts={incomeParts} className="px-1" />
-          <TodayRateLine
-            frozen={{ income: stats.income, expense: stats.spent }}
-            today={todayTotals}
-            fmt={fmt}
-            className="px-1"
-          />
-        </div>
       </div>
 
       {/* Tier 1.5 — quick stats */}

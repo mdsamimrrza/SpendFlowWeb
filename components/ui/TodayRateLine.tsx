@@ -2,12 +2,12 @@
 
 /**
  * "At today's rate" second view (user request 2026-09-16 — brokerage
- * cost-basis/market-value pattern): period totals stay HEADLINE-FROZEN at
- * each day's rate (QuickBooks/Xero behavior); this optional line shows what
- * the SAME money is worth at today's live cross, and hides itself when the
- * two agree (nothing to explain) or while today's rates are unresolved.
- * Callers pass masked formatters so privacy mode applies exactly like every
- * other figure.
+ * cost-basis/market-value pattern; restyled same day to match the
+ * CurrencyBreakdown mini-ledger card): period totals stay HEADLINE-FROZEN at
+ * each day's rate (QuickBooks/Xero behavior); this optional card shows what
+ * the SAME money is worth at today's live cross. It hides itself when the two
+ * agree (nothing to explain) or while today's rates are unresolved. Callers
+ * pass masked formatters so privacy mode applies like every other figure.
  */
 import { useLanguage } from "@/store/LanguageContext";
 
@@ -28,17 +28,28 @@ export function TodayRateLine({
   if (drift < 0.01) return null;
   return (
     <div
-      className={`flex flex-wrap items-center gap-x-1.5 text-[11px] leading-4 text-faint ${className}`}
+      className={`rounded-xl border border-border/70 bg-surface/80 px-3 py-2.5 ${className}`}
       aria-label={t("curAtTodayRate")}
     >
-      <span className="text-[10px] font-bold uppercase tracking-[0.08em]">{t("curAtTodayRate")}</span>
-      <span className="figures whitespace-nowrap">
-        {t("income")} {fmt(today.income)}
-      </span>
-      <span aria-hidden>·</span>
-      <span className="figures whitespace-nowrap">
-        {t("expense")} {fmt(today.expense)}
-      </span>
+      <p className="mb-1.5 text-[9px] font-bold uppercase tracking-[0.14em] text-faint">
+        {t("curAtTodayRate")}
+      </p>
+      <div className="space-y-1 text-[11.5px] leading-4">
+        <div className="flex items-center justify-between gap-2">
+          <span className="flex min-w-0 items-center gap-1.5 text-text-muted">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-income" aria-hidden />
+            {t("income")}
+          </span>
+          <span className="figures shrink-0 font-bold text-text">{fmt(today.income)}</span>
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <span className="flex min-w-0 items-center gap-1.5 text-text-muted">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-danger" aria-hidden />
+            {t("expense")}
+          </span>
+          <span className="figures shrink-0 font-bold text-text">{fmt(today.expense)}</span>
+        </div>
+      </div>
     </div>
   );
 }
