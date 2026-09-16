@@ -120,17 +120,39 @@ export function clearLocalCaches() {
  * project's Supabase host. Anything else (arbitrary third-party URL =
  * tracking-pixel sink, non-http scheme) is rejected at write time; the mobile
  * client stores exactly this shape, so parity holds.
+ *
+ * `storage.getPublicUrl()` returns the canonical `/storage/v1/object/public/
+ * avatars/...` shape; the shorter `/object/public/avatars/...` CDN alias is
+ * also written by some tooling, so accept both prefixes. (startsWith on just
+ * the short form silently rejected every real upload → avatars never rendered.)
+ *
+ * Google OAuth profile photos (lh3–lh6.googleusercontent.com) are also allowed:
+ * a Google-signup user who never uploaded an avatar has the raw photo URL in
+ * `users.avatar_url` (the /auth/callback mirror only runs for web signups), and
+ * the mobile client renders it directly — rejecting it here broke parity.
  */
+const AVATAR_PATH_PREFIXES = [
+  "/storage/v1/object/public/avatars/",
+  "/object/public/avatars/",
+];
+const GOOGLE_PHOTO_HOSTS = new Set([
+  "lh3.googleusercontent.com",
+  "lh4.googleusercontent.com",
+  "lh5.googleusercontent.com",
+  "lh6.googleusercontent.com",
+]);
+
 export function isAllowedAvatarUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
+    if (parsed.protocol !== "https:") return false;
+    if (GOOGLE_PHOTO_HOSTS.has(parsed.hostname)) return true;
     const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const projectHost = projectUrl ? new URL(projectUrl).hostname : null;
     return (
-      parsed.protocol === "https:" &&
       !!projectHost &&
       parsed.hostname === projectHost &&
-      parsed.pathname.startsWith("/object/public/avatars/")
+      AVATAR_PATH_PREFIXES.some((p) => parsed.pathname.startsWith(p))
     );
   } catch {
     return false;

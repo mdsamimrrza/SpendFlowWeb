@@ -25,7 +25,9 @@ const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' data: blob: https://${supabaseHost}${isDev ? " http://localhost:3000 http://127.0.0.1:3000" : ""}`,
+  // Google OAuth profile photos (lh3–lh6) are a documented avatar_url shape —
+  // see isAllowedAvatarUrl in services/auth.ts for the render-side allowlist.
+  `img-src 'self' data: blob: https://${supabaseHost} https://lh3.googleusercontent.com https://lh4.googleusercontent.com https://lh5.googleusercontent.com https://lh6.googleusercontent.com${isDev ? " http://localhost:3000 http://127.0.0.1:3000" : ""}`,
   // FX feeds: api.frankfurter.dev (ECB, replaces the retired .app host) and
   // open.er-api.com (secondary). CSP applies after redirects, so the old
   // .app entry silently blocked every browser fetch → stale rates leaked.
@@ -63,6 +65,10 @@ const nextConfig: NextConfig = {
   distDir:
     process.env.NEXT_DIST_DIR ??
     (process.env.NODE_ENV === "development" ? ".next-dev" : ".next"),
+  // Next dev rejects cross-origin requests to /_next resources unless the host
+  // is allowlisted — without this, an ngrok tunnel renders the page unstyled
+  // (403 on CSS/JS chunks). Wildcard keeps it working across tunnel restarts.
+  allowedDevOrigins: ["*.ngrok-free.dev", "*.ngrok.app"],
   images: {
     remotePatterns: [
       // Only the project's own Supabase host (avatars/receipts live there).
