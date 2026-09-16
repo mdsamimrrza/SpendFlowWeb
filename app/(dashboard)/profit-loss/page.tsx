@@ -12,7 +12,7 @@
  * paycheck cycles from the settings trail once customised, and the chart
  * replaces ONLY the month an explicit custom cycle falls in.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
@@ -45,6 +45,7 @@ import { getRateSnapshot } from "@/services/exchange";
 import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
 import { formatMoney, currencyTotals, getCycleWindow, toISODate, todayISO } from "@/utils/format";
 import { CurrencyBreakdown, type CurrencyPart } from "@/components/ui/CurrencyBreakdown";
+import { TodayRateLine } from "@/components/ui/TodayRateLine";
 import type { TranslationKey } from "@/constants/i18n/dictionaries";
 
 interface MonthRow {
@@ -89,7 +90,7 @@ export default function ProfitLossPage() {
 
   const currency = profile?.preferred_currency ?? "NPR";
   const [rows, setRows] = useState<Awaited<ReturnType<typeof listExpenses>>["rows"]>([]);
-  const { convert } = useRowConverter(profile?.preferred_currency, rows);
+  const { convert, convertToday } = useRowConverter(profile?.preferred_currency, rows);
   const [loading, setLoading] = useState(true);
   const [settingsHistory, setSettingsHistory] = useState<Awaited<ReturnType<typeof listSettingsHistory>>>([]);
 
@@ -558,6 +559,18 @@ export default function ProfitLossPage() {
     }));
   const expenseParts = useMemo(() => toParts(itemsInRange.filter((r) => r.type !== "income")), [itemsInRange, convert]);
   const incomeParts = useMemo(() => toParts(itemsInRange.filter((r) => r.type === "income")), [itemsInRange, convert]);
+  // "At today's rate" counterpart of the period totals (self-hiding line).
+  const plTodayTotals = useMemo(() => {
+    let inc = 0;
+    let exp = 0;
+    for (const r of itemsInRange) {
+      const v = convertToday(r);
+      if (v == null) return null;
+      if (r.type === "income") inc += v;
+      else exp += v;
+    }
+    return { income: inc, expense: exp };
+  }, [itemsInRange, convertToday]);
 
   // ── Cycle window change — always confirmed first (warning dialog states
   // exactly what changes and what stays untouched) ──
@@ -732,6 +745,7 @@ export default function ProfitLossPage() {
         money={money}
         expenseParts={expenseParts}
         incomeParts={incomeParts}
+        todayLine={<TodayRateLine frozen={{ income: totalIncome, expense: totalExpense }} today={plTodayTotals} fmt={money} />}
         t={t}
       />
 
@@ -1024,6 +1038,7 @@ function StockChartCard({
   money,
   expenseParts,
   incomeParts,
+  todayLine,
   t,
 }: {
   rows: MonthRow[];
@@ -1039,6 +1054,7 @@ function StockChartCard({
   money: (n: number) => string;
   expenseParts?: CurrencyPart[];
   incomeParts?: CurrencyPart[];
+  todayLine?: ReactNode;
   t: T;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -1297,6 +1313,7 @@ function StockChartCard({
           <CurrencyBreakdown parts={expenseParts} />
         </div>
       )}
+      {todayLine}
       <div className="h-px bg-border" aria-hidden />
       <div className="flex items-center justify-between gap-2">
         <span className="text-[13.5px] font-extrabold text-text">{isProfit ? t("pl_profit") : t("pl_loss")}</span>

@@ -45,6 +45,7 @@ import {
   isValidISODate,
 } from "@/utils/format";
 import { CurrencyBreakdown, type CurrencyPart } from "@/components/ui/CurrencyBreakdown";
+import { TodayRateLine } from "@/components/ui/TodayRateLine";
 import type { ExpenseFilters, ExpenseRow, ExpenseSort } from "@/services/expenses";
 
 type FlowFilter = "all" | "expense" | "income";
@@ -183,7 +184,7 @@ export function HistoryRegister({
   // Full filtered dataset (server-side filters, 5000 cap): totals, grouping
   // and paging must cover every matching entry, not just a page slice.
   const [rows, setRows] = useState<ExpenseRow[]>([]);
-  const { convert } = useRowConverter(profile?.preferred_currency, rows);
+  const { convert, convertToday } = useRowConverter(profile?.preferred_currency, rows);
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -264,6 +265,20 @@ export function HistoryRegister({
     }
     return { outflow, inflow, peak, peakLabel, net: inflow - outflow };
   }, [rows, convert]);
+
+  // "At today's rate" counterpart of the filtered totals (TodayRateLine hides
+  // it when identical or while today's cross is unresolved).
+  const historyTodayTotals = useMemo(() => {
+    let inc = 0;
+    let exp = 0;
+    for (const r of rows) {
+      const v = convertToday(r);
+      if (v == null) return null;
+      if (r.type === "income") inc += v;
+      else exp += v;
+    }
+    return { income: inc, expense: exp };
+  }, [rows, convertToday]);
 
   // Mobile base: progressive paging. Desktop table: classic paging.
   const pageRows = useMemo(() => rows.slice(page * PAGE, page * PAGE + PAGE), [rows, page]);
@@ -376,6 +391,12 @@ export function HistoryRegister({
         <CurrencyBreakdown label={t("expense")} parts={spentParts} />
         <CurrencyBreakdown label={t("income")} parts={incomeParts} />
       </div>
+      <TodayRateLine
+        frozen={{ income: summary.inflow, expense: summary.outflow }}
+        today={historyTodayTotals}
+        fmt={fmt}
+        className="mt-1 px-1"
+      />
 
       {/* ── Control bar ── */}
       <div className="panel mt-4 overflow-hidden" ref={panelRef}>

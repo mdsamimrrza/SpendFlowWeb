@@ -75,6 +75,7 @@ export const en = {
   // analytics statement — deep detail (KPI explainers, comparison, composition)
   analyticsKpiHow: "How it is calculated",
   curBreakdownAria: "Amounts by currency",
+  curAtTodayRate: "At today's rate",
   settingsCurrencyNote:
     "Totals are shown in this currency; amounts in other currencies are converted at each day's rate and their original figures stay visible.",
   analyticsKpiOutflowTitle: "Total Outflow",
@@ -1297,6 +1298,7 @@ export const hi: Partial<Record<TranslationKey, string>> = {
   settings: "सेटिंग्स",
   analyticsKpiHow: "गणना कैसे होती है",
   curBreakdownAria: "मुद्रा अनुसार राशि",
+  curAtTodayRate: "आज की दर पर",
   settingsCurrencyNote:
     "कुल इसी मुद्रा में दिखाई जाएगा; अन्य मुद्राओं की रकम उसी दिन की दर से बदली जाएगी और उनकी असली रकम भी दिखती रहेगी।",
   analyticsKpiOutflowTitle: "कुल बहिर्वाह",
@@ -2504,6 +2506,7 @@ export const ne: Partial<Record<TranslationKey, string>> = {
   settings: "सेटिङ",
   analyticsKpiHow: "गणना कसरी हुन्छ",
   curBreakdownAria: "मुद्राअनुसार रकमहरू",
+  curAtTodayRate: "आजको दरमा",
   settingsCurrencyNote:
     "कुल यही मुद्रामा देखाइनेछ; अन्य मुद्राका रकम सोही दिनको दरमा रूपान्तरण हुनेछन् र तिनीहरूको वास्तविक रकम पनि देखिइरहनेछ।",
   analyticsKpiOutflowTitle: "कुल बहिर्गमन",

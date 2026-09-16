@@ -171,7 +171,7 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
   // rows feed the converter so NPR dates resolve via their INR rate (peg parity).
   const [fetchedRows, setRows] = useState<Awaited<ReturnType<typeof listExpenses>>["rows"]>(inject?.rows ?? []);
   const rows = inject ? inject.rows : fetchedRows;
-  const { convert } = useRowConverter(profile?.preferred_currency, rows);
+  const { convert, convertToday } = useRowConverter(profile?.preferred_currency, rows);
   const authBudget = useBudget();
   const budget = inject ? (inject.budget ?? null) : authBudget;
   const supabase = getSupabaseBrowserClient();
@@ -317,6 +317,18 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
       })),
     [periodRows, convert, locale, mask, fmt, displayCurrency],
   );
+  // "At today's rate" counterpart for the Total-spending explainer (the
+  // holdings view beside the frozen headline — brokerage cost/market pattern).
+  const spentTodayRate = useMemo(() => {
+    let sum = 0;
+    for (const r of periodRows) {
+      if (r.type === "income") continue;
+      const v = convertToday(r);
+      if (v == null) return null;
+      sum += v;
+    }
+    return sum;
+  }, [periodRows, convertToday]);
 
   // Window aggregate builder — called twice: once for the selected period
   // (KPIs/composition) and once for the cycle (burn analysis + budget
@@ -1214,6 +1226,12 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
                   </p>
                   <CurrencyBreakdown parts={spentCurrencyParts} />
                 </div>
+              )}
+              {kpiModal === "total" && spentTodayRate != null && Math.abs(spentTodayRate - stats.spent) >= 0.01 && (
+                <p className="text-[11px] leading-4 text-faint">
+                  {t("curAtTodayRate")}:{" "}
+                  <span className="figures text-text-muted">{fmt(spentTodayRate)}</span>
+                </p>
               )}
               {kpiModal === "velocity" && (
                 <div className="rounded-lg p-2.5" style={{ backgroundColor: "var(--sf-tint-sky-soft)" }}>

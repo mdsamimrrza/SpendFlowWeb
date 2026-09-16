@@ -5,7 +5,7 @@ import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
 import { getRate } from "@/services/exchange";
 import { useAuth } from "@/store/AuthContext";
 import { useEffect as useReactEffect } from "react";
-import { quantizeMoney } from "@/utils/format";
+import { quantizeMoney, todayISO } from "@/utils/format";
 
 /**
  * Display-currency rate (USD per unit, today — freshness-gated by getRate).
@@ -127,9 +127,11 @@ export function useRowConverter(
   const { user } = useAuth();
   const supabase = getSupabaseBrowserClient();
   const [ratesByPair, setRatesByPair] = useState<Map<string, number>>(new Map());
+  const todayKey = todayISO();
 
   // `${currency}:${date}` pairs for every foreign row + the display currency
   // at the same dates (a past month must price BOTH sides of the cross there).
+  // The TODAY pair feeds convertToday() — the "at today's rate" holdings view.
   const pairKeys = useMemo(() => {
     if (!rows || !displayCurrency || !user) return "";
     const keys = new Set<string>();
@@ -137,9 +139,11 @@ export function useRowConverter(
       if (r.currency === displayCurrency) continue;
       keys.add(`${r.currency}:${r.date}`);
       keys.add(`${displayCurrency}:${r.date}`);
+      keys.add(`${r.currency}:${todayKey}`);
     }
+    keys.add(`${displayCurrency}:${todayKey}`);
     return Array.from(keys).sort().join("|");
-  }, [rows, displayCurrency, user]);
+  }, [rows, displayCurrency, user, todayKey]);
 
   useEffect(() => {
     if (!pairKeys) return;
@@ -186,7 +190,18 @@ export function useRowConverter(
           ? quantizeMoney((row.amount * from) / to, displayCurrency)
           : row.amount; // rate not resolved yet — show raw rather than wrong
       },
+      // "At today's rate" counterpart (brokerage market-value pattern): same
+      // amount priced through TODAY's live cross, both sides. Returns null
+      // while rates are unresolved so callers can hide the line entirely
+      // instead of showing a wrong "today" figure.
+      convertToday: (row: ConvertibleRow): number | null => {
+        if (!displayCurrency || row.currency === displayCurrency) return row.amount;
+        const from = ratesByPair.get(`${row.currency}:${todayKey}`);
+        const to = ratesByPair.get(`${displayCurrency}:${todayKey}`);
+        return from && to ? quantizeMoney((row.amount * from) / to, displayCurrency) : null;
+      },
     }),
-    [displayCurrency, displayRate, ratesByPair],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [displayCurrency, displayRate, ratesByPair, todayKey],
   );
 }

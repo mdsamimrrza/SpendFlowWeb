@@ -37,6 +37,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { CurrencyFlag } from "@/components/ui/CurrencyFlag";
 import { CurrencyBreakdown, type CurrencyPart } from "@/components/ui/CurrencyBreakdown";
+import { TodayRateLine } from "@/components/ui/TodayRateLine";
 import {
   formatMoney,
   currencyTotals,
@@ -69,7 +70,7 @@ export default function HomePage() {
   const [rows, setRows] = useState<Awaited<ReturnType<typeof listExpenses>>["rows"]>([]);
   const [selected, setSelected] = useState<ExpenseRow | null>(null);
   const [loading, setLoading] = useState(true);
-  const { convert } = useRowConverter(profile?.preferred_currency, rows);
+  const { convert, convertToday } = useRowConverter(profile?.preferred_currency, rows);
   const { categories } = useCategories(user?.id);
   const supabase = getSupabaseBrowserClient();
 
@@ -179,6 +180,23 @@ export default function HomePage() {
     }));
   const spentParts = useMemo(() => toParts(stats.spentRows), [stats.spentRows, convert, locale, mask, fmt, displayCurrency]);
   const incomeParts = useMemo(() => toParts(stats.incomeRows), [stats.incomeRows, convert, locale, mask, fmt, displayCurrency]);
+  // "At today's rate" counterpart of the hero totals (hidden when identical
+  // or while today's cross is unresolved — see TodayRateLine).
+  const todayTotals = useMemo(() => {
+    let inc = 0;
+    let exp = 0;
+    for (const r of stats.incomeRows) {
+      const v = convertToday(r);
+      if (v == null) return null;
+      inc += v;
+    }
+    for (const r of stats.spentRows) {
+      const v = convertToday(r);
+      if (v == null) return null;
+      exp += v;
+    }
+    return { income: inc, expense: exp };
+  }, [stats.incomeRows, stats.spentRows, convertToday]);
 
   const pace = useMemo(() => {
     const daysTotal = cycleDaysTotal(cycle);
@@ -415,6 +433,12 @@ export default function HomePage() {
         <div className="mt-1.5 flex flex-col gap-1">
           <CurrencyBreakdown label={t("expense")} parts={spentParts} className="px-1" />
           <CurrencyBreakdown label={t("income")} parts={incomeParts} className="px-1" />
+          <TodayRateLine
+            frozen={{ income: stats.income, expense: stats.spent }}
+            today={todayTotals}
+            fmt={fmt}
+            className="px-1"
+          />
         </div>
       </div>
 
