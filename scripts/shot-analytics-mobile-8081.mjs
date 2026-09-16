@@ -1,6 +1,6 @@
 /**
  * Mobile full-page screenshots of the analytics statement (:8081)
- * at 390px width, in each theme (light + dark). Uses /preview-analytics —
+ * at 390px width, in each theme (light + dark). Uses /preview/analytics —
  * the real AnalyticsStatement + DashboardShell with mock data — because the
  * live /analytics route needs a signed-in session.
  * Run: node scripts/shot-analytics-mobile-8081.mjs
@@ -19,7 +19,7 @@ for (const mode of ["light", "dark"]) {
     (pref) => localStorage.setItem("spendflow_theme_preference", pref),
     mode,
   );
-  await page.goto(`${BASE}/preview-analytics`, { waitUntil: "networkidle" });
+  await page.goto(`${BASE}/preview/analytics`, { waitUntil: "networkidle" });
   await page.waitForTimeout(2500);
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   await page.waitForTimeout(400);

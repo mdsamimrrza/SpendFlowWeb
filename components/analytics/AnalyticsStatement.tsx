@@ -54,6 +54,8 @@ import { useRowConverter, useBudget } from "@/hooks/useRates";
 import { subscribeToExpenseChanges, useCategories } from "@/hooks/useExpenses";
 import { listExpenses, type ExpenseRow } from "@/services/expenses";
 import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
+import { currencyTotals } from "@/utils/format";
+import { CurrencyBreakdown, type CurrencyPart } from "@/components/ui/CurrencyBreakdown";
 import type { TranslationKey } from "@/constants/i18n/dictionaries";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { CalendarModal } from "@/components/ui/CalendarModal";
@@ -301,6 +303,19 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
   const periodRows = useMemo(
     () => rows.filter((r) => r.date >= periodDays.from && r.date <= periodDays.to),
     [rows, periodDays.from, periodDays.to],
+  );
+
+  // Currency-consistency (user request 2026-09-16): raw per-currency parts
+  // for the period's expense total, shown in the KPI explainer modal.
+  const spentCurrencyParts = useMemo<CurrencyPart[]>(
+    () =>
+      currencyTotals(periodRows.filter((r) => r.type !== "income"), convert).map((p) => ({
+        currency: p.currency,
+        rawText: mask(formatMoney(p.raw, p.currency, locale)),
+        convertedText:
+          p.currency.toUpperCase() === String(displayCurrency).toUpperCase() ? undefined : fmt(p.converted),
+      })),
+    [periodRows, convert, locale, mask, fmt, displayCurrency],
   );
 
   // Window aggregate builder — called twice: once for the selected period
@@ -1189,6 +1204,17 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
                           })}
                 </p>
               </div>
+              {kpiModal === "total" && spentCurrencyParts.length > 1 && (
+                <div
+                  className="space-y-1.5 rounded-xl border border-border p-3"
+                  style={{ backgroundColor: "var(--sf-surface-elevated)" }}
+                >
+                  <p className="text-xs font-extrabold uppercase tracking-[0.5px] text-primary">
+                    {t("curBreakdownAria")}
+                  </p>
+                  <CurrencyBreakdown parts={spentCurrencyParts} />
+                </div>
+              )}
               {kpiModal === "velocity" && (
                 <div className="rounded-lg p-2.5" style={{ backgroundColor: "var(--sf-tint-sky-soft)" }}>
                   <p className="text-[12px] leading-4" style={{ color: "var(--sf-hue-sky-ink)" }}>

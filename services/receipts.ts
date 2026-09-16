@@ -70,10 +70,20 @@ export async function uploadReceipt(
  * Extract the storage object path from whatever is persisted in
  * `receipt_image_url`. Handles legacy full-URL rows and raw paths; returns
  * null for anything unmanageable (mobile parity).
+ *
+ * When `userId` is supplied the path's FIRST SEGMENT must equal it — the
+ * stored column value is owner-settable over the data plane (and second-order
+ * writable by the mobile client), so `..`-stripping is a traversal filter,
+ * not an ownership one. Read/delete callers MUST pass the session uid; the
+ * uid-prefix guarantee exists in uploadReceipt alone.
  */
-export function extractReceiptPath(stored: string | null | undefined): string | null {
+export function extractReceiptPath(
+  stored: string | null | undefined,
+  userId?: string | null,
+): string | null {
   if (!stored) return null;
   if (/^(file|content|data|blob):/i.test(stored)) return null;
+  let path: string | null = null;
   if (/^https?:\/\//i.test(stored)) {
     const marker = "/object/";
     const idx = stored.indexOf(marker);
@@ -81,22 +91,24 @@ export function extractReceiptPath(stored: string | null | undefined): string | 
     const rest = stored.slice(idx + marker.length).replace(/^public\//, "");
     const [bucket, ...segments] = rest.split("/");
     if (bucket !== RECEIPT_BUCKET || segments.length === 0) return null;
-    const path = segments.join("/");
-    return path.includes("..") ? null : path;
+    const candidate = segments.join("/");
+    path = candidate.includes("..") ? null : candidate;
+  } else if (stored.includes("/") && !stored.includes("..") && !stored.startsWith("/")) {
+    path = stored;
   }
-  if (stored.includes("/") && !stored.includes("..") && !stored.startsWith("/")) {
-    return stored;
-  }
-  return null;
+  if (!path) return null;
+  if (userId && path.split("/")[0] !== userId) return null;
+  return path;
 }
 
 /** Resolve the stored value to a displayable URL (signed, 1 h). */
 export async function resolveReceiptUrl(
   supabase: SupabaseClient<Database>,
+  userId: string | null | undefined,
   stored: string | null | undefined,
 ): Promise<string | null> {
-  if (!stored) return null;
-  const path = extractReceiptPath(stored);
+  if (!stored || !userId) return null;
+  const path = extractReceiptPath(stored, userId);
   if (!path) return null;
   try {
     const { data, error } = await supabase.storage
@@ -117,10 +129,11 @@ export async function resolveReceiptUrl(
  */
 export async function resolveReceiptDownloadUrl(
   supabase: SupabaseClient<Database>,
+  userId: string | null | undefined,
   stored: string | null | undefined,
 ): Promise<string | null> {
-  if (!stored) return null;
-  const path = extractReceiptPath(stored);
+  if (!stored || !userId) return null;
+  const path = extractReceiptPath(stored, userId);
   if (!path) return null;
   const filename = path.split("/").pop() ?? "receipt";
   try {
@@ -137,10 +150,11 @@ export async function resolveReceiptDownloadUrl(
 /** Best-effort delete of the stored object (replaced/removed receipts). */
 export async function deleteReceipt(
   supabase: SupabaseClient<Database>,
+  userId: string | null | undefined,
   stored: string | null | undefined,
 ): Promise<void> {
-  const path = extractReceiptPath(stored);
-  if (!path) return;
+  const path = extractReceiptPath(stored, userId);
+  if (!path || !userId) return;
   try {
     await supabase.storage.from(RECEIPT_BUCKET).remove([path]);
   } catch {

@@ -19,17 +19,51 @@ export function formatMoney(
   currency: string,
   locale = "en-US",
 ): string {
+  // Intl.NumberFormat throws RangeError for any `currency` outside the
+  // [A-Za-z]{3} shape. Stored currencies are validated on web writes but the
+  // shared DB (mobile-authored rows, second-order) is lower-trust input here —
+  // a single malformed row must not route a whole screen to the error
+  // boundary. Non-conforming codes render as a plain number + code suffix.
+  const code = (currency || "USD").toUpperCase();
+  if (!/^[A-Z]{3}$/.test(code)) {
+    return `${new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount)} ${code.slice(0, 8)}`;
+  }
   return new Intl.NumberFormat(locale, {
     style: "currency",
-    currency: currency || "USD",
-    minimumFractionDigits: currencyDecimals(currency),
-    maximumFractionDigits: currencyDecimals(currency),
+    currency: code,
+    minimumFractionDigits: currencyDecimals(code),
+    maximumFractionDigits: currencyDecimals(code),
   }).format(amount);
 }
 
 /** Minor-unit digits per currency (0 for the zero-decimal KRW/JPY). */
 export function currencyDecimals(currency: string): number {
   return CURRENCY_DETAILS[currency as CurrencyCode]?.decimals ?? 2;
+}
+
+/**
+ * Currency-consistency grouping (user request 2026-09-16): a totals figure
+ * that spans multiple currencies must show its raw per-currency parts, never
+ * only the converted blend. `converted` uses the caller's own convert() so
+ * the parts sum EXACTLY to the screen's headline (same per-row own-date basis,
+ * quantization included). Returns parts sorted by converted magnitude desc;
+ * a length of 0/1 means nothing needs explaining (single currency).
+ */
+export function currencyTotals<T extends { currency: string; amount: number }>(
+  rows: readonly T[],
+  convert: (row: T) => number,
+): { currency: string; raw: number; converted: number }[] {
+  const by = new Map<string, { raw: number; converted: number }>();
+  for (const r of rows) {
+    const c = String(r.currency ?? "").toUpperCase() || "?";
+    const p = by.get(c) ?? { raw: 0, converted: 0 };
+    p.raw += Number(r.amount) || 0;
+    p.converted += convert(r);
+    by.set(c, p);
+  }
+  return [...by.entries()]
+    .map(([currency, p]) => ({ currency, ...p }))
+    .sort((a, b) => b.converted - a.converted);
 }
 
 /**

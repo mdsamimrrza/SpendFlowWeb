@@ -43,7 +43,8 @@ import { listSettingsHistory } from "@/services/settingsHistory";
 import { resetAlertHistory } from "@/services/alerts";
 import { getRateSnapshot } from "@/services/exchange";
 import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
-import { formatMoney, getCycleWindow, toISODate, todayISO } from "@/utils/format";
+import { formatMoney, currencyTotals, getCycleWindow, toISODate, todayISO } from "@/utils/format";
+import { CurrencyBreakdown, type CurrencyPart } from "@/components/ui/CurrencyBreakdown";
 import type { TranslationKey } from "@/constants/i18n/dictionaries";
 
 interface MonthRow {
@@ -547,6 +548,17 @@ export default function ProfitLossPage() {
 
   const money = (n: number) => mask(formatMoney(n, currency, locale));
 
+  // Currency-consistency (user request 2026-09-16): raw per-currency parts
+  // behind the blended period totals (masked like every other figure here).
+  const toParts = (subset: typeof itemsInRange): CurrencyPart[] =>
+    currencyTotals(subset, convert).map((p) => ({
+      currency: p.currency,
+      rawText: mask(formatMoney(p.raw, p.currency, locale)),
+      convertedText: p.currency.toUpperCase() === currency.toUpperCase() ? undefined : money(p.converted),
+    }));
+  const expenseParts = useMemo(() => toParts(itemsInRange.filter((r) => r.type !== "income")), [itemsInRange, convert]);
+  const incomeParts = useMemo(() => toParts(itemsInRange.filter((r) => r.type === "income")), [itemsInRange, convert]);
+
   // ── Cycle window change — always confirmed first (warning dialog states
   // exactly what changes and what stays untouched) ──
   const [pendingCycle, setPendingCycle] = useState<{ start: number; end: number | null } | null>(null);
@@ -718,6 +730,8 @@ export default function ProfitLossPage() {
         isProfit={isProfit}
         overallSavingsRate={overallSavingsRate}
         money={money}
+        expenseParts={expenseParts}
+        incomeParts={incomeParts}
         t={t}
       />
 
@@ -1008,6 +1022,8 @@ function StockChartCard({
   isProfit,
   overallSavingsRate,
   money,
+  expenseParts,
+  incomeParts,
   t,
 }: {
   rows: MonthRow[];
@@ -1021,6 +1037,8 @@ function StockChartCard({
   isProfit: boolean;
   overallSavingsRate: number;
   money: (n: number) => string;
+  expenseParts?: CurrencyPart[];
+  incomeParts?: CurrencyPart[];
   t: T;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -1262,6 +1280,11 @@ function StockChartCard({
         </span>
         <span className="numeric shrink-0 text-sm font-extrabold text-income">{money(totalIncome)}</span>
       </div>
+      {incomeParts && incomeParts.length > 1 && (
+        <div className="pr-1">
+          <CurrencyBreakdown parts={incomeParts} />
+        </div>
+      )}
       <div className="flex items-center justify-between gap-2">
         <span className="flex min-w-0 items-center gap-2">
           <TrendingDown size={15} className="shrink-0 text-danger" aria-hidden />
@@ -1269,6 +1292,11 @@ function StockChartCard({
         </span>
         <span className="numeric shrink-0 text-sm font-extrabold text-danger">{money(totalExpense)}</span>
       </div>
+      {expenseParts && expenseParts.length > 1 && (
+        <div className="pr-1">
+          <CurrencyBreakdown parts={expenseParts} />
+        </div>
+      )}
       <div className="h-px bg-border" aria-hidden />
       <div className="flex items-center justify-between gap-2">
         <span className="text-[13.5px] font-extrabold text-text">{isProfit ? t("pl_profit") : t("pl_loss")}</span>

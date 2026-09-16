@@ -48,7 +48,7 @@ import { CURRENCIES, CURRENCY_DETAILS, type CurrencyCode } from "@/constants/app
 import { WIZARD_COUNTRIES } from "@/constants/countries";
 import { listCategories } from "@/services/categories";
 import { resetAlertHistory } from "@/services/alerts";
-import { signOutAllDevices } from "@/services/auth";
+import { signOutAllDevices, isAllowedAvatarUrl } from "@/services/auth";
 import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
 
 /** Country name per currency (mobile chips subtitle parity). */
@@ -195,9 +195,9 @@ export default function SettingsPage() {
         <div className="flex min-w-0 flex-1 items-center gap-3.5">
           <div className="relative shrink-0">
             <div className="grid h-[58px] w-[58px] place-items-center overflow-hidden rounded-full bg-surface-elevated">
-              {profile?.avatar_url ? (
+              {isAllowedAvatarUrl(profile?.avatar_url ?? "") ? (
                 // eslint-disable-next-line @next/next/no-img-element -- external avatar
-                <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
+                <img src={profile?.avatar_url ?? ""} alt="" className="h-full w-full object-cover" />
               ) : (
                 <span className="text-lg font-bold text-text">{initials}</span>
               )}
@@ -371,6 +371,8 @@ export default function SettingsPage() {
             </div>
             <span className="shrink-0 text-[9px] font-bold text-primary">{t("settingsCurrent")}</span>
           </div>
+          {/* Currency-consistency (2026-09-16): explain the display basis up front. */}
+          <p className="mt-2 text-[10.5px] leading-4 text-faint">{t("settingsCurrencyNote")}</p>
 
           {/* 3-column chip grid (mobile flexBasis 31% / maxWidth 36%) */}
           <div className="mt-4 flex flex-wrap gap-1.5">

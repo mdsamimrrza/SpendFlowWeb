@@ -385,7 +385,7 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
         }
         setExistingPath(row.receipt_image_url ?? null);
         if (row.receipt_image_url) {
-          void resolveReceiptUrl(supabase, row.receipt_image_url).then(setExistingUrl);
+          void resolveReceiptUrl(supabase, userId, row.receipt_image_url).then(setExistingUrl);
         }
       }
       setLoadingExisting(false);
@@ -871,7 +871,7 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
         try {
           const path = await uploadReceipt(supabase, userId, receiptFile);
           await setExpenseReceipt(supabase, userId, rowId, path);
-          if (existingPath) await deleteReceipt(supabase, existingPath);
+          if (existingPath) await deleteReceipt(supabase, userId, existingPath);
         } catch (err) {
           showToast(
             err instanceof Error ? `${err.message} — ${t("entrySaved")}` : "Receipt upload failed",
@@ -881,7 +881,7 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
       } else if (removeExisting && existingPath) {
         try {
           await setExpenseReceipt(supabase, userId, rowId, null);
-          await deleteReceipt(supabase, existingPath);
+          await deleteReceipt(supabase, userId, existingPath);
         } catch {
           // path stays; RLS-scoped, harmless
         }

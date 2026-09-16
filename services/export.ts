@@ -5,7 +5,7 @@
  * expo-print/SAF for the browser (Blob download + print window); the file
  * CONTENT mirrors the APK section-for-section and column-for-column.
  */
-import { formatMoney } from "@/utils/format";
+import { formatMoney, currencyTotals } from "@/utils/format";
 import type { ExpenseRow } from "@/services/expenses";
 
 export type ExportExt = "pdf" | "xlsx" | "csv";
@@ -83,7 +83,7 @@ export function csvText(rows: ExpenseRow[], convert: (r: ExpenseRow) => number, 
     `Converted ${displayCurrency}`,
   ];
   const body = rows.map((r) => [
-    r.date,
+    sanitizeSpreadsheetCell(r.date),
     sanitizeSpreadsheetCell(r.type || "expense"),
     sanitizeSpreadsheetCell(r.time || ""),
     String(r.amount),
@@ -96,7 +96,20 @@ export function csvText(rows: ExpenseRow[], convert: (r: ExpenseRow) => number, 
   ]);
   // UTF-8 BOM (APK parity): without it Excel on Windows reads the file in the
   // system ANSI codepage and emoji/glyphs become mojibake.
-  return "\uFEFF" + [header, ...body].map((row) => row.map(quoteCell).join(",")).join("\n");
+  // Currency-consistency (2026-09-16): when the period spans currencies, the
+  // file ends with raw per-currency totals split by direction (the re-import
+  // parser skips these summary lines — their Date column isn't an ISO date).
+  const spentByCcy = currencyTotals(rows.filter((r) => (r.type || "expense") !== "income"), convert);
+  const incomeByCcy = currencyTotals(rows.filter((r) => r.type === "income"), convert);
+  const tail: string[][] = [];
+  if (spentByCcy.length > 1 || incomeByCcy.length > 1) {
+    tail.push(["", "Totals by currency", "", "", "", "", "", "", "", ""]);
+    for (const p of incomeByCcy)
+      tail.push(["", "TOTAL INCOME", "", p.raw.toFixed(2), p.currency, "", "", "", "", p.converted.toFixed(2)]);
+    for (const p of spentByCcy)
+      tail.push(["", "TOTAL SPENT", "", p.raw.toFixed(2), p.currency, "", "", "", "", p.converted.toFixed(2)]);
+  }
+  return "\uFEFF" + [header, ...body, ...tail].map((row) => row.map(quoteCell).join(",")).join("\n");
 }
 
 // ── Excel workbook data (APK exportExcel parity) ─────────────────────────────
@@ -138,7 +151,7 @@ export function excelSheets(
       { value: `Converted ${displayCurrency}` },
     ],
     ...rows.map((r) => [
-      { value: r.date }, { value: sanitizeSpreadsheetCell(r.type || "expense") }, { value: sanitizeSpreadsheetCell(r.time || "") },
+      { value: sanitizeSpreadsheetCell(r.date) }, { value: sanitizeSpreadsheetCell(r.type || "expense") }, { value: sanitizeSpreadsheetCell(r.time || "") },
       { value: Number(r.amount) }, { value: sanitizeSpreadsheetCell(r.currency) },
       { value: sanitizeSpreadsheetCell(r.categories?.name ?? "Other") }, { value: sanitizeSpreadsheetCell(r.payment_method) },
       { value: sanitizeSpreadsheetCell(r.description ?? "") }, { value: sanitizeSpreadsheetCell(r.notes ?? "") },
@@ -150,11 +163,30 @@ export function excelSheets(
   const summary: Cell[][] = [
     [{ value: "Category" }, { value: "Total" }, { value: "Share %" }],
     ...totals.map((t) => [
-      { value: `${categoryEmoji(t.icon)} ${t.label}` },
+      { value: sanitizeSpreadsheetCell(`${categoryEmoji(t.icon)} ${t.label}`) },
       { value: formatMoney(t.total, displayCurrency) },
       { value: `${base > 0 ? Math.round((t.total / base) * 100) : 0}%` },
     ]),
   ];
+  // Currency-consistency: raw per-currency totals, split by direction.
+  const spentByCcy = currencyTotals(rows.filter((r) => (r.type || "expense") !== "income"), convert);
+  const incomeByCcy = currencyTotals(rows.filter((r) => r.type === "income"), convert);
+  if (spentByCcy.length > 1 || incomeByCcy.length > 1) {
+    summary.push([{ value: "" }, { value: "" }, { value: "" }]);
+    summary.push([{ value: "Totals by currency" }, { value: "Amount (raw)" }, { value: `≈ ${displayCurrency}` }]);
+    for (const p of incomeByCcy)
+      summary.push([
+        { value: sanitizeSpreadsheetCell(`TOTAL INCOME ${p.currency}`) },
+        { value: p.raw },
+        { value: Number(p.converted.toFixed(2)) },
+      ]);
+    for (const p of spentByCcy)
+      summary.push([
+        { value: sanitizeSpreadsheetCell(`TOTAL SPENT ${p.currency}`) },
+        { value: p.raw },
+        { value: Number(p.converted.toFixed(2)) },
+      ]);
+  }
   return [ledger, summary];
 }
 
@@ -182,6 +214,20 @@ export function statementHtml(o: StatementPdfOptions): string {
   const { rows, convert, displayCurrency, userName, userEmail, budgetConverted } = o;
   const fmt = (n: number) => formatMoney(n, displayCurrency);
   const esc = escapePdf;
+
+  // Currency-consistency (2026-09-16): the blended outflow also lists its raw
+  // per-currency totals when the period spans currencies (outflow-only, in
+  // keeping with the statement's EXPENSE REPORT header).
+  const spentByCcy = currencyTotals(rows.filter((r) => (r.type || "expense") !== "income"), convert);
+  const currencyLineHtml =
+    spentByCcy.length > 1
+      ? `<div class="section-title">🧮 Amounts by Currency</div><p style="margin:-6px 0 18px;font-size:13px;color:#334155;">${spentByCcy
+          .map((p) => {
+            const sameCcy = p.currency.toUpperCase() === String(displayCurrency).toUpperCase();
+            return `${esc(p.currency)} ${p.raw.toFixed(2)}${sameCcy ? "" : ` (≈ ${esc(String(displayCurrency).toUpperCase())} ${p.converted.toFixed(2)})`}`;
+          })
+          .join(" · ")}</p>`
+      : "";
 
   const now = new Date();
   const generated = now.toLocaleDateString("en-US", {
@@ -368,6 +414,7 @@ export function statementHtml(o: StatementPdfOptions): string {
     <tbody>${transactionRowsHtml || '<tr><td colspan="6" style="text-align:center;color:#94A3B8;">No transactions found in this period</td></tr>'}</tbody>
   </table>
 
+  ${currencyLineHtml}
   <div class="footer-note">
     <div>🔒 Verified by SpendFlow Financial Observability &amp; Security Engine</div>
     <div>Auto-Generated Confidential Report · ${esc(/^[A-Za-z]{3}$/.test(displayCurrency) ? displayCurrency.toUpperCase() : "INR")}</div>

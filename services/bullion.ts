@@ -415,7 +415,8 @@ async function fetchHistoricalUsdPerUnit(
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 10_000);
     const res = await fetch(
-      `https://api.frankfurter.app/${first}..${last}?from=USD&to=${target}`,
+      // api.frankfurter.app is retired (301 shim to .dev/v1); call the live host.
+      `https://api.frankfurter.dev/v1/${first}..${last}?from=USD&to=${target}`,
       { headers: { Accept: "application/json" }, signal: controller.signal },
     );
     clearTimeout(timer);

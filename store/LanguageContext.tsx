@@ -30,7 +30,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY) as LanguageCode | null;
-    if (stored && stored in DICTIONARIES) setLanguageState(stored);
+    if (stored && Object.hasOwn(DICTIONARIES, stored)) setLanguageState(stored);
   }, []);
 
   const setLanguage = useCallback((l: LanguageCode) => {

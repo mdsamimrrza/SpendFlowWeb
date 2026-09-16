@@ -240,13 +240,22 @@ export default function ProfilePage() {
         type: "email",
       });
       if (error) throw error;
-      const { error: upError } = await supabase.auth.updateUser({ email: newEmail.trim() });
+      const { data: updated, error: upError } = await supabase.auth.updateUser({
+        email: newEmail.trim(),
+      });
       if (upError) throw upError;
-      await saveProfile({ email: newEmail.trim() });
+      // Audit NV-7: GoTrue may hold the change until the NEW address confirms
+      // (two-sided flow — emails/change-email.html). Mirror to the users row
+      // ONLY when the server actually applied the address; the pending case
+      // keeps the profile on the old (still-authoritative) email, and the
+      // next confirmed session resyncs it (ensureProfile).
+      const serverEmail = updated.user?.email ?? "";
+      const applied = serverEmail.toLowerCase() === newEmail.trim().toLowerCase();
+      if (applied) await saveProfile({ email: newEmail.trim() });
       setEmailOpen(false);
       setOtp("");
       setOtpStage("send");
-      showToast(t("emailUpdated"), "success");
+      showToast(applied ? t("emailUpdated") : t("emailChangePending"), applied ? "success" : "info");
     } catch (e) {
       showToast(e instanceof Error ? e.message : t("invalidCode"), "error");
     } finally {

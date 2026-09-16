@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import type { CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/types/database.types";
 
@@ -8,8 +9,9 @@ const supabaseUrl =
 const supabaseAnonKey =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "missing-supabase-key";
 
-// Public paths: landing page, auth flow + the static design-preview pages (mock data only).
-const PUBLIC_PATHS = ["/", "/sign-in", "/sign-up", "/forgot-password", "/onboarding", "/auth/callback", "/preview", "/preview-dash", "/preview-history", "/preview-settings", "/preview-profile", "/preview-expense", "/preview-categories", "/preview-profit-loss", "/preview-analytics", "/preview-accounts", "/preview-bullion", "/preview-transfer", "/preview-transfer-log", "/preview-export", "/preview-recurring", "/preview-bin"];
+// Public paths: landing page, auth flow + the static design-preview pages
+// (mock data only). "/preview" also covers every "/preview/<screen>" route.
+const PUBLIC_PATHS = ["/", "/sign-in", "/sign-up", "/forgot-password", "/onboarding", "/auth/callback", "/preview"];
 
 // Route prefixes that actually exist under (dashboard)/ + expense/[id].
 // Unknown paths (typos, stale links, probes) must NOT bounce anonymous users
@@ -17,19 +19,19 @@ const PUBLIC_PATHS = ["/", "/sign-in", "/sign-up", "/forgot-password", "/onboard
 const APP_PATHS = ["/overview", "/history", "/accounts", "/categories", "/transfer", "/recurring", "/profit-loss", "/analytics", "/bullion", "/export", "/settings", "/profile", "/bin", "/expense"];
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({ request });
-
+  // NV-9 + rotation-drop fix (prior audit): collect cookie writes instead of
+  // attaching them to a response object the redirect branches later replace —
+  // the final response (redirect or passthrough) gets the rotated tokens.
+  const cookieWrites: Array<{ name: string; value: string; options: CookieOptions }> = [];
   const supabase = createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
+    cookieOptions: { secure: process.env.NODE_ENV === "production" },
     cookies: {
       getAll() {
         return request.cookies.getAll();
       },
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-        response = NextResponse.next({ request });
-        cookiesToSet.forEach(({ name, value, options }) =>
-          response.cookies.set(name, value, options),
-        );
+        cookieWrites.push(...cookiesToSet);
       },
     },
   });
@@ -44,11 +46,11 @@ export async function middleware(request: NextRequest) {
     PUBLIC_PATHS.some((p) => p !== "/" && (path === p || path.startsWith(`${p}/`)));
   const isAppPath = APP_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
 
+  let response: NextResponse;
   if (!isPublic && !isAppPath) {
     // No such route at any auth state → let Next's not-found handle it (404).
-    return response;
-  }
-  if (!user && !isPublic) {
+    response = NextResponse.next({ request });
+  } else if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/sign-in";
     response = NextResponse.redirect(url);
@@ -57,8 +59,13 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/overview";
     response = NextResponse.redirect(url);
+  } else {
+    response = NextResponse.next({ request });
   }
 
+  cookieWrites.forEach(({ name, value, options }) =>
+    response.cookies.set(name, value, options),
+  );
   return response;
 }
 

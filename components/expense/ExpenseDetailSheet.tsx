@@ -43,9 +43,11 @@ export function ExpenseDetailSheet({ row, amount, displayCurrency, onClose }: Ex
     if (!row?.receipt_image_url) return;
     let cancelled = false;
     const client = getSupabaseBrowserClient();
+    // Audit NV-1: resolve only against the row owner's own folder (the row is
+    // RLS-bound to the session user, so a foreign {uid}/ path never resolves).
     void Promise.all([
-      resolveReceiptUrl(client, row.receipt_image_url),
-      resolveReceiptDownloadUrl(client, row.receipt_image_url),
+      resolveReceiptUrl(client, row.user_id, row.receipt_image_url),
+      resolveReceiptDownloadUrl(client, row.user_id, row.receipt_image_url),
     ])
       .then(([inline, download]) => {
         if (!cancelled) {
@@ -181,7 +183,7 @@ export function ExpenseDetailSheet({ row, amount, displayCurrency, onClose }: Ex
           {row.receipt_image_url ? (
             receiptUrl && !receiptFailed ? (
               <a
-                href={receiptDownloadUrl ?? receiptUrl}
+                href={receiptDownloadUrl ?? undefined}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex flex-col items-end gap-1"

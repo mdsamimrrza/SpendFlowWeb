@@ -25,7 +25,7 @@ const browser = await chromium.launch({ executablePath: EDGE, headless: true });
 for (const width of [390, 1280]) {
   const page = await browser.newPage({ viewport: { width, height: 900 } });
   await page.addInitScript(() => localStorage.setItem("spendflow_theme_preference", "light"));
-  await page.goto(`${BASE}/preview-analytics`, { waitUntil: "networkidle" });
+  await page.goto(`${BASE}/preview/analytics`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1500);
 
   // KPI tile row — the grid holding DAILY VELOCITY.

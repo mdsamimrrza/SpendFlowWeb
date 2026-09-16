@@ -142,7 +142,7 @@ needs an update too.
   grids stack by default and only split at `sm`+; primary figures use `FitText`; interactive
   rows/tap targets are ≥44 px tall; no horizontal overflow at 390 px; phones get the full feature
   set (progressive enhancement, not a stripped mobile view). Verify before marking a screen done:
-  `node scripts/shot-preview-<screen>.mjs` (390 / 768 / 1280 / 1920, light + dark) must be overflow
+  `node scripts/shot-preview.mjs <screen>` (390 / 768 / 1280 / 1920, light + dark) must be overflow
   -clean. This applies to new screens and to any touch on an existing screen.
 - Every user-facing string is added to **all three** i18n files (en, hi, ne) in the same change.
 - Privacy masking must never cause layout shift (lock the amount container width).

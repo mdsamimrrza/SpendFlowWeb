@@ -36,8 +36,10 @@ import { SkeletonCard, Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { CurrencyFlag } from "@/components/ui/CurrencyFlag";
+import { CurrencyBreakdown, type CurrencyPart } from "@/components/ui/CurrencyBreakdown";
 import {
   formatMoney,
+  currencyTotals,
   getCycleWindow,
   getPreviousCycleWindow,
   cycleDaysElapsed,
@@ -145,18 +147,38 @@ export default function HomePage() {
     let income = 0;
     let todayTotal = 0;
     let entriesInCycle = 0;
+    const spentRows: ExpenseRow[] = [];
+    const incomeRows: ExpenseRow[] = [];
     for (const row of rows) {
       if (row.date < startISO || row.date > endISO) continue;
       entriesInCycle += 1;
       const converted = convert(row);
-      if (row.type === "income") income += converted;
-      else {
+      if (row.type === "income") {
+        income += converted;
+        incomeRows.push(row);
+      } else {
         spent += converted;
+        spentRows.push(row);
         if (row.date === todayStr) todayTotal += converted;
       }
     }
-    return { spent, income, todayTotal, entriesInCycle, net: income - spent };
+    return { spent, income, todayTotal, entriesInCycle, net: income - spent, spentRows, incomeRows };
   }, [rows, cycle, convert]);
+
+  // Currency-consistency (user request 2026-09-16): merged totals keep their
+  // raw per-currency parts visible; converted values go through the same
+  // masked fmt as every other figure on the screen.
+  const toParts = (rowsIn: ExpenseRow[]): CurrencyPart[] =>
+    currencyTotals(rowsIn, convert).map((p) => ({
+      currency: p.currency,
+      rawText: mask(formatMoney(p.raw, p.currency, locale)),
+      convertedText:
+        p.currency.toUpperCase() === String(displayCurrency).toUpperCase()
+          ? undefined
+          : fmt(p.converted),
+    }));
+  const spentParts = useMemo(() => toParts(stats.spentRows), [stats.spentRows, convert, locale, mask, fmt, displayCurrency]);
+  const incomeParts = useMemo(() => toParts(stats.incomeRows), [stats.incomeRows, convert, locale, mask, fmt, displayCurrency]);
 
   const pace = useMemo(() => {
     const daysTotal = cycleDaysTotal(cycle);
@@ -390,6 +412,10 @@ export default function HomePage() {
           delta={prevDelta}
           entries={stats.entriesInCycle}
         />
+        <div className="mt-1.5 flex flex-col gap-1">
+          <CurrencyBreakdown label={t("expense")} parts={spentParts} className="px-1" />
+          <CurrencyBreakdown label={t("income")} parts={incomeParts} className="px-1" />
+        </div>
       </div>
 
       {/* Tier 1.5 — quick stats */}

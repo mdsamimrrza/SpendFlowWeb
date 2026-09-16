@@ -38,11 +38,13 @@ import { FitText } from "@/components/ui/FitText";
 import { PAYMENT_METHODS, type PaymentMethod } from "@/constants/app";
 import {
   formatMoney,
+  currencyTotals,
   getCycleWindow,
   todayISO,
   toISODate,
   isValidISODate,
 } from "@/utils/format";
+import { CurrencyBreakdown, type CurrencyPart } from "@/components/ui/CurrencyBreakdown";
 import type { ExpenseFilters, ExpenseRow, ExpenseSort } from "@/services/expenses";
 
 type FlowFilter = "all" | "expense" | "income";
@@ -224,6 +226,26 @@ export function HistoryRegister({
   const displayCurrency = profile?.preferred_currency ?? "NPR";
   const fmt = (n: number) => mask(formatMoney(n, displayCurrency, locale));
 
+  // Currency-consistency (user request 2026-09-16): the blended hero totals
+  // keep their raw per-currency parts visible (masked like every figure here).
+  const toParts = (subset: ExpenseRow[]): CurrencyPart[] =>
+    currencyTotals(subset, convert).map((p) => ({
+      currency: p.currency,
+      rawText: mask(formatMoney(p.raw, p.currency, locale)),
+      convertedText:
+        p.currency.toUpperCase() === String(displayCurrency).toUpperCase() ? undefined : fmt(p.converted),
+    }));
+  const spentParts = useMemo(
+    () => toParts(rows.filter((r) => r.type !== "income")),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rows, convert, locale, mask, fmt, displayCurrency],
+  );
+  const incomeParts = useMemo(
+    () => toParts(rows.filter((r) => r.type === "income")),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rows, convert, locale, mask, fmt, displayCurrency],
+  );
+
   const summary = useMemo(() => {
     let outflow = 0;
     let inflow = 0;
@@ -350,6 +372,10 @@ export function HistoryRegister({
           setPage(0);
         }}
       />
+      <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 px-1">
+        <CurrencyBreakdown label={t("expense")} parts={spentParts} />
+        <CurrencyBreakdown label={t("income")} parts={incomeParts} />
+      </div>
 
       {/* ── Control bar ── */}
       <div className="panel mt-4 overflow-hidden" ref={panelRef}>

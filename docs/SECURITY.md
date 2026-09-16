@@ -43,7 +43,7 @@ propose weakening a policy to make a web feature easier.
 
 - **CSP** via `next.config.ts` headers (implemented 2026-09-14): `default-src 'self'`,
   `script-src 'self' 'unsafe-inline'` (+`'unsafe-eval'` in dev), `connect-src` limited to self +
-  the project Supabase host + `api.frankfurter.app` + `api.gold-api.com`, `img-src 'self' data:
+  the project Supabase host + `api.frankfurter.dev` + `open.er-api.com` + `api.gold-api.com`, `img-src 'self' data:
   blob:` + the project Supabase host, `frame-ancestors 'none'`, `object-src 'none'`,
   `base-uri 'none'`, `form-action 'self'`. Deliberate trade-off: **non-nonce posture** — nonce CSP
   would force dynamic rendering on every page (static landing + `/preview*` + CDN caching);
@@ -51,7 +51,9 @@ propose weakening a policy to make a web feature easier.
   (the print window escapes via `services/export.ts`) and remote-script/egress lockdown carries
   the actual defense. Add the new host to `connect-src`/`img-src` when any outbound feed is added.
 - **HSTS** `max-age=63072000; includeSubDomains; preload` alongside XFO/nosniff/Referrer-Policy/Permissions-Policy.
-- **Cookies**: `Secure`, `SameSite=Lax`, httpOnly (Supabase SSR defaults).
+- **Cookies**: `SameSite=Lax`; `Secure` set explicitly via `cookieOptions` at all three Supabase
+  client sites (production) — the `@supabase/ssr` 0.12.x defaults set **neither** `Secure` nor
+  `httpOnly`, and the JS-readable session remains the documented no-BFF trade-off (§2/§3).
 - No sensitive data in `localStorage` beyond non-credential caches (expense cache, preferences, privacy toggle) — same policy as mobile's AsyncStorage usage; per-user keys purged on sign-out and session loss.
 - **CSV / Excel export**: every free-text cell passes `sanitizeSpreadsheetCell` (formula injection incl. tab/CR); PDF statement HTML passes `escapePdf` (all five entities).
 - Receipt/avatar uploads: enforce MIME + size limits client-side *and* rely on bucket limits (4 MiB receipts / 2 MiB avatars); upload only to `{uid}/` paths. Avatars are **canvas re-encoded (≤512 px, webp/jpeg) before upload** so EXIF/GPS never reaches the public bucket, and stored `avatar_url` is validated to the project's avatars-bucket prefix on write and render.
@@ -68,7 +70,7 @@ propose weakening a policy to make a web feature easier.
 
 - Next.js app: same-origin only; no CORS headers needed on route handlers.
 - Edge functions: `bullion-history` sends `Access-Control-Allow-Origin: *` (stateless public data); the two sensitive functions answer only same-Supabase calls with Bearer JWTs (CORS irrelevant to their threat model; the JWT + amr checks are).
-- Browser calls to `open.er-api.com` / `frankfurter.app` / `gold-api.com` are CORS-open public APIs (mobile web build already uses them).
+- Browser calls to `open.er-api.com` / `api.frankfurter.dev` / `gold-api.com` are CORS-open public APIs (mobile web build already uses them). CSP `connect-src` must list every host AND its post-redirect target — the retired `frankfurter.app` 301 to `.dev` was silently blocked by CSP, leaking stale table rates into every browser figure (2026-09-16).
 
 ## 7. Database change discipline
 
@@ -93,3 +95,34 @@ One backend, two consumers. Any migration (new table, column, policy change):
   `scripts/verify-oauth-redirect.mjs` against each deployed origin and record the live allowlist
   entries + Confirm-email setting here, since signup/reset mail now relies on the bare
   `/auth/callback` target.
+
+## 9. 2026-09-16 full security audit (source-only run) — fixes landed
+
+Confirmed findings: zero (every surviving candidate's decisive fact is deployed backend state).
+Client-side mitigations shipped in this repo; each item keeps the lead's fingerprint from
+`security-audit-skill/spendflowweb/run-1/NEEDS-VALIDATION.md` as a trace:
+
+- **NV-1** — receipt read/delete ops bind the object path to the row owner's uid
+  (`extractReceiptPath(stored, userId)` rejects a foreign `{otherUid}/…` value regardless of
+  what `receipt_image_url` holds; `deleteReceipt`/both URL resolvers require the uid;
+  `claim_bin_receipt_orphans` drain filters to the caller's folder; the inline-view `?? receiptUrl`
+  fallback removed — links are download-disposition only). The deployed bucket policy still decides
+  the cross-tenant question; the client no longer asks it.
+- **NV-2** — `createExpense`/`updateExpense` now pre-prove `category_id`/`bank_account_id` belong to
+  the caller (the P2-5 pattern applied to all expense reference columns), instead of relying solely
+  on the deployed `validate_owned_references()` trigger.
+- **NV-7** — `verifyEmailChange` mirrors the new address into `users.email` only when the server
+  actually applied it (GoTrue two-sided confirmation); `ensureProfile` re-syncs `users.email` from
+  the session-confirmed identity on next login.
+- **NV-8** — sign-in and sign-up error mapping is default-deny: raw IdP messages never reach the
+  banner (only retryable/429 + actionable password-policy text).
+- **NV-9** — `cookieOptions: { secure: true }` (production) at all three client construction sites;
+  middleware now replays rotated session cookies onto the final redirect response instead of
+  dropping them.
+
+Remaining decisive facts are outside this repo (owner-observed checks listed in the leads):
+live receipts-bucket sign/delete policy (NV-1), trigger column coverage (NV-2/NV-3),
+`exchange_rates`/`market_gold_rates` write revocation + cron freshness (NV-4), the deployed
+`send-password-reset` allowlist vs GoTrue URL config (NV-5), the deployed `delete-account` amr
+gate (NV-6), deployed GoTrue credential-error catalog (NV-8), Vercel Force-HTTPS/HSTS-preload
+state (NV-9), and shipping the uncommitted `connect-src`/host fix to HEAD's deployed build (NV-10).

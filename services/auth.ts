@@ -172,6 +172,11 @@ export async function ensureProfile(
     // Google-photo mirror (app/auth/callback): the callback stores the bucket
     // URL in auth metadata; adopt it here when the row has no avatar (covers a
     // first sign-in where the row did not exist yet at callback time).
+    // Audit NV-7 (healing): session.user.email is the server-confirmed
+    // identity — keep users.email aligned with it. Covers a two-sided
+    // email change confirmed out-of-band (mobile / link click) and re-syncs
+    // any legacy row that mirrored an address before its confirmation.
+    if (email && profile.email !== email) patch.email = email;
     if (!profile.avatar_url && meta.avatar_url && isAllowedAvatarUrl(meta.avatar_url)) {
       patch.avatar_url = meta.avatar_url;
     }
@@ -205,11 +210,14 @@ export async function ensureProfile(
         // history is best-effort — never block profile load
       }
     }
-    if (!profile.cycle_start_day && typeof meta.cycle_start_day === "number") {
-      patch.cycle_start_day = meta.cycle_start_day;
+    // Cycle days: same 1..31 clamp the consumers apply — never persist a
+    // NaN/fraction/out-of-range metadata value (h09 hardening).
+    const clampDay = (d: number): number => Math.min(Math.max(Math.round(d), 1), 31);
+    if (!profile.cycle_start_day && typeof meta.cycle_start_day === "number" && Number.isFinite(meta.cycle_start_day)) {
+      patch.cycle_start_day = clampDay(meta.cycle_start_day);
     }
-    if (profile.cycle_end_day == null && typeof meta.cycle_end_day === "number") {
-      patch.cycle_end_day = meta.cycle_end_day;
+    if (profile.cycle_end_day == null && typeof meta.cycle_end_day === "number" && Number.isFinite(meta.cycle_end_day)) {
+      patch.cycle_end_day = clampDay(meta.cycle_end_day);
     }
     if (meta.preferred_currency && /^[A-Z]{3}$/.test(meta.preferred_currency) && profile.preferred_currency === "NPR" && meta.preferred_currency !== "NPR") {
       patch.preferred_currency = meta.preferred_currency;

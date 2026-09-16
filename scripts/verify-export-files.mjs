@@ -1,5 +1,5 @@
 /**
- * End-to-end check of the Export Center file generators via /preview-export
+ * End-to-end check of the Export Center file generators via /preview/export
  * (mock rows incl. income, no auth): clicks Print/PDF, Excel and CSV, captures
  * the downloads and the print popup, and asserts content.
  * Run: node scripts/verify-export-files.mjs  (dev server; PORT=3000 default)
@@ -19,8 +19,8 @@ await page.addInitScript(() => localStorage.setItem("spendflow_theme_preference"
 // The dev server may be mid-recompile; retry until the route serves HTML.
 for (let i = 0; i < 8; i++) {
   try {
-    await page.goto(`${BASE}/preview-export`, { waitUntil: "domcontentloaded", timeout: 30000 });
-    if (page.url().endsWith("/preview-export")) break;
+    await page.goto(`${BASE}/preview/export`, { waitUntil: "domcontentloaded", timeout: 30000 });
+    if (page.url().endsWith("/preview/export")) break;
   } catch { /* retry */ }
   await page.waitForTimeout(3000);
 }

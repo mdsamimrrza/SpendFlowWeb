@@ -24,7 +24,7 @@ for (const mode of ["light", "dark"]) {
     (pref) => localStorage.setItem("spendflow_theme_preference", pref),
     mode,
   );
-  await page.goto(`${BASE}/preview-settings`, { waitUntil: "networkidle" });
+  await page.goto(`${BASE}/preview/settings`, { waitUntil: "networkidle" });
   await page.waitForTimeout(800);
   for (const [key, label] of ROWS) {
     // Trigger: nav rows open via their row button; sign-out via the pill.

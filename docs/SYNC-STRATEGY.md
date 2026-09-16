@@ -51,7 +51,7 @@ that's a product inconsistency, not a feature.
 
 ## 6. What must stay byte-compatible between clients
 
-1. **FX snapshot semantics** — `services/exchange.ts` tier order (pegs → cache → table → API → fallback) and stamping on create.
+1. **FX snapshot semantics** — `services/exchange.ts` tier order (pegs → cache → table → API → fallback) and stamping on create. Web refinement 2026-09-16: UNDATED (current-rate) requests are API-first (frankfurter → er-api) and the table only answers when both APIs are unreachable — clients can no longer write `exchange_rates` (SELECT-only by RLS) and no refresh job exists, so any freshness allowance still eventually serves a frozen rate (a 3-day gate leaked in testing the same day). Dated (historical) lookups keep the byte-compat order exactly; mobile should mirror API-first-for-current to converge (see FEATURE-PARITY row + `scripts/verify-fx-tiers.mjs`).
 2. **Budget/cycle math** — `getMonthlyBudget()` conversion (budget_currency → display currency, never rewriting storage), cycle window from `cycle_start_day` (1 = calendar sentinel, 2–31 custom).
 3. **Bullion calibrations** — FENEGOSIDA multipliers (fine gold 1.20649, Tejabi 92.5588 %, silver 1.22765) and IBJA (1.0918, 22K 91.67 %), session fixing times.
 4. **Recurring generation** — idempotent `ON CONFLICT (recurring_rule_id, date)` upsert, forward-only `next_due_date`.

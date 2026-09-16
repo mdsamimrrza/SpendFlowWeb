@@ -111,14 +111,26 @@ const EMOJI_TO_LUCIDE: Record<string, LucideIcon> = {
  * normalized through the same EMOJI_TO_ICON_MAP mobile uses, then the local
  * emoji table, then a neutral fallback.
  */
+/**
+ * Own-property lookup for stored-value maps (NV hardening): a stored icon of
+ * 'constructor'/'toString'/'__proto__' must never resolve an inherited member
+ * to a non-component 'icon' — fall through to the neutral fallback instead.
+ */
+function ownIcon<K extends string | number | symbol, V>(map: Record<K, V>, key: string): V | undefined {
+  return Object.hasOwn(map, key) ? map[key as K] : undefined;
+}
+
 export function categoryGlyph(icon: string | null | undefined): LucideIcon {
   if (!icon) return Tag;
   const trimmed = icon.trim();
-  const named = CATEGORY_ICONS[trimmed.toLowerCase()];
+  const named = ownIcon(CATEGORY_ICONS, trimmed.toLowerCase());
   if (named) return named;
-  const viaEmojiName = EMOJI_TO_ICON_NAME[trimmed];
-  if (viaEmojiName && CATEGORY_ICONS[viaEmojiName]) return CATEGORY_ICONS[viaEmojiName];
-  return EMOJI_TO_LUCIDE[trimmed] ?? Tag;
+  const viaEmojiName = ownIcon(EMOJI_TO_ICON_NAME, trimmed);
+  if (viaEmojiName) {
+    const resolved = ownIcon(CATEGORY_ICONS, viaEmojiName);
+    if (resolved) return resolved;
+  }
+  return ownIcon(EMOJI_TO_LUCIDE, trimmed) ?? Tag;
 }
 
 /** Lucide names the mobile account presets store in `bank_accounts.icon`. */
@@ -136,10 +148,14 @@ const ACCOUNT_NAME_TO_LUCIDE: Record<string, LucideIcon> = {
 
 /** Account icon → Lucide, falling back to the account_type. */
 export function accountGlyph(icon: string | null | undefined, accountType?: string): LucideIcon {
-  if (icon && EMOJI_TO_LUCIDE[icon.trim()]) return EMOJI_TO_LUCIDE[icon.trim()];
-  // Newer mobile rows store Lucide NAMES (e.g. 'landmark' from the account
-  // type presets) rather than emoji — resolve those too.
-  if (icon && ACCOUNT_NAME_TO_LUCIDE[icon.trim()]) return ACCOUNT_NAME_TO_LUCIDE[icon.trim()];
+  if (icon) {
+    const byEmoji = ownIcon(EMOJI_TO_LUCIDE, icon.trim());
+    if (byEmoji) return byEmoji;
+    // Newer mobile rows store Lucide NAMES (e.g. 'landmark' from the account
+    // type presets) rather than emoji — resolve those too.
+    const byName = ownIcon(ACCOUNT_NAME_TO_LUCIDE, icon.trim());
+    if (byName) return byName;
+  }
   switch (accountType) {
     case "bank":
       return Landmark;

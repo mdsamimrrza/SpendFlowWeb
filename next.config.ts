@@ -26,7 +26,10 @@ const csp = [
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob: https://${supabaseHost}${isDev ? " http://localhost:3000 http://127.0.0.1:3000" : ""}`,
-  `connect-src 'self' https://${supabaseHost} https://api.frankfurter.app https://api.gold-api.com${isDev ? ` http://localhost:3000 ws://localhost:3000 http://127.0.0.1:3000 ws://127.0.0.1:3000` : ""}`,
+  // FX feeds: api.frankfurter.dev (ECB, replaces the retired .app host) and
+  // open.er-api.com (secondary). CSP applies after redirects, so the old
+  // .app entry silently blocked every browser fetch → stale rates leaked.
+  `connect-src 'self' https://${supabaseHost} https://api.frankfurter.dev https://open.er-api.com https://api.gold-api.com${isDev ? ` http://localhost:3000 ws://localhost:3000 http://127.0.0.1:3000 ws://127.0.0.1:3000` : ""}`,
   `frame-src https://accounts.google.com https://${supabaseHost}`,
   "font-src 'self' data:",
   "object-src 'none'",

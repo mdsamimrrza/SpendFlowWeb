@@ -47,7 +47,7 @@ Base: `https://stisbfahlhquaqhrifjh.supabase.co/functions/v1` (gateway verifies 
 | Endpoint | Used by | Notes |
 |---|---|---|
 | `open.er-api.com` (primary) / `api.exchangerate-api.com` (fallback), env-overridable | FX rate context | Current rates; QAR/AED/SAR pegged (never fetched); NPR derived from INR × 1.6 |
-| `api.frankfurter.app` | Historical FX (bullion charts, rate resolver misses) | 8 s timeout in mobile; keep |
+| `api.frankfurter.dev/v1` | Current + historical FX (bullion charts, rate resolver misses) — `.app` retired, 301s to `.dev`; CSP must allow `.dev` | 8 s timeout in mobile; keep |
 | `api.gold-api.com/price/XAU | XAG` | Spot bullion | |
 | `query1.finance.yahoo.com` | Bullion history fallback | Mobile restricts to native (CORS); **web uses the `bullion-history` edge function instead** — do not call Yahoo from the browser |
 

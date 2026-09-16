@@ -126,7 +126,9 @@ export async function deleteBinItemForever(
   const table = item.kind === "expense" ? "expenses" : "recurring_rules";
   if (item.kind === "expense") {
     // Best-effort first: a storage hiccup must not leave the row undeleted.
-    await deleteReceipt(supabase, item.expense.receipt_image_url).catch(() => undefined);
+    // Bind to the row owner's folder so a crafted receipt_image_url pointing
+    // at another {uid}/ can never be removed with this caller's JWT.
+    await deleteReceipt(supabase, userId, item.expense.receipt_image_url).catch(() => undefined);
   }
   const { error } = await supabase.from(table).delete().eq("id", item.id).eq("user_id", userId);
   if (error) throw error;
@@ -159,7 +161,13 @@ export async function drainBinReceiptOrphans(
   try {
     const { data, error } = await supabase.rpc("claim_bin_receipt_orphans");
     if (error || !data?.length) return;
-    const paths = (data as string[]).filter(Boolean);
+    // The claim is scoped by the deployed SECURITY DEFINER function, but the
+    // paths it returns are external-program input to a delete sink: drop
+    // anything not rooted in the caller's own {uid}/ folder (NV-1 binding).
+    const prefix = `${userId}/`;
+    const paths = (data as string[]).filter(
+      (p) => typeof p === "string" && p.startsWith(prefix) && !p.includes(".."),
+    );
     if (paths.length > 0) {
       await supabase.storage.from(RECEIPT_BUCKET).remove(paths).catch(() => undefined);
     }

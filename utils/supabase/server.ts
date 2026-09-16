@@ -13,6 +13,7 @@ const supabaseAnonKey =
 export async function getSupabaseServerClient(): Promise<SupabaseClient<Database>> {
   const cookieStore = await cookies();
   return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
+    cookieOptions: { secure: process.env.NODE_ENV === "production" },
     cookies: {
       getAll() {
         return cookieStore.getAll();

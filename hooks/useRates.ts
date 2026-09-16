@@ -2,21 +2,26 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
-import { getRate, NPR_PER_INR } from "@/services/exchange";
+import { getRate } from "@/services/exchange";
 import { useAuth } from "@/store/AuthContext";
 import { useEffect as useReactEffect } from "react";
 import { quantizeMoney } from "@/utils/format";
 
 /**
- * Display-currency rate (units per USD, today). Rows convert snapshot-first
- * (mobile parity): a row carrying exchange_rate_to_usd converts at its own
- * stored snapshot; rows without one fall back to the date-based resolver.
+ * Display-currency rate (USD per unit, today — freshness-gated by getRate).
+ * Rows convert on the SAME basis: every figure prices at the live cross, so a
+ * display-currency total matches what a public FX converter says for the same
+ * amount (user decision 2026-09-15, docs/FEATURE-PARITY.md).
  */
 export function useDisplayRate(displayCurrency: string | undefined) {
   const [rate, setRate] = useState<number | null>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
-    if (!displayCurrency) return;
+    // Session-gated: design-preview mounts (middleware-public /preview/*)
+    // pass constant currencies without a session — anonymous visitors must
+    // not spend the shared feeds' quota from the public surface.
+    if (!displayCurrency || !user) return;
     let cancelled = false;
     void getRate(getSupabaseBrowserClient(), displayCurrency).then((r) => {
       if (!cancelled) setRate(r);
@@ -24,7 +29,7 @@ export function useDisplayRate(displayCurrency: string | undefined) {
     return () => {
       cancelled = true;
     };
-  }, [displayCurrency]);
+  }, [displayCurrency, user]);
 
   return rate;
 }
@@ -100,94 +105,88 @@ export interface ConvertibleRow {
 }
 
 /**
- * Per-date USD-per-unit rates used when a row carries no snapshot (mobile
- * useRateResolver parity), plus the NPR peg path which resolves its date's
- * INR rate (NPR never trusts its stored snapshot — pre-peg floating values
- * are wrong under the fixed 1 INR = 1.60 NPR rule).
- */
-const dateRateCache = new Map<string, number>();
-
-/**
- * Convert a row to the display currency (mobile useRateResolver semantics):
- * stored snapshot first, resolver by row date as fallback.
+ * Convert rows to the display currency at each row's OWN-DATE rate (user
+ * decision 2026-09-16 — supersedes the 2026-09-15 "price every row at
+ * today's live cross" setting and restores mobile parity, docs/SYNC-STRATEGY.md
+ * §6.1): a ₹350 bill on 12 Aug permanently shows its 12-Aug value, so a past
+ * month's figures never change later; today's entries price at today's live
+ * rate (getRate treats dates >= today as current). BOTH sides of the cross
+ * resolve from the same day — getRate('NPR', d) is defined as
+ * getRate('INR', d) ÷ 1.6, so pegged pairs cancel to exactly 1.6. The stored
+ * `exchange_rate_to_usd` snapshot is deliberately NOT used for display: legacy
+ * rows were stamped from the stale table on different days than their date,
+ * which breaks that cancellation (रू20,000 → ₹12,539.56 instead of the
+ * correct ₹12,500.00). Snapshots stay in the DB untouched (data compat).
+ * Every (currency,date) resolution is memory-cached inside exchange.ts.
  */
 export function useRowConverter(
   displayCurrency: string | undefined,
   rows?: ConvertibleRow[],
 ) {
   const displayRate = useDisplayRate(displayCurrency);
+  const { user } = useAuth();
   const supabase = getSupabaseBrowserClient();
-  // Every row that needs a date-resolved rate gets one fetched: NPR rows
-  // (via their date's INR rate — stored NPR snapshots are never trusted) and
-  // non-display rows with no usable snapshot.
-  const [ratesByDate, setRatesByDate] = useState<Map<string, number>>(new Map());
+  const [ratesByPair, setRatesByPair] = useState<Map<string, number>>(new Map());
 
-  const dateKeys = useMemo(() => {
-    if (!rows || !displayCurrency) return "";
+  // `${currency}:${date}` pairs for every foreign row + the display currency
+  // at the same dates (a past month must price BOTH sides of the cross there).
+  const pairKeys = useMemo(() => {
+    if (!rows || !displayCurrency || !user) return "";
     const keys = new Set<string>();
     for (const r of rows) {
       if (r.currency === displayCurrency) continue;
-      if (r.currency === "NPR") keys.add(`INR:${r.date}`);
-      else if (!r.exchange_rate_to_usd || r.exchange_rate_to_usd <= 0)
-        keys.add(`${r.currency}:${r.date}`);
+      keys.add(`${r.currency}:${r.date}`);
+      keys.add(`${displayCurrency}:${r.date}`);
     }
-    return Array.from(keys).sort().join(",");
-  }, [rows, displayCurrency]);
+    return Array.from(keys).sort().join("|");
+  }, [rows, displayCurrency, user]);
 
   useEffect(() => {
-    if (!dateKeys) return;
+    if (!pairKeys) return;
     let cancelled = false;
+    const missing = pairKeys.split("|").filter((k) => !ratesByPair.has(k));
+    if (!missing.length) return;
     (async () => {
-      const missing = dateKeys.split(",").filter((k) => !dateRateCache.has(k));
-      await Promise.all(
-        missing.map(async (key) => {
-          const [currency, date] = key.split(":");
-          try {
-            dateRateCache.set(key, await getRate(supabase, currency, date));
-          } catch {
-            // leave uncached — convert() falls back to the raw amount
-          }
+      const entries = await Promise.all(
+        missing.map(async (k) => {
+          const cut = k.lastIndexOf(":");
+          const ccy = k.slice(0, cut);
+          const date = k.slice(cut + 1);
+          return [k, await getRate(supabase, ccy, date)] as const;
         }),
       );
-      if (!cancelled) setRatesByDate(new Map(dateRateCache));
+      if (!cancelled) {
+        setRatesByPair((prev) => {
+          const next = new Map(prev);
+          for (const [k, rate] of entries) next.set(k, rate);
+          return next;
+        });
+      }
     })();
     return () => {
       cancelled = true;
     };
-  }, [dateKeys, supabase]);
+    // ratesByPair intentionally omitted: the `missing` check plus the
+    // functional update make the map self-seeding without re-firing.
+  }, [pairKeys, supabase]);
 
   return useMemo(
     () => ({
       ready: displayRate != null,
       convert: (row: ConvertibleRow): number => {
-        if (!displayCurrency) return row.amount;
-        if (row.currency === displayCurrency) return row.amount;
-
-        // NPR peg parity (mobile): NPR rows never use stored snapshots —
-        // 1 NPR = 1/1.6 INR, so the INR rate must be divided by the peg
-        // before it prices an NPR amount (USD per unit × amount ÷ display).
-        if (row.currency === "NPR") {
-          if (displayCurrency === "INR") return quantizeMoney(row.amount / NPR_PER_INR, displayCurrency); // static peg
-          const inr = ratesByDate.get(`INR:${row.date}`);
-          if (inr && displayRate)
-            return quantizeMoney((row.amount * (inr / NPR_PER_INR)) / displayRate, displayCurrency);
-          return row.amount; // rate not resolved yet
-        }
-
-        // Snapshot-first (mobile convertExpense): amount × (USD/unit_from) ÷ (USD/unit_to).
-        if (row.exchange_rate_to_usd && row.exchange_rate_to_usd > 0) {
-          return displayRate
-            ? quantizeMoney((row.amount * row.exchange_rate_to_usd) / displayRate, displayCurrency)
-            : row.amount;
-        }
-        // Resolver by row date (mobile parity): rows backfilled without a
-        // snapshot still convert correctly instead of counting raw.
-        const dated = ratesByDate.get(`${row.currency}:${row.date}`);
-        if (dated && displayRate)
-          return quantizeMoney((row.amount * dated) / displayRate, displayCurrency);
-        return row.amount; // resolver miss — show raw rather than wrong
+        if (!displayCurrency || row.currency === displayCurrency) return row.amount;
+        // Same-day basis on BOTH sides (never the stored snapshot — see the
+        // resolver doc): the NPR peg cancels to exactly ÷1.6 vs INR display.
+        const from = ratesByPair.get(`${row.currency}:${row.date}`);
+        const to = ratesByPair.get(`${displayCurrency}:${row.date}`);
+        // amount × (USD/unit_from) ÷ (USD/unit_to) at the row's own date,
+        // quantized at the conversion boundary so statement lines reconcile
+        // (TESTING.md §2).
+        return from && to
+          ? quantizeMoney((row.amount * from) / to, displayCurrency)
+          : row.amount; // rate not resolved yet — show raw rather than wrong
       },
     }),
-    [displayCurrency, displayRate, ratesByDate],
+    [displayCurrency, displayRate, ratesByPair],
   );
 }

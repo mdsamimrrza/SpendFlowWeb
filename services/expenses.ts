@@ -157,11 +157,44 @@ export function assertAmountAndDate(amount: number, date: string): void {
   }
 }
 
+/** Audit NV-2: mirror the P2-5 rule-ownership pre-check for the remaining
+ * reference columns the write path stamps. Owner-scoped RLS would otherwise
+ * let a foreign category/account UUID ride into the caller's own row (FK
+ * existence passes on the victim's row); the deployed validate_owned_references
+ * trigger is the server-side twin of this check, not a substitute for it. */
+async function assertOwnedReferences(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  categoryId: string,
+  bankAccountId: string | null | undefined,
+): Promise<void> {
+  const UUID = /^[0-9a-fA-F-]{36}$/;
+  if (!UUID.test(categoryId)) throw new Error("Invalid category");
+  const { data: ownedCat } = await supabase
+    .from("categories")
+    .select("id")
+    .eq("id", categoryId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!ownedCat) throw new Error("Invalid category");
+  if (bankAccountId) {
+    if (!UUID.test(bankAccountId)) throw new Error("Invalid account");
+    const { data: ownedAccount } = await supabase
+      .from("bank_accounts")
+      .select("id")
+      .eq("id", bankAccountId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (!ownedAccount) throw new Error("Invalid account");
+  }
+}
+
 export async function createExpense(
   supabase: SupabaseClient<Database>,
   input: CreateExpenseInput,
 ): Promise<Expense> {
   assertAmountAndDate(input.amount, input.date);
+  await assertOwnedReferences(supabase, input.userId, input.categoryId, input.bankAccountId);
   // Audit P2-5: never stamp a rule id we cannot prove is the caller's — RLS
   // would let a foreign (rule, slot) pair insert into the attacker's own row
   // and silently squat the victim's dedup slot.
@@ -215,6 +248,7 @@ export async function updateExpense(
   update: Omit<CreateExpenseInput, "userId" | "isRecurring" | "recurringRuleId">,
 ): Promise<Expense> {
   assertAmountAndDate(update.amount, update.date);
+  await assertOwnedReferences(supabase, userId, update.categoryId, update.bankAccountId);
   // Mobile updateExpense parity: the stored FX snapshot is FROZEN — it is
   // re-fetched only when the date or currency actually changed (or a manual
   // snapshot-date override is set). Editing an amount or note must not
