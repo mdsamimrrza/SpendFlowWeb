@@ -257,3 +257,29 @@ export function convertBudget(
   // amount × (USD per from) ÷ (USD per to) — same direction as row conversion.
   return (monthlyBudget * from) / to;
 }
+
+/**
+ * Smart name truncation for UI headings with limited space.
+ * Priority: full name → "First LastInitial." → "First" → truncated with ellipsis.
+ */
+export function formatDisplayName(name: string, maxLength = 24): string {
+  const trimmed = name.trim();
+  if (trimmed.length <= maxLength) return trimmed;
+
+  const parts = trimmed.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return trimmed.slice(0, maxLength - 1) + "…";
+
+  // Try "First LastInitial."
+  if (parts.length >= 2) {
+    const first = parts[0];
+    const lastInitial = parts[parts.length - 1][0] + ".";
+    const candidate = `${first} ${lastInitial}`;
+    if (candidate.length <= maxLength) return candidate;
+  }
+
+  // Try just first name
+  if (parts[0].length <= maxLength) return parts[0];
+
+  // Fallback: hard truncate with ellipsis
+  return trimmed.slice(0, maxLength - 1) + "…";
+}

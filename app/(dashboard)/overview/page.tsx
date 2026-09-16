@@ -45,6 +45,7 @@ import {
   cycleDaysTotal,
   toISODate,
   todayISO,
+  formatDisplayName,
 } from "@/utils/format";
 import { checkBudgetAlerts, checkCategoryAlerts } from "@/services/alerts";
 import { useToast } from "@/store/ToastContext";
@@ -376,8 +377,16 @@ export default function HomePage() {
       <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[13px] font-medium text-faint">{dateLine}</p>
-          <h1 className="mt-0.5 truncate text-2xl font-extrabold tracking-tight text-text sm:text-[28px]">
-            {greeting}, {profile?.display_name ?? "there"}
+          <h1 className="mt-0.5 text-2xl font-extrabold tracking-tight text-text sm:text-[28px]">
+            {greeting},{" "}
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+              {profile?.display_name
+                ? formatDisplayName(profile.display_name)
+                : "there"}
+              {profile?.preferred_currency && (
+                <CurrencyFlag currency={profile.preferred_currency} size={18} />
+              )}
+            </span>
           </h1>
         </div>
         <div className="flex shrink-0 items-center gap-2.5">
