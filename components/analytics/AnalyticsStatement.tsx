@@ -54,8 +54,6 @@ import { useRowConverter, useBudget } from "@/hooks/useRates";
 import { subscribeToExpenseChanges, useCategories } from "@/hooks/useExpenses";
 import { listExpenses, type ExpenseRow } from "@/services/expenses";
 import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
-import { currencyTotals } from "@/utils/format";
-import { CurrencyBreakdown, type CurrencyPart } from "@/components/ui/CurrencyBreakdown";
 import type { TranslationKey } from "@/constants/i18n/dictionaries";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { CalendarModal } from "@/components/ui/CalendarModal";
@@ -305,18 +303,6 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
     [rows, periodDays.from, periodDays.to],
   );
 
-  // Currency-consistency (user request 2026-09-16): raw per-currency parts
-  // for the period's expense total, shown in the KPI explainer modal.
-  const spentCurrencyParts = useMemo<CurrencyPart[]>(
-    () =>
-      currencyTotals(periodRows.filter((r) => r.type !== "income"), convert).map((p) => ({
-        currency: p.currency,
-        rawText: mask(formatMoney(p.raw, p.currency, locale)),
-        convertedText:
-          p.currency.toUpperCase() === String(displayCurrency).toUpperCase() ? undefined : fmt(p.converted),
-      })),
-    [periodRows, convert, locale, mask, fmt, displayCurrency],
-  );
   // "At today's rate" counterpart for the Total-spending explainer (the
   // holdings view beside the frozen headline — brokerage cost/market pattern).
   const spentTodayRate = useMemo(() => {
@@ -1217,9 +1203,6 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
                           })}
                 </p>
               </div>
-              {kpiModal === "total" && (
-                <CurrencyBreakdown label={t("curBreakdownAria")} parts={spentCurrencyParts} />
-              )}
               {kpiModal === "total" && spentTodayRate != null && Math.abs(spentTodayRate - stats.spent) >= 0.01 && (
                 <p className="text-[11px] leading-4 text-faint">
                   {t("curAtTodayRate")}:{" "}

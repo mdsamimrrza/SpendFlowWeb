@@ -36,11 +36,9 @@ import { SkeletonCard, Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { CurrencyFlag } from "@/components/ui/CurrencyFlag";
-import { CurrencyBreakdown, type CurrencyPart } from "@/components/ui/CurrencyBreakdown";
 import { TodayRateLine } from "@/components/ui/TodayRateLine";
 import {
   formatMoney,
-  currencyTotals,
   getCycleWindow,
   getPreviousCycleWindow,
   cycleDaysElapsed,
@@ -166,20 +164,6 @@ export default function HomePage() {
     return { spent, income, todayTotal, entriesInCycle, net: income - spent, spentRows, incomeRows };
   }, [rows, cycle, convert]);
 
-  // Currency-consistency (user request 2026-09-16): merged totals keep their
-  // raw per-currency parts visible; converted values go through the same
-  // masked fmt as every other figure on the screen.
-  const toParts = (rowsIn: ExpenseRow[]): CurrencyPart[] =>
-    currencyTotals(rowsIn, convert).map((p) => ({
-      currency: p.currency,
-      rawText: mask(formatMoney(p.raw, p.currency, locale)),
-      convertedText:
-        p.currency.toUpperCase() === String(displayCurrency).toUpperCase()
-          ? undefined
-          : fmt(p.converted),
-    }));
-  const spentParts = useMemo(() => toParts(stats.spentRows), [stats.spentRows, convert, locale, mask, fmt, displayCurrency]);
-  const incomeParts = useMemo(() => toParts(stats.incomeRows), [stats.incomeRows, convert, locale, mask, fmt, displayCurrency]);
   // "At today's rate" counterpart of the hero totals (hidden when identical
   // or while today's cross is unresolved — see TodayRateLine).
   const todayTotals = useMemo(() => {
@@ -429,17 +413,11 @@ export default function HomePage() {
           cycleLabel={cycleLabel}
           delta={prevDelta}
           entries={stats.entriesInCycle}
-          footer={
-            <>
-              <CurrencyBreakdown label={t("expense")} parts={spentParts} />
-              <CurrencyBreakdown label={t("income")} parts={incomeParts} />
-              <TodayRateLine
-                frozen={{ income: stats.income, expense: stats.spent }}
-                today={todayTotals}
-                fmt={fmt}
-              />
-            </>
-          }
+          footer={<TodayRateLine
+            frozen={{ income: stats.income, expense: stats.spent }}
+            today={todayTotals}
+            fmt={fmt}
+          />}
         />
       </div>
 

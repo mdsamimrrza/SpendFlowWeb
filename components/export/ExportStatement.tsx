@@ -28,8 +28,7 @@ import {
 } from "@/services/export";
 import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
 import type { TranslationKey } from "@/constants/i18n/dictionaries";
-import { formatMoney, currencyTotals, todayISO, isValidISODate, toISODate, getCycleWindow } from "@/utils/format";
-import { CurrencyBreakdown, type CurrencyPart } from "@/components/ui/CurrencyBreakdown";
+import { formatMoney, todayISO, isValidISODate, toISODate, getCycleWindow } from "@/utils/format";
 
 type Period = "today" | "week" | "month" | "year" | "all";
 
@@ -135,21 +134,6 @@ export function ExportStatement({ inject }: ExportPageProps) {
     [scoped, convert],
   );
   const expenseTotal = incomeTotal - total;
-
-  // Currency-consistency: raw per-currency parts under the blended summary
-  // (same mini-ledger card as Overview/History/P&L/Recurring).
-  const expenseParts = useMemo<CurrencyPart[]>(
-    () =>
-      currencyTotals(scoped.filter((r) => r.type !== "income"), convert).map((p) => ({
-        currency: p.currency,
-        rawText: mask(formatMoney(p.raw, p.currency, locale)),
-        convertedText:
-          p.currency.toUpperCase() === String(displayCurrency).toUpperCase()
-            ? undefined
-            : fmt(p.converted),
-      })),
-    [scoped, convert, locale, mask, fmt, displayCurrency],
-  );
 
   const periodLabel = t(PERIODS.find((p) => p.value === period)?.labelKey ?? "periodMonth");
 
@@ -471,7 +455,6 @@ export function ExportStatement({ inject }: ExportPageProps) {
           <p className="mt-0.5 text-xs text-text-muted">
             {t("expVerifiedRecord")} • {displayCurrency}
           </p>
-          <CurrencyBreakdown parts={expenseParts} className="mt-2.5" />
         </div>
       </section>
 

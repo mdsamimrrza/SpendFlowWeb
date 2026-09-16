@@ -2,8 +2,8 @@
 
 /**
  * "At today's rate" second view (user request 2026-09-16 — brokerage
- * cost-basis/market-value pattern; restyled same day to match the
- * CurrencyBreakdown mini-ledger card): period totals stay HEADLINE-FROZEN at
+ * cost-basis/market-value pattern; restyled same day): period totals stay
+ * HEADLINE-FROZEN at
  * each day's rate (QuickBooks/Xero behavior); this optional card shows what
  * the SAME money is worth at today's live cross. It hides itself when the two
  * agree (nothing to explain) or while today's rates are unresolved. Callers
