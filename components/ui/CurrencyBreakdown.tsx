@@ -1,10 +1,11 @@
 "use client";
 
 /**
- * Currency-consistency breakdown (user request 2026-09-16; restyled same day):
- * a totals figure that merges multiple currencies never renders as one
- * converted number alone — this lists the raw per-currency subtotals as an
- * aligned mini-ledger (flag · code · raw · ≈ converted) in a hairline card.
+ * Currency-consistency breakdown (user request 2026-09-16; restyled twice
+ * same day): a totals figure that merges multiple currencies never renders as
+ * one number alone — this lists each contributing currency as an aligned row
+ * (flag · code · value IN THE DISPLAY CURRENCY; user: "just show the selected
+ * country's data"). Raw foreign amounts stay on the entry rows themselves.
  * Renders nothing when every amount is already in one currency. Callers format
  * via formatMoney + mask() so privacy mode keeps working exactly like every
  * other figure on the screen.
@@ -47,10 +48,12 @@ export function CurrencyBreakdown({
             <span className="w-9 shrink-0 text-[9px] font-bold uppercase tracking-[0.08em] text-text-muted">
               {p.currency}
             </span>
-            <span className="figures min-w-0 truncate font-bold text-text">{p.rawText}</span>
-            {p.convertedText && (
-              <span className="figures ml-auto shrink-0 text-faint">≈&nbsp;{p.convertedText}</span>
-            )}
+            {/* Display-currency value only (user request 2026-09-16): the card
+                answers "how much of my money is this" — the raw foreign amount
+                stays on the entry rows themselves. */}
+            <span className="figures ml-auto shrink-0 font-bold text-text">
+              {p.convertedText ?? p.rawText}
+            </span>
           </div>
         ))}
       </div>
