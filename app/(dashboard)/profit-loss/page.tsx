@@ -89,7 +89,7 @@ export default function ProfitLossPage() {
 
   const currency = profile?.preferred_currency ?? "NPR";
   const [rows, setRows] = useState<Awaited<ReturnType<typeof listExpenses>>["rows"]>([]);
-  const { convert, convertToday } = useRowConverter(profile?.preferred_currency, rows);
+  const { convert, convertFrozen } = useRowConverter(profile?.preferred_currency, rows);
   const [loading, setLoading] = useState(true);
   const [settingsHistory, setSettingsHistory] = useState<Awaited<ReturnType<typeof listSettingsHistory>>>([]);
 
@@ -548,18 +548,17 @@ export default function ProfitLossPage() {
 
   const money = (n: number) => mask(formatMoney(n, currency, locale));
 
-  // "At today's rate" counterpart of the period totals (self-hiding line).
-  const plTodayTotals = useMemo(() => {
+  // "At transaction-date rates" debugger counterpart of the period totals
+  // (self-hiding line; headline is LIVE for the active month).
+  const plFrozenTotals = useMemo(() => {
     let inc = 0;
     let exp = 0;
     for (const r of itemsInRange) {
-      const v = convertToday(r);
-      if (v == null) return null;
-      if (r.type === "income") inc += v;
-      else exp += v;
+      if (r.type === "income") inc += convertFrozen(r);
+      else exp += convertFrozen(r);
     }
     return { income: inc, expense: exp };
-  }, [itemsInRange, convertToday]);
+  }, [itemsInRange, convertFrozen]);
 
   // ── Cycle window change — always confirmed first (warning dialog states
   // exactly what changes and what stays untouched) ──
@@ -732,7 +731,7 @@ export default function ProfitLossPage() {
         isProfit={isProfit}
         overallSavingsRate={overallSavingsRate}
         money={money}
-        todayLine={<TodayRateLine frozen={{ income: totalIncome, expense: totalExpense }} today={plTodayTotals} fmt={money} />}
+        todayLine={<TodayRateLine live={{ income: totalIncome, expense: totalExpense }} frozen={plFrozenTotals} fmt={money} />}
         t={t}
       />
 

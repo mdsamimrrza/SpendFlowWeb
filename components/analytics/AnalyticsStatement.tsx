@@ -169,7 +169,7 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
   // rows feed the converter so NPR dates resolve via their INR rate (peg parity).
   const [fetchedRows, setRows] = useState<Awaited<ReturnType<typeof listExpenses>>["rows"]>(inject?.rows ?? []);
   const rows = inject ? inject.rows : fetchedRows;
-  const { convert, convertToday } = useRowConverter(profile?.preferred_currency, rows);
+  const { convert, convertFrozen } = useRowConverter(profile?.preferred_currency, rows);
   const authBudget = useBudget();
   const budget = inject ? (inject.budget ?? null) : authBudget;
   const supabase = getSupabaseBrowserClient();
@@ -303,18 +303,17 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
     [rows, periodDays.from, periodDays.to],
   );
 
-  // "At today's rate" counterpart for the Total-spending explainer (the
-  // holdings view beside the frozen headline — brokerage cost/market pattern).
-  const spentTodayRate = useMemo(() => {
+  // "At transaction-date rates" debugger counterpart for the Total-spending
+  // explainer: the headline is LIVE for the active month; this frozen figure
+  // cross-checks the historical value (hidden when the bases agree).
+  const spentFrozenRate = useMemo(() => {
     let sum = 0;
     for (const r of periodRows) {
       if (r.type === "income") continue;
-      const v = convertToday(r);
-      if (v == null) return null;
-      sum += v;
+      sum += convertFrozen(r);
     }
     return sum;
-  }, [periodRows, convertToday]);
+  }, [periodRows, convertFrozen]);
 
   // Window aggregate builder — called twice: once for the selected period
   // (KPIs/composition) and once for the cycle (burn analysis + budget
@@ -1203,10 +1202,10 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
                           })}
                 </p>
               </div>
-              {kpiModal === "total" && spentTodayRate != null && Math.abs(spentTodayRate - stats.spent) >= 0.01 && (
+              {kpiModal === "total" && Math.abs(spentFrozenRate - stats.spent) >= 0.01 && (
                 <p className="text-[11px] leading-4 text-faint">
-                  {t("curAtTodayRate")}:{" "}
-                  <span className="figures text-text-muted">{fmt(spentTodayRate)}</span>
+                  {t("curAtTxnRate")}:{" "}
+                  <span className="figures text-text-muted">{fmt(spentFrozenRate)}</span>
                 </p>
               )}
               {kpiModal === "velocity" && (

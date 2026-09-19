@@ -69,7 +69,7 @@ export default function HomePage() {
   const [rows, setRows] = useState<Awaited<ReturnType<typeof listExpenses>>["rows"]>([]);
   const [selected, setSelected] = useState<ExpenseRow | null>(null);
   const [loading, setLoading] = useState(true);
-  const { convert, convertToday } = useRowConverter(profile?.preferred_currency, rows);
+  const { convert, convertFrozen } = useRowConverter(profile?.preferred_currency, rows);
   const { categories } = useCategories(user?.id);
   const supabase = getSupabaseBrowserClient();
 
@@ -165,23 +165,17 @@ export default function HomePage() {
     return { spent, income, todayTotal, entriesInCycle, net: income - spent, spentRows, incomeRows };
   }, [rows, cycle, convert]);
 
-  // "At today's rate" counterpart of the hero totals (hidden when identical
-  // or while today's cross is unresolved — see TodayRateLine).
-  const todayTotals = useMemo(() => {
+  // "At transaction-date rates" debugger counterpart of the hero totals: the
+  // headline is LIVE for the active month; this frozen pair cross-checks the
+  // historical value (line self-hides when the two bases agree — see
+  // TodayRateLine).
+  const frozenTotals = useMemo(() => {
     let inc = 0;
     let exp = 0;
-    for (const r of stats.incomeRows) {
-      const v = convertToday(r);
-      if (v == null) return null;
-      inc += v;
-    }
-    for (const r of stats.spentRows) {
-      const v = convertToday(r);
-      if (v == null) return null;
-      exp += v;
-    }
+    for (const r of stats.incomeRows) inc += convertFrozen(r);
+    for (const r of stats.spentRows) exp += convertFrozen(r);
     return { income: inc, expense: exp };
-  }, [stats.incomeRows, stats.spentRows, convertToday]);
+  }, [stats.incomeRows, stats.spentRows, convertFrozen]);
 
   const pace = useMemo(() => {
     const daysTotal = cycleDaysTotal(cycle);
@@ -423,8 +417,8 @@ export default function HomePage() {
           delta={prevDelta}
           entries={stats.entriesInCycle}
           footer={<TodayRateLine
-            frozen={{ income: stats.income, expense: stats.spent }}
-            today={todayTotals}
+            live={{ income: stats.income, expense: stats.spent }}
+            frozen={frozenTotals}
             fmt={fmt}
           />}
         />

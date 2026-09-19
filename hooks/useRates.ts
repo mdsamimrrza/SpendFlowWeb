@@ -5,7 +5,7 @@ import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
 import { getRate } from "@/services/exchange";
 import { useAuth } from "@/store/AuthContext";
 import { useEffect as useReactEffect } from "react";
-import { quantizeMoney, todayISO } from "@/utils/format";
+import { getCycleWindow, quantizeMoney, toISODate, todayISO } from "@/utils/format";
 
 /**
  * Display-currency rate (USD per unit, today — freshness-gated by getRate).
@@ -105,33 +105,46 @@ export interface ConvertibleRow {
 }
 
 /**
- * Convert rows to the display currency at each row's OWN-DATE rate (user
- * decision 2026-09-16 — supersedes the 2026-09-15 "price every row at
- * today's live cross" setting and restores mobile parity, docs/SYNC-STRATEGY.md
- * §6.1): a ₹350 bill on 12 Aug permanently shows its 12-Aug value, so a past
- * month's figures never change later; today's entries price at today's live
- * rate (getRate treats dates >= today as current). BOTH sides of the cross
- * resolve from the same day — getRate('NPR', d) is defined as
- * getRate('INR', d) ÷ 1.6, so pegged pairs cancel to exactly 1.6. The stored
- * `exchange_rate_to_usd` snapshot is deliberately NOT used for display: legacy
- * rows were stamped from the stale table on different days than their date,
- * which breaks that cancellation (रू20,000 → ₹12,539.56 instead of the
- * correct ₹12,500.00). Snapshots stay in the DB untouched (data compat).
- * Every (currency,date) resolution is memory-cached inside exchange.ts.
+ * Convert rows to the display currency with the ACTIVE-MONTH LIVE-RATE rule
+ * (user decision 2026-09-19 — supersedes the 2026-09-16 all-own-date basis,
+ * docs/SYNC-STRATEGY.md §6.1): rows dated inside the user's ACTIVE financial
+ * cycle (calendar month, or the custom paycheck window from
+ * profile.cycle_start_day/cycle_end_day) price at TODAY's live rate — the
+ * active month is live everywhere. Anything dated BEFORE the cycle start —
+ * even one day before — prices at its OWN-DATE rate, so closed periods stay
+ * frozen history that never changes when markets move. `convertFrozen`
+ * returns the all-own-date basis for the "At transaction-date rates"
+ * debugger line (mobile TodayRateLine parity).
+ *
+ * Both sides of the cross always resolve from the SAME day — getRate('NPR',
+ * d) is defined as getRate('INR', d) ÷ 1.6, so pegged pairs cancel to
+ * exactly 1.6. The stored `exchange_rate_to_usd` snapshot is deliberately
+ * NOT used for display: legacy rows were stamped from the stale table on
+ * different days than their date, which breaks that cancellation
+ * (रू20,000 → ₹12,539.56 instead of the correct ₹12,500.00). Snapshots stay
+ * in the DB untouched (data compat). Every (currency,date) resolution is
+ * memory-cached inside exchange.ts; today pairs are pre-fetched for every
+ * foreign row so in-window conversions resolve synchronously.
  */
 export function useRowConverter(
   displayCurrency: string | undefined,
   rows?: ConvertibleRow[],
 ) {
   const displayRate = useDisplayRate(displayCurrency);
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const supabase = getSupabaseBrowserClient();
   const [ratesByPair, setRatesByPair] = useState<Map<string, number>>(new Map());
   const todayKey = todayISO();
 
+  // Active financial cycle window (local ISO dates) — the live/frozen divider.
+  const activeWindow = useMemo(() => {
+    const win = getCycleWindow(new Date(), profile?.cycle_start_day ?? 1, profile?.cycle_end_day ?? null);
+    return { from: toISODate(win.start), to: toISODate(win.end) };
+  }, [profile?.cycle_start_day, profile?.cycle_end_day]);
+
   // `${currency}:${date}` pairs for every foreign row + the display currency
   // at the same dates (a past month must price BOTH sides of the cross there).
-  // The TODAY pair feeds convertToday() — the "at today's rate" holdings view.
+  // The TODAY pair feeds both the in-window live pricing and convertToday().
   const pairKeys = useMemo(() => {
     if (!rows || !displayCurrency || !user) return "";
     const keys = new Set<string>();
@@ -177,18 +190,32 @@ export function useRowConverter(
   return useMemo(
     () => ({
       ready: displayRate != null,
+      // Active-month rule: rows inside the active cycle window price through
+      // TODAY's live cross; rows before it price at their own date. Both
+      // sides of the cross always resolve from the same day (never the
+      // stored snapshot — see the resolver doc above).
       convert: (row: ConvertibleRow): number => {
         if (!displayCurrency || row.currency === displayCurrency) return row.amount;
-        // Same-day basis on BOTH sides (never the stored snapshot — see the
-        // resolver doc): the NPR peg cancels to exactly ÷1.6 vs INR display.
-        const from = ratesByPair.get(`${row.currency}:${row.date}`);
-        const to = ratesByPair.get(`${displayCurrency}:${row.date}`);
-        // amount × (USD/unit_from) ÷ (USD/unit_to) at the row's own date,
+        const dateKey =
+          row.date >= activeWindow.from && row.date <= activeWindow.to ? todayKey : row.date;
+        const from = ratesByPair.get(`${row.currency}:${dateKey}`);
+        const to = ratesByPair.get(`${displayCurrency}:${dateKey}`);
+        // amount × (USD/unit_from) ÷ (USD/unit_to) at the basis date,
         // quantized at the conversion boundary so statement lines reconcile
         // (TESTING.md §2).
         return from && to
           ? quantizeMoney((row.amount * from) / to, displayCurrency)
           : row.amount; // rate not resolved yet — show raw rather than wrong
+      },
+      // ALL-own-date basis (never today's rate) — the "At transaction-date
+      // rates" debugger line cross-checks the live headline against this.
+      convertFrozen: (row: ConvertibleRow): number => {
+        if (!displayCurrency || row.currency === displayCurrency) return row.amount;
+        const from = ratesByPair.get(`${row.currency}:${row.date}`);
+        const to = ratesByPair.get(`${displayCurrency}:${row.date}`);
+        return from && to
+          ? quantizeMoney((row.amount * from) / to, displayCurrency)
+          : row.amount;
       },
       // "At today's rate" counterpart (brokerage market-value pattern): same
       // amount priced through TODAY's live cross, both sides. Returns null
@@ -202,6 +229,6 @@ export function useRowConverter(
       },
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [displayCurrency, displayRate, ratesByPair, todayKey],
+    [displayCurrency, displayRate, ratesByPair, todayKey, activeWindow],
   );
 }
