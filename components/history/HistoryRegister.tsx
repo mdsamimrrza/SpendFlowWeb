@@ -182,7 +182,7 @@ export function HistoryRegister({
   // Full filtered dataset (server-side filters, 5000 cap): totals, grouping
   // and paging must cover every matching entry, not just a page slice.
   const [rows, setRows] = useState<ExpenseRow[]>([]);
-  const { convert, convertToday } = useRowConverter(profile?.preferred_currency, rows);
+  const { convert, convertFrozen } = useRowConverter(profile?.preferred_currency, rows);
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -244,19 +244,18 @@ export function HistoryRegister({
     return { outflow, inflow, peak, peakLabel, net: inflow - outflow };
   }, [rows, convert]);
 
-  // "At today's rate" counterpart of the filtered totals (TodayRateLine hides
-  // it when identical or while today's cross is unresolved).
-  const historyTodayTotals = useMemo(() => {
+  // "At transaction-date rates" debugger counterpart of the filtered totals
+  // (TodayRateLine hides it when the two bases agree; headline is LIVE for
+  // rows in the active month).
+  const historyFrozenTotals = useMemo(() => {
     let inc = 0;
     let exp = 0;
     for (const r of rows) {
-      const v = convertToday(r);
-      if (v == null) return null;
-      if (r.type === "income") inc += v;
-      else exp += v;
+      if (r.type === "income") inc += convertFrozen(r);
+      else exp += convertFrozen(r);
     }
     return { income: inc, expense: exp };
-  }, [rows, convertToday]);
+  }, [rows, convertFrozen]);
 
   // Mobile base: progressive paging. Desktop table: classic paging.
   const pageRows = useMemo(() => rows.slice(page * PAGE, page * PAGE + PAGE), [rows, page]);
@@ -369,8 +368,8 @@ export function HistoryRegister({
       />
       <div className="mt-2 space-y-2 px-1">
         <TodayRateLine
-          frozen={{ income: summary.inflow, expense: summary.outflow }}
-          today={historyTodayTotals}
+          live={{ income: summary.inflow, expense: summary.outflow }}
+          frozen={historyFrozenTotals}
           fmt={fmt}
         />
       </div>
