@@ -36,13 +36,14 @@ export const CURRENCIES: CurrencyCode[] = [
 /**
  * Public Android APK distribution — free hosting via GitHub Releases.
  *
- * Pinned to v2.0.4 asset (spendFlow.apk). When a new release is published with
- * an asset named `spendflow-latest.apk`, this can revert to the
- * /releases/latest/download/ redirect. For now, explicit versioned URL ensures
- * the correct file is served.
+ * Uses the /releases/latest/download/ permalink so this URL always serves the
+ * newest release with no code change needed per version. Convention: every
+ * SpendFlow release must attach its APK as an asset named exactly
+ * `SpendFlow.apk` and be published as a regular release (not a prerelease),
+ * otherwise `latest` won't resolve the file.
  */
 export const ANDROID_DOWNLOAD_URL =
-  "https://github.com/mdsamimrrza/SpendFlow/releases/download/v2.0.4/spendFlow.apk";
+  "https://github.com/mdsamimrrza/SpendFlow/releases/latest/download/SpendFlow.apk";
 
 export interface CurrencyDetail {
   code: CurrencyCode;
