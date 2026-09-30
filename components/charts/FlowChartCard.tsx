@@ -15,7 +15,7 @@ import type { TrendPoint } from "@/components/charts/TrendChart";
 import { StockFlowChart } from "@/components/charts/StockFlowChart";
 import { listExpenses } from "@/services/expenses";
 import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
-import { formatMoney, formatShortDate } from "@/utils/format";
+import { formatMoney, formatShortDate, getCycleWindow, getPreviousCycleWindow, toISODate } from "@/utils/format";
 
 type RangeKey = "1D" | "1W" | "1M" | "3M" | "1Y" | "5Y" | "CUSTOM";
 
@@ -28,14 +28,6 @@ const RANGES: { key: RangeKey; label: string }[] = [
   { key: "5Y", label: "5Y" },
   { key: "CUSTOM", label: "Custom" },
 ];
-
-/** Window length in days per preset range (for the previous-window compare). */
-const RANGE_DAYS: Partial<Record<RangeKey, number>> = {
-  "1D": 1,
-  "1W": 7,
-  "1M": 30,
-  "3M": 90,
-};
 
 interface FlowChartCardProps {
   /** Panel masthead label. */
@@ -50,7 +42,8 @@ interface FlowChartCardProps {
 
 /**
  * Cash-flow chart card with stock-style range selection: 1D (hour buckets),
- * 1W/1M/3M (day buckets), 1Y/5Y (month buckets), Custom (date inputs).
+ * 1W/3M (trailing day buckets), 1M (salary cycle), 1Y/5Y (month buckets),
+ * Custom (date inputs).
  * Header carries the window's net figure with a delta chip vs the previous
  * like-for-like window; the summary strip shows inflow/outflow share bars
  * and an insights row (busiest day · avg outflow/day · active days).
@@ -114,15 +107,20 @@ export function FlowChartCard({ label = "Cash flow", bare = false, rows: injecte
   const displayCurrency = profile?.preferred_currency ?? "NPR";
   const fmt = (n: number) => mask(formatMoney(n, displayCurrency, locale));
 
-  const window_ = useMemo((): { from: string; to: string; bucket: "hour" | "day" | "month" } => {
+  // Window per preset: 1D (hour buckets), 1W/3M trailing day spans, 1M the
+  // user's salary cycle (cycle_start_day/end from the profile — mobile parity,
+  // user decision 2026-09-30), 1Y/5Y trailing month buckets, Custom inputs.
+  const rawWindow = useMemo((): { from: string; to: string; bucket: "hour" | "day" | "month" } => {
     const to = today();
     switch (range) {
       case "1D":
         return { from: to, to, bucket: "hour" };
       case "1W":
         return { from: shiftDays(to, -6), to, bucket: "day" };
-      case "1M":
-        return { from: shiftDays(to, -29), to, bucket: "day" };
+      case "1M": {
+        const win = getCycleWindow(new Date(), profile?.cycle_start_day ?? 1, profile?.cycle_end_day ?? null);
+        return { from: toISODate(win.start), to: toISODate(win.end), bucket: "day" };
+      }
       case "3M":
         return { from: shiftDays(to, -89), to, bucket: "day" };
       case "1Y":
@@ -136,7 +134,27 @@ export function FlowChartCard({ label = "Cash flow", bare = false, rows: injecte
         return { from, to: end, bucket: spanDays > 190 ? "month" : "day" };
       }
     }
-  }, [range, customFrom, customTo]);
+  }, [range, customFrom, customTo, profile?.cycle_start_day, profile?.cycle_end_day]);
+
+  // Auto-trim the start only: the shown window begins 2 days before the
+  // first entry inside the requested window (never earlier than the window),
+  // so a 1Y pick with only 3 months of data shows just those months. The
+  // full span renders — the chart itself projects the balance declining to
+  // month end after the last real day (user sample 2026-09-30).
+  const window_ = useMemo(() => {
+    let first: string | null = null;
+    for (const row of rows) {
+      if (row.date >= rawWindow.from && row.date <= rawWindow.to && (first === null || row.date < first)) {
+        first = row.date;
+      }
+    }
+    const lead = first ? shiftDays(first, -2) : rawWindow.from;
+    return {
+      from: lead > rawWindow.from ? lead : rawWindow.from,
+      to: rawWindow.to,
+      bucket: rawWindow.bucket,
+    };
+  }, [rows, rawWindow]);
 
   const points = useMemo<TrendPoint[]>(() => {
     const { from, to, bucket } = window_;
@@ -191,6 +209,12 @@ export function FlowChartCard({ label = "Cash flow", bare = false, rows: injecte
     return out;
   }, [rows, window_, convert]);
 
+  // Inclusive day span of the active window (drives per-day averages).
+  const spanDays = Math.max(
+    1,
+    Math.round((Date.parse(window_.to) - Date.parse(window_.from)) / 86_400_000) + 1,
+  );
+
   const totals = useMemo(
     () =>
       points.reduce(
@@ -200,14 +224,16 @@ export function FlowChartCard({ label = "Cash flow", bare = false, rows: injecte
     [points],
   );
 
-  // Previous like-for-like window (equal day-count immediately before this
-  // one) — powers the delta chip. Hour buckets compare against yesterday.
+  // Previous like-for-like window — powers the delta chip. For the salary
+  // cycle that's the previous cycle (re-derived, month-length safe); other
+  // ranges shift back by their own span. Hour buckets compare yesterday.
   const prevTotals = useMemo(() => {
-    const spanDays =
-      RANGE_DAYS[range] ??
-      Math.max(1, Math.round((Date.parse(window_.to) - Date.parse(window_.from)) / 86_400_000) + 1);
-    const prevTo = shiftDays(window_.from, -1);
-    const prevFrom = shiftDays(prevTo, -(spanDays - 1));
+    const prevWin =
+      range === "1M"
+        ? getPreviousCycleWindow(new Date(), profile?.cycle_start_day ?? 1, profile?.cycle_end_day ?? null)
+        : null;
+    const prevTo = prevWin ? toISODate(prevWin.end) : shiftDays(window_.from, -1);
+    const prevFrom = prevWin ? toISODate(prevWin.start) : shiftDays(prevTo, -(spanDays - 1));
     let income = 0;
     let expense = 0;
     let has = false;
@@ -219,7 +245,7 @@ export function FlowChartCard({ label = "Cash flow", bare = false, rows: injecte
       else expense += v;
     }
     return has ? { income, expense } : null;
-  }, [rows, window_, range, convert]);
+  }, [rows, window_, range, spanDays, convert, profile?.cycle_start_day, profile?.cycle_end_day]);
 
   const insights = useMemo(() => {
     let busiest: TrendPoint | null = null;
@@ -228,15 +254,12 @@ export function FlowChartCard({ label = "Cash flow", bare = false, rows: injecte
       if (!busiest || p.expense > busiest.expense) busiest = p;
       if (p.income + p.expense > 0) activeDays += 1;
     }
-    const spanDays =
-      RANGE_DAYS[range] ??
-      Math.max(1, Math.round((Date.parse(window_.to) - Date.parse(window_.from)) / 86_400_000) + 1);
     return {
       busiest: busiest && busiest.expense > 0 ? busiest : null,
       activeDays,
       avgOutflow: totals.expense / spanDays,
     };
-  }, [points, range, window_, totals.expense]);
+  }, [points, spanDays, totals.expense]);
 
   const net = totals.income - totals.expense;
   const prevNet = prevTotals ? prevTotals.income - prevTotals.expense : null;
@@ -250,8 +273,8 @@ export function FlowChartCard({ label = "Cash flow", bare = false, rows: injecte
   const rangeLabel = useMemo(() => {
     if (range === "CUSTOM") return `${window_.from} → ${window_.to}`;
     if (range === "1D") return t("cfTodayByHour");
-    const days = RANGE_DAYS[range];
-    if (days) return t("cfTrailingDays").replace("{n}", String(days));
+    if (range === "1M") return t("histChipCycle");
+    if (range === "3M") return t("cfTrailingDays").replace("{n}", "90");
     if (range === "1Y") return t("cfTrailing12M");
     return t("cfTrailing5Y");
   }, [range, window_, t]);

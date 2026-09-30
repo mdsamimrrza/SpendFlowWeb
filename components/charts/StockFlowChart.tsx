@@ -2,6 +2,7 @@
 
 import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { TrendPoint } from "@/components/charts/TrendChart";
+import { useLanguage } from "@/store/LanguageContext";
 import { formatShortDate } from "@/utils/format";
 
 interface StockFlowChartProps {
@@ -13,17 +14,19 @@ interface StockFlowChartProps {
 }
 
 /**
- * Stock-ticker-style cash chart: one cumulative net-flow line (the running
- * balance across the window) with a gradient fill beneath — green when the
- * window ends up, red when it ends down, like a market cap curve. Dashed
- * baseline marks the window start, a right-edge tag carries the final value,
- * and the crosshair readout works with mouse hover AND touch tap (tap pins).
- * SVG text scales inversely with container width so labels stay legible at
- * phone widths.
+ * "Expenses vs Inflow" two-line chart (user reference): the green line is
+ * the DAILY net — zero everywhere except a spike up exactly on an income
+ * entry's date and a spike down on an expense entry's date — while the red
+ * line is the cumulative spend climbing from zero. Dots mark every entry
+ * day. Full-amount y labels, thirds gridlines, and a floating transparent
+ * readout card on hover (mouse) / tap (touch, pins) carry that day's exact
+ * figures. SVG text scales inversely with container width so labels stay
+ * legible at phone widths.
  */
 export function StockFlowChart({ points, locale = "en-US", height = 240 }: StockFlowChartProps) {
   const [hover, setHover] = useState<number | null>(null);
   const [pin, setPin] = useState<number | null>(null);
+  const { t } = useLanguage();
   const gradId = `sf-stock-area${useId().replace(/:/g, "")}`;
 
   const W = 680;
@@ -47,89 +50,105 @@ export function StockFlowChart({ points, locale = "en-US", height = 240 }: Stock
     return () => ro.disconnect();
   }, []);
   const fs = (n: number) => Math.round(n * fontScale * 10) / 10;
-  // Left gutter grows with the scaled y-labels so they never clip the viewBox.
-  const PAD = { top: 22, right: 64, bottom: 26, left: 40 + 14 * fontScale };
 
   const model = useMemo(() => {
     if (points.length === 0) return null;
-    let cum = 0;
-    const series = points.map((p) => (cum += p.income - p.expense));
-    const daily = points.map((p) => p.income - p.expense);
+    const PADR = 16;
 
-    // Gaussian-smooth the series for the DRAWN curve — this is what makes
-    // ticker charts look silky: the day-to-day noise is blurred away and
-    // only the real trend remains. The first and last points are pinned to
-    // the true values (the tag must stay exact), and every number shown in
-    // text (readout, summary, insights) still comes from the raw series.
-    const sigma = Math.max(1.5, series.length * 0.07);
-    const radius = Math.ceil(sigma * 2);
-    const plot = series.map((_, i) => {
-      let sum = 0;
-      let wsum = 0;
-      for (let k = -radius; k <= radius; k++) {
-        const j = i + k;
-        if (j < 0 || j >= series.length) continue;
-        const w = Math.exp(-(k * k) / (2 * sigma * sigma));
-        sum += series[j] * w;
-        wsum += w;
-      }
-      return sum / wsum;
-    });
-    if (plot.length > 0) {
-      plot[0] = series[0];
-      plot[plot.length - 1] = series[series.length - 1];
+    // Two series: the DAILY net (income − expense for that exact day — zero
+    // everywhere except a spike up at an income entry and a spike down at an
+    // expense entry) and the cumulative spend climbing from zero. No running
+    // total on the green line and no projection: the line only rises/falls
+    // exactly on the date an entry exists (user clarification 2026-09-30).
+    let cumOut = 0;
+    const net: number[] = [];
+    const spent: number[] = [];
+    for (const p of points) {
+      cumOut += p.expense;
+      net.push(p.income - p.expense);
+      spent.push(cumOut);
     }
 
-    const max = Math.max(...plot, 0);
-    const min = Math.min(...plot, 0);
-    const flat = max === 0 && min === 0;
-    const innerW = W - PAD.left - PAD.right;
-    const innerH = H - PAD.top - PAD.bottom;
-    // Padded domain: a little headroom above the peak (and below the trough
-    // when negative) so the line never rides the plot edge — like a real
-    // market chart. The zero baseline hugs the bottom when all-positive.
-    const pad = (max - min || Math.max(max, 1)) * 0.08;
-    const dMin = min < 0 ? min - pad : Math.min(0, max) - 0.0001;
-    const dMax = max + pad;
+    const fmtFull = (v: number) =>
+      Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(Math.round(Math.abs(v)));
+    const maxV = Math.max(...net, ...spent, 0);
+    const minV = Math.min(...net, 0);
+    // Left gutter sized to the longest full-amount label on the axis.
+    const padL = Math.max(fs(28), fmtFull(maxV).length * fs(5.4) + fs(12));
+
+    const innerW = W - padL - PADR;
+    const innerH = H - 22 - 26;
+    const pad = (maxV - minV || maxV || 1) * 0.08;
+    const dMax = maxV + pad;
+    const dMin = minV - (minV < 0 ? pad : 0.0001);
+    // SSR and the client can drift in the last float bits (points arrive from
+    // different conversion paths), which React reports as a hydration
+    // attribute mismatch on the raw cx/cy. Rounding the emitted coordinates
+    // to 3 decimals collapses that drift; paths already do via toFixed(1).
+    const round3 = (v: number) => Math.round(v * 1000) / 1000;
     const x = (i: number) =>
-      PAD.left + (points.length === 1 ? innerW / 2 : (i / (points.length - 1)) * innerW);
-    const y = (v: number) => PAD.top + innerH - ((v - dMin) / (dMax - dMin)) * innerH;
+      round3(padL + (points.length === 1 ? innerW / 2 : (i / (points.length - 1)) * innerW));
+    const y = (v: number) => round3(22 + innerH - ((v - dMin) / (dMax - dMin)) * innerH);
 
-    // Flowing Catmull-Rom spline with a loose tension (0.22 vs the classic
-    // 1/6) — the soft-shouldered "market curve" look: rounded bell peaks,
-    // long glide into spikes, gentle tails. Control points are clamped to
-    // the plot band so the tasteful overshoot never leaves the chart.
-    const n = series.length;
-    const xs = plot.map((_, i) => x(i));
-    const ys = plot.map((v) => y(v));
-    let linePath = `M${xs[0].toFixed(1)},${ys[0].toFixed(1)}`;
-    if (n > 1) {
-      const clampY = (v: number) => Math.max(PAD.top, Math.min(v, H - PAD.bottom));
-      const S = 0.22;
-      for (let i = 0; i < n - 1; i++) {
-        const i0 = Math.max(0, i - 1);
-        const i3 = Math.min(n - 1, i + 2);
-        const c1x = xs[i] + (xs[i + 1] - xs[i0]) * S;
-        const c1y = clampY(ys[i] + (ys[i + 1] - ys[i0]) * S);
-        const c2x = xs[i + 1] - (xs[i3] - xs[i]) * S;
-        const c2y = clampY(ys[i + 1] - (ys[i3] - ys[i]) * S);
-        linePath += ` C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${xs[i + 1].toFixed(1)},${ys[i + 1].toFixed(1)}`;
+    // Smooth both series with one tight Gaussian (4% of the window) so a
+    // single-day step reads as a step; first/last stay pinned to true values.
+    const smooth = (series: number[]) => {
+      // Very tight blur — just enough to soften pixel-level jitter while a
+      // one-day spike still reads as a spike on its exact date.
+      const sigma = Math.max(0.5, series.length * 0.012);
+      const radius = Math.ceil(sigma * 2);
+      const out = series.map((_, i) => {
+        let sum = 0;
+        let wsum = 0;
+        for (let k = -radius; k <= radius; k++) {
+          const j = i + k;
+          if (j < 0 || j >= series.length) continue;
+          const w = Math.exp(-(k * k) / (2 * sigma * sigma));
+          sum += series[j] * w;
+          wsum += w;
+        }
+        return sum / wsum;
+      });
+      out[0] = series[0];
+      out[out.length - 1] = series[series.length - 1];
+      return out;
+    };
+    const netPlot = smooth(net);
+    const spentPlot = smooth(spent);
+
+    // Flowing Catmull-Rom spline (tension 0.22) — the soft market-curve look.
+    const spline = (plot: number[]) => {
+      const n = plot.length;
+      const xs = plot.map((_, i) => x(i));
+      const ys = plot.map((v) => y(v));
+      let d = `M${xs[0].toFixed(1)},${ys[0].toFixed(1)}`;
+      if (n > 1) {
+        const clampY = (v: number) => Math.max(22, Math.min(v, H - 26));
+        const S = 0.22;
+        for (let i = 0; i < n - 1; i++) {
+          const i0 = Math.max(0, i - 1);
+          const i3 = Math.min(n - 1, i + 2);
+          const c1x = xs[i] + (xs[i + 1] - xs[i0]) * S;
+          const c1y = clampY(ys[i] + (ys[i + 1] - ys[i0]) * S);
+          const c2x = xs[i + 1] - (xs[i3] - xs[i]) * S;
+          const c2y = clampY(ys[i + 1] - (ys[i3] - ys[i]) * S);
+          d += ` C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${xs[i + 1].toFixed(1)},${ys[i + 1].toFixed(1)}`;
+        }
       }
-    }
+      return d;
+    };
+    const netPath = spline(netPlot);
+    const spentPath = spline(spentPlot);
     const areaPath =
-      linePath +
-      ` L${xs[n - 1].toFixed(1)},${(H - PAD.bottom).toFixed(1)}` +
-      ` L${xs[0].toFixed(1)},${(H - PAD.bottom).toFixed(1)} Z`;
+      netPath +
+      ` L${x(points.length - 1).toFixed(1)},${(H - 26).toFixed(1)}` +
+      ` L${x(0).toFixed(1)},${(H - 26).toFixed(1)} Z`;
 
-    const up = series[series.length - 1] >= 0;
-    const color = up ? "var(--sf-income)" : "var(--sf-danger)";
-
+    // Sparse x ticks — drop labels closer than one label width, keep last.
     const tickCount = Math.min(5, points.length);
     const rawTicks = Array.from({ length: tickCount }, (_, k) =>
       Math.round((k / (tickCount - 1 || 1)) * (points.length - 1)),
     );
-    // With the inverse-scaled mobile fonts, adjacent labels can collide —
-    // drop ticks closer than one label width and always keep the final date.
     const minGap = fs(9) * 6;
     const tickIdx: number[] = [];
     for (const i of rawTicks) {
@@ -141,25 +160,41 @@ export function StockFlowChart({ points, locale = "en-US", height = 240 }: Stock
       tickIdx.push(points.length - 1);
     }
 
-    const compact = (v: number) =>
-      (v < 0 ? "−" : "") +
-      Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 }).format(Math.abs(v));
-
-    // Grid: human "nice" steps (1/2/2.5/5 × 10ⁿ) across the data range, so
-    // labels read like a real market axis (0 / 20K / 40K …) instead of thirds.
-    let gridValues: number[] = [0];
-    if (!flat) {
-      const raw = (max - min) / 3;
+    // Grid: the sample's look — the data range split into thirds with full
+    // amount labels; when the balance dips negative, fall back to nice steps
+    // so the zero line stays readable.
+    let gridValues: number[] = [0, maxV / 3, (maxV / 3) * 2, maxV];
+    if (minV < 0) {
+      const raw = (maxV - minV) / 3;
       const mag = 10 ** Math.floor(Math.log10(raw));
       const norm = raw / mag;
       const step = (norm < 1.5 ? 1 : norm < 3 ? 2 : norm < 7 ? 5 : 10) * mag;
       gridValues = [];
-      for (let k = Math.ceil(min / step); k * step <= max + step * 1e-6; k++) {
+      for (let k = Math.ceil(minV / step); k * step <= maxV + step * 1e-6; k++) {
         gridValues.push(Math.abs(k) < 1e-9 ? 0 : k * step);
       }
     }
 
-    return { series, plot, daily, max, min, flat, x, y, linePath, areaPath, up, color, tickIdx, compact, gridValues };
+    return {
+      net,
+      spent,
+      netPlot,
+      spentPlot,
+      netPath,
+      spentPath,
+      areaPath,
+      x,
+      y,
+      padL,
+      PADR,
+      maxV,
+      gridValues,
+      fmtFull,
+      // Hit-zone band: half a step either side of each point, so consecutive
+      // rects tile the plot with no dead gaps between them.
+      band: points.length > 1 ? innerW / (points.length - 1) : innerW,
+      tickIdx,
+    };
   }, [points, locale, fontScale]);
 
   if (!model) {
@@ -172,11 +207,45 @@ export function StockFlowChart({ points, locale = "en-US", height = 240 }: Stock
 
   const active = hover ?? pin;
   const last = points.length - 1;
-  const lastValue = model.series[last];
   // Hour buckets (the 1D range) carry a time component — label them by hour
   // instead of repeating the same date across the axis.
   const shortLabel = (iso: string) =>
     iso.length > 10 ? `${iso.slice(11, 13)}:00` : formatShortDate(iso, locale);
+  const compact = (v: number) =>
+    (v < 0 ? "−" : "") +
+    Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 }).format(Math.abs(v));
+
+  // Floating on-chart data card for the active (hovered / pinned) bucket —
+  // that exact day's entries, labeled rows with color dots; follows the
+  // crosshair and flips side near the right edge so it never clips.
+  const activeCard = (() => {
+    if (active == null) return null;
+    const p = points[active];
+    const dayNet = p.income - p.expense;
+    const rows: { label: string; value: string; color: string; dot: boolean }[] = [
+      { label: t("homeInflow"), value: compact(p.income), color: "var(--sf-income)", dot: true },
+      { label: t("homeOutflow"), value: compact(p.expense), color: "var(--sf-danger)", dot: true },
+      {
+        label: t("cfNet"),
+        value: compact(dayNet),
+        color: dayNet >= 0 ? "var(--sf-income)" : "var(--sf-danger)",
+        dot: false,
+      },
+    ];
+    const date = shortLabel(p.date).toUpperCase();
+    const w =
+      Math.max(date.length, ...rows.map((r) => r.label.length + r.value.length + 2)) * fs(5.4) + fs(28);
+    const h = fs(20) + rows.length * fs(14) + fs(6);
+    const px = model.x(active);
+    return {
+      date,
+      rows,
+      w,
+      h,
+      x: Math.min(Math.max(px - w / 2, model.padL), W - model.PADR - w),
+      y: 24,
+    };
+  })();
 
   const onMove = (i: number, e: React.PointerEvent) => {
     if (e.pointerType === "mouse") setHover(i);
@@ -185,116 +254,127 @@ export function StockFlowChart({ points, locale = "en-US", height = 240 }: Stock
 
   return (
     <div ref={wrapRef}>
-      {/* Readout strip (hover / pinned) */}
+      {/* Strip: window stamp left, line legend right (sample style) */}
       <div className="mb-1 flex h-5 items-center justify-between gap-2">
         <span className="stamp truncate">
           {points.length > 1
             ? `${shortLabel(points[0].date)} — ${shortLabel(points[last].date)}`
             : ""}
         </span>
-        {active != null && (
-          <p className="numeric flex shrink-0 items-baseline gap-1.5 text-xs font-bold text-text">
-            <span className="caps !text-faint">{shortLabel(points[active].date)}</span>
-            <span className={model.daily[active] >= 0 ? "text-income" : "text-danger"}>
-              {model.daily[active] >= 0 ? "+" : "−"}
-              {model.compact(Math.abs(model.daily[active]))}
-            </span>
-            <span className="text-faint">·</span>
-            <span>
-              NET {model.compact(model.series[active])}
-            </span>
-          </p>
-        )}
+        <span className="flex shrink-0 items-center gap-3">
+          <span className="flex items-center gap-1.5 text-[11px] font-semibold text-faint">
+            <span className="h-1.5 w-1.5 rounded-full bg-danger" aria-hidden />
+            {t("homeOutflow")}
+          </span>
+          <span className="flex items-center gap-1.5 text-[11px] font-semibold text-faint">
+            <span className="h-1.5 w-1.5 rounded-full bg-income" aria-hidden />
+            {t("cfNet")}
+          </span>
+        </span>
       </div>
 
       <svg
         viewBox={`0 0 ${W} ${H}`}
         className="w-full touch-manipulation"
         role="img"
-        aria-label="Cumulative net cash flow"
+        aria-label="Expenses versus inflow"
       >
         <defs>
           <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={model.color} stopOpacity="0.18" />
-            <stop offset="55%" stopColor={model.color} stopOpacity="0.06" />
-            <stop offset="100%" stopColor={model.color} stopOpacity="0" />
+            <stop offset="0%" stopColor="var(--sf-income)" stopOpacity="0.16" />
+            <stop offset="100%" stopColor="var(--sf-income)" stopOpacity="0" />
           </linearGradient>
         </defs>
 
-        {/* Grid + y labels — the zero line reads as the axis, slightly firmer */}
+        {/* Grid + full-amount y labels (sample style: thirds of the range) */}
         {model.gridValues.map((v) => (
           <g key={v}>
             <line
-              x1={PAD.left}
-              x2={W - PAD.right}
+              x1={model.padL}
+              x2={W - model.PADR}
               y1={model.y(v)}
               y2={model.y(v)}
               stroke={v === 0 ? "var(--sf-text-muted)" : "var(--sf-border)"}
               strokeWidth={v === 0 ? 1 : 0.75}
               strokeDasharray={v === 0 ? "3 3" : "2 5"}
-              opacity={v === 0 ? 0.4 : 0.55}
+              opacity={v === 0 ? 0.5 : 0.55}
             />
             <text
-              x={PAD.left - 8}
+              x={model.padL - 8}
               y={model.y(v) + fs(3.5)}
               textAnchor="end"
               fontSize={fs(9)}
               fill="var(--sf-faint)"
-              style={{ letterSpacing: "0.05em" }}
+              style={{ letterSpacing: "0.03em" }}
             >
-              {model.compact(v)}
+              {model.fmtFull(v)}
             </text>
           </g>
         ))}
 
-        {/* Gradient fill + line */}
+        {/* Wash under the balance line + the two curves */}
         <path d={model.areaPath} fill={`url(#${gradId})`} />
         <path
-          d={model.linePath}
+          d={model.spentPath}
           fill="none"
-          stroke={model.color}
+          stroke="var(--sf-danger)"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="chart-draw"
+        />
+        <path
+          d={model.netPath}
+          fill="none"
+          stroke="var(--sf-income)"
           strokeWidth="2.5"
           strokeLinecap="round"
           strokeLinejoin="round"
           className="chart-draw"
         />
-        {/* End dot + right-edge value tag — the chip sits fully inside the
-            right gutter (its old width ran 2 units past the viewBox and was
-            clipped into a sliver at the card edge). */}
-        <g>
-          <line
-            x1={model.x(last)}
-            x2={W - PAD.right + 4}
-            y1={model.y(lastValue)}
-            y2={model.y(lastValue)}
-            stroke={model.color}
-            strokeWidth="1"
-            strokeDasharray="2 2"
-          />
-          <rect
-            x={W - PAD.right + 4}
-            y={model.y(lastValue) - fs(9)}
-            width={PAD.right - 8}
-            height={fs(18)}
-            rx={5}
-            fill={model.color}
-          />
-          <text
-            x={W - PAD.right + 4 + (PAD.right - 8) / 2}
-            y={model.y(lastValue) + fs(3.5)}
-            textAnchor="middle"
-            fontSize={fs(8)}
-            fontWeight="700"
-            fill="var(--sf-surface)"
-          >
-            {model.compact(lastValue)}
-          </text>
-          <circle cx={model.x(last)} cy={model.y(lastValue)} r="8" fill={model.color} opacity="0.16" />
+
+        {/* Entry dots: on the balance line when income lands, on the spend
+            line when an expense lands */}
+        {points.map((p, i) => (
+          <g key={`dots-${p.date}`} pointerEvents="none">
+            {(p.income > 0 || p.expense > 0) && (
+              <circle
+                cx={model.x(i)}
+                cy={model.y(model.netPlot[i])}
+                r={fs(2.6)}
+                fill={p.income >= p.expense ? "var(--sf-income)" : "var(--sf-danger)"}
+                stroke="var(--sf-surface)"
+                strokeWidth="1"
+              />
+            )}
+            {p.expense > 0 && (
+              <circle
+                cx={model.x(i)}
+                cy={model.y(model.spentPlot[i])}
+                r={fs(2.6)}
+                fill="var(--sf-danger)"
+                stroke="var(--sf-surface)"
+                strokeWidth="1"
+              />
+            )}
+          </g>
+        ))}
+
+        {/* End dots on both lines (sample style: both series end on a dot) */}
+        <g pointerEvents="none">
           <circle
             cx={model.x(last)}
-            cy={model.y(lastValue)}
-            r="3.5"
-            fill={model.color}
+            cy={model.y(model.spentPlot[last])}
+            r={fs(3)}
+            fill="var(--sf-danger)"
+            stroke="var(--sf-surface)"
+            strokeWidth="1.5"
+          />
+          <circle
+            cx={model.x(last)}
+            cy={model.y(model.netPlot[last])}
+            r={fs(3.5)}
+            fill="var(--sf-income)"
             stroke="var(--sf-surface)"
             strokeWidth="1.5"
           />
@@ -302,35 +382,79 @@ export function StockFlowChart({ points, locale = "en-US", height = 240 }: Stock
 
         {/* Crosshair on the active bucket */}
         {active != null && (
-          <g>
-            <line
-              x1={model.x(active)}
-              x2={model.x(active)}
-              y1={PAD.top}
-              y2={H - PAD.bottom}
-              stroke="var(--sf-text-muted)"
-              strokeWidth="1"
-              strokeDasharray="1 3"
+          <line
+            x1={model.x(active)}
+            x2={model.x(active)}
+            y1={22}
+            y2={H - 26}
+            stroke="var(--sf-text-muted)"
+            strokeWidth="1"
+            strokeDasharray="1 3"
+            opacity="0.7"
+          />
+        )}
+
+        {/* Floating data card for the active bucket (transparent) */}
+        {activeCard && (
+          <g pointerEvents="none">
+            <rect
+              x={activeCard.x}
+              y={activeCard.y}
+              width={activeCard.w}
+              height={activeCard.h}
+              rx="6"
+              fill="var(--sf-surface)"
+              fillOpacity="0.6"
+              stroke="var(--sf-border)"
             />
-            <circle
-              cx={model.x(active)}
-              cy={model.y(model.plot[active])}
-              r="4.5"
-              fill={model.color}
-              stroke="var(--sf-surface)"
-              strokeWidth="2"
-            />
+            <text
+              x={activeCard.x + fs(8)}
+              y={activeCard.y + fs(13)}
+              fontSize={fs(8)}
+              fill="var(--sf-faint)"
+              style={{ letterSpacing: "0.05em" }}
+            >
+              {activeCard.date}
+            </text>
+            {activeCard.rows.map((r, ri) => {
+              const rowY = activeCard.y + fs(28) + ri * fs(14);
+              return (
+                <g key={r.label}>
+                  {r.dot && (
+                    <circle cx={activeCard.x + fs(11)} cy={rowY - fs(3)} r={fs(3)} fill={r.color} />
+                  )}
+                  <text
+                    x={activeCard.x + fs(19)}
+                    y={rowY}
+                    fontSize={fs(8)}
+                    fill="var(--sf-text-muted)"
+                  >
+                    {r.label}:
+                  </text>
+                  <text
+                    x={activeCard.x + activeCard.w - fs(8)}
+                    y={rowY}
+                    textAnchor="end"
+                    fontSize={fs(8.5)}
+                    fontWeight="700"
+                    fill={r.color}
+                  >
+                    {r.value}
+                  </text>
+                </g>
+              );
+            })}
           </g>
         )}
 
         {/* Hit zones — pointer-driven so touch taps work on phones. */}
         {points.map((p, i) => (
           <rect
-            key={p.date}
-            x={model.x(i) - (W - PAD.left - PAD.right) / (points.length * 2)}
-            y={PAD.top}
-            width={(W - PAD.left - PAD.right) / points.length}
-            height={H - PAD.top - PAD.bottom}
+            key={`hit-${p.date}`}
+            x={model.x(i) - model.band / 2}
+            y={22}
+            width={model.band}
+            height={H - 22 - 26}
             fill="transparent"
             onPointerMove={(e) => onMove(i, e)}
             onPointerDown={(e) => {
@@ -347,7 +471,7 @@ export function StockFlowChart({ points, locale = "en-US", height = 240 }: Stock
         {/* X ticks */}
         {model.tickIdx.map((i) => (
           <text
-            key={points[i].date}
+            key={`tick-${points[i].date}`}
             x={model.x(i)}
             y={H - 7}
             textAnchor={i === 0 ? "start" : i === points.length - 1 ? "end" : "middle"}
