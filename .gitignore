@@ -85,3 +85,6 @@ tsconfig.tsbuildinfo
 /.smoke/
 /.zcode/
 dev-server.log
+
+# Screenshot artifacts from scripts/shot-preview.mjs - local verification only, never commit
+/shots/

@@ -43,14 +43,19 @@ import { listSettingsHistory } from "@/services/settingsHistory";
 import { resetAlertHistory } from "@/services/alerts";
 import { getRateSnapshot } from "@/services/exchange";
 import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
-import { formatMoney, getCycleWindow, toISODate, todayISO } from "@/utils/format";
+import {
+  formatMoney,
+  getCycleWindow,
+  getPreviousCycleWindow,
+  toISODate,
+  todayISO,
+} from "@/utils/format";
 import { TodayRateLine } from "@/components/ui/TodayRateLine";
 import type { TranslationKey } from "@/constants/i18n/dictionaries";
 
 interface MonthRow {
   key: string;
   label: string;
-  cycleKey?: string;
   from: string;
   to: string;
   income: number;
@@ -294,6 +299,14 @@ export default function ProfitLossPage() {
   );
 
   // ── Paycheck cycle rows (Month by Month, custom cycle) ──
+  // Buckets tile the selected range with the CURRENT cycle config, walking
+  // back cycle by cycle via the shared getCycleWindow/getPreviousCycleWindow
+  // engine. The settings trail is deliberately NOT used for bucketing: an
+  // abandoned config in user_settings_history (e.g. an accidental 13-to-14 pick)
+  // used to carve a bogus 2-day cycle out of the range and left the days no
+  // config covered out of the register entirely, so the rows never reconciled
+  // with the Period summary. Web divergence from the mobile trail engine,
+  // recorded in docs/FEATURE-PARITY.md.
   const buildPaycheckCycleRows = useCallback(
     (rangeStartISO: string, rangeEndISO: string): MonthRow[] => {
       if (!rangeStartISO || !rangeEndISO || rangeStartISO > rangeEndISO) return [];
@@ -301,92 +314,32 @@ export default function ProfitLossPage() {
       const rangeEnd = parseISO(rangeEndISO);
       if (rangeStart > rangeEnd) return [];
 
-      const getCycleStartForDate = (date: Date, p: SettingsPeriod) => {
-        if (date.getDate() >= p.cycle_start_day) return safeMonthDate(date.getFullYear(), date.getMonth(), p.cycle_start_day);
-        return safeMonthDate(date.getFullYear(), date.getMonth() - 1, p.cycle_start_day);
-      };
-      const getCycleEndForDate = (cycleStart: Date, p: SettingsPeriod) => {
-        if (p.cycle_end_day !== null && p.cycle_end_day >= 1 && p.cycle_end_day <= 31) {
-          const nextMonth = p.cycle_end_day < p.cycle_start_day;
-          return safeMonthDate(
-            cycleStart.getFullYear() + (nextMonth && cycleStart.getMonth() === 11 ? 1 : 0),
-            nextMonth ? (cycleStart.getMonth() + 1) % 12 : cycleStart.getMonth(),
-            p.cycle_end_day,
-          );
-        }
-        const nextStart = new Date(cycleStart.getFullYear(), cycleStart.getMonth() + 1, p.cycle_start_day);
-        return new Date(nextStart.getFullYear(), nextStart.getMonth(), nextStart.getDate() - 1);
-      };
-      const getNextCycleStart = (cycleStart: Date, p: SettingsPeriod) => {
-        // Cycles are MONTHLY: the next one always starts on the same
-        // day-of-month of the FOLLOWING month. The old branch advanced only
-        // when endDay < startDay, so any fixed end day >= start day (e.g.
-        // 1st→25th from "Pick on Calendar") returned the SAME date — the
-        // while-loop below never advanced and froze the page. (APK had the
-        // identical bug; both fixed 2026-09-15.)
-        return safeMonthDate(cycleStart.getFullYear(), cycleStart.getMonth() + 1, p.cycle_start_day);
-      };
-
       const rowsOut: MonthRow[] = [];
-      settingsPeriods.forEach((period, idx) => {
-        const periodStart = parseISO(period.effective_from);
-        const nextPeriodStart =
-          idx + 1 < settingsPeriods.length ? parseISO(settingsPeriods[idx + 1].effective_from) : null;
-        const periodEnd = nextPeriodStart
-          ? new Date(nextPeriodStart.getFullYear(), nextPeriodStart.getMonth(), nextPeriodStart.getDate() - 1)
-          : rangeEnd;
-        if (periodStart > rangeEnd) return;
-        const segStart = periodStart > rangeStart ? periodStart : rangeStart;
-        const segEnd = periodEnd < rangeEnd ? periodEnd : rangeEnd;
-        if (segStart > segEnd) return;
-        let cycleStart = getCycleStartForDate(segStart, period);
-        if (cycleStart < periodStart) cycleStart = getCycleStartForDate(periodStart, period);
-        while (cycleStart <= segEnd) {
-          const cycleEnd = getCycleEndForDate(cycleStart, period);
-          if (cycleStart > segEnd) break;
-          const bucketFrom = cycleStart > segStart ? cycleStart : segStart;
-          const bucketTo = cycleEnd < segEnd ? cycleEnd : segEnd;
-          if (bucketFrom <= bucketTo) {
-            const f = toISODate(bucketFrom);
-            const tt = toISODate(bucketTo);
-            const s = sumBucket(f, tt);
-            rowsOut.push({
-              key: tt,
-              label: `${fmtDayMonth(cycleStart)} – ${fmtDayMonth(cycleEnd)}`,
-              cycleKey: `${toISODate(cycleStart)}__${toISODate(cycleEnd)}`,
-              from: f,
-              to: tt,
-              ...s,
-              budget: null,
-            });
-          }
-          const prevStart = new Date(cycleStart);
-          cycleStart = getNextCycleStart(cycleStart, period);
-          // Non-advancing guard: a cycle must always move forward, whatever
-          // the stored days say. Without this a corrupt config could spin.
-          if (cycleStart <= prevStart) break;
+      let win = getCycleWindow(rangeEnd, cycleStartDay, cycleEndDay);
+      while (win.end >= rangeStart) {
+        const bucketFrom = win.start > rangeStart ? win.start : rangeStart;
+        const bucketTo = win.end < rangeEnd ? win.end : rangeEnd;
+        if (bucketFrom <= bucketTo) {
+          const f = toISODate(bucketFrom);
+          const tt = toISODate(bucketTo);
+          rowsOut.push({
+            key: tt,
+            label: `${fmtDayMonth(win.start)} – ${fmtDayMonth(win.end)}`,
+            from: f,
+            to: tt,
+            ...sumBucket(f, tt),
+            budget: null,
+          });
         }
-      });
-
-      // Merge segments of the same unclipped cycle, newest first.
-      const merged: MonthRow[] = [];
-      for (const row of rowsOut) {
-        const last = merged[merged.length - 1];
-        if (last && row.cycleKey && row.cycleKey === last.cycleKey) {
-          last.income += row.income;
-          last.expense += row.expense;
-          last.net += row.net;
-          last.to = row.to;
-          last.key = row.key;
-          last.label = `${row.from.slice(8, 10)} ${fmtMonth(parseISO(row.from))} – ${row.to.slice(8, 10)} ${fmtMonth(parseISO(row.to))}`;
-        } else {
-          merged.push(row);
-        }
+        if (win.start <= rangeStart) break;
+        const prev = getPreviousCycleWindow(win.start, cycleStartDay, cycleEndDay);
+        // Non-advancing guard: a corrupt config must not spin the loop.
+        if (prev.end >= win.end) break;
+        win = prev;
       }
-      return merged.reverse();
+      return rowsOut.reverse();
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [settingsPeriods, sumBucket],
+    [cycleStartDay, cycleEndDay, sumBucket],
   );
 
   // ── Chart rows: calendar months + explicit custom-cycle replacement ──
