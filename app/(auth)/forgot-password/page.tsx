@@ -141,7 +141,7 @@ export default function ForgotPasswordPage() {
             </AuthSubmit>
             <Link
               href="/sign-in"
-              className="sf-lift flex h-11 w-full items-center justify-center gap-1.5 border border-border bg-surface px-5 text-xs font-bold uppercase tracking-[0.08em] text-text hover:border-text-muted"
+              className="flex h-11 w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-surface px-5 text-sm font-semibold text-text transition-colors hover:bg-surface-elevated"
             >
               <KeyRound size={13} className="text-primary" /> {t("backToSignIn")}
             </Link>

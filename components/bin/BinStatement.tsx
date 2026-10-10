@@ -1,25 +1,23 @@
 "use client";
 
 /**
- * Bin — 1:1 web mirror of mobile app/bin.tsx: mobile header bar (back chip,
- * centered title + count, danger "Empty Bin"), amber retention notice, and
- * one rounded card per item (42px category-tinted glyph tile, title, amount +
- * countdown chip, Restore pill, trash button). Same services/behavior as the
- * ledger build (restore / delete-forever / empty-bin, receipt orphan drain).
+ * Bin - V2 redesign (2026-10-10): quiet masthead with count + Empty Bin
+ * action, retention notice, and one register row per item (category-tinted
+ * glyph tile, title, amount + countdown chip, Restore button, purge button).
+ * Same services/behavior as the ledger build (restore / delete-forever /
+ * empty-bin, receipt orphan drain).
  */
 import { useCallback, useEffect, useState } from "react";
-import { Repeat, RotateCcw, Trash2 } from "lucide-react";
+import { Info, Repeat, RotateCcw, Trash2 } from "lucide-react";
 import { useAuth } from "@/store/AuthContext";
 import { useLanguage } from "@/store/LanguageContext";
 import { usePrivacy } from "@/store/PrivacyContext";
 import { useTheme } from "@/store/ThemeContext";
 import { useToast } from "@/store/ToastContext";
-import {
-  MobileConfirmDialog,
-  MobileEmptyState,
-  MobileHeaderBar,
-} from "@/components/ui/MobileChrome";
+import { MobileConfirmDialog } from "@/components/ui/MobileChrome";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Panel } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { categoryGlyph } from "@/components/ui/Glyph";
 import { notifyExpensesChanged } from "@/hooks/useExpenses";
 import { useRowConverter } from "@/hooks/useRates";
@@ -180,40 +178,46 @@ export default function BinStatement({ inject }: BinStatementProps) {
   };
 
   return (
-    <main className="mx-auto w-full max-w-[560px]">
-      <MobileHeaderBar
-        title={t("bin_title")}
-        caption={items.length > 0 ? t("bin_item_count").replace("{count}", String(items.length)) : undefined}
-        right={
-          <button
-            onClick={() => setEmptyConfirmOpen(true)}
-            disabled={items.length === 0}
-            className="rounded-[10px] px-2.5 py-1.5 text-[13px] font-extrabold text-danger transition active:opacity-70 disabled:opacity-[0.35]"
-          >
-            {t("bin_empty_bin")}
-          </button>
-        }
-      />
+    <main className="mx-auto w-full max-w-[560px] md:max-w-[720px]">
+      {/* Masthead */}
+      <header className="mb-4 flex items-end justify-between gap-3 pt-1 sm:mb-5">
+        <div>
+          <h1 className="flex items-baseline gap-2 text-xl font-bold tracking-[-0.02em] text-text sm:text-2xl">
+            {t("bin_title")}
+            {items.length > 0 && (
+              <span className="text-[13px] font-semibold text-faint">
+                {t("bin_item_count").replace("{count}", String(items.length))}
+              </span>
+            )}
+          </h1>
+        </div>
+        <button
+          onClick={() => setEmptyConfirmOpen(true)}
+          disabled={items.length === 0}
+          className="flex h-9 shrink-0 items-center rounded-lg px-3 text-sm font-semibold text-danger transition-colors hover:bg-rust-tint disabled:opacity-35"
+        >
+          {t("bin_empty_bin")}
+        </button>
+      </header>
 
       {/* Retention notice */}
-      <div className="mb-3.5 mt-3 rounded-[14px] border border-[var(--sf-bin-notice-line)] bg-[var(--sf-bin-notice-bg)] p-3">
-        <p className="text-xs font-semibold leading-[17px] text-text">{t("bin_subtitle")}</p>
+      <div className="mb-4 flex items-start gap-2 rounded-lg border border-[var(--sf-bin-notice-line)] bg-[var(--sf-bin-notice-bg)] p-3">
+        <Info size={14} className="mt-0.5 shrink-0 text-[var(--sf-bin-warn)]" aria-hidden />
+        <p className="text-xs font-medium leading-[17px] text-text">{t("bin_subtitle")}</p>
       </div>
 
       {loading ? (
         <div className="space-y-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-[70px] w-full rounded-[18px]" />
+            <Skeleton key={i} className="h-[70px] w-full rounded-xl" />
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="pt-6">
-          <MobileEmptyState
-            icon={Trash2}
-            title={t("bin_empty_title")}
-            message={t("bin_empty_message")}
-          />
-        </div>
+        <Panel>
+          <div className="p-4 sm:p-5">
+            <EmptyState title={t("bin_empty_title")} message={t("bin_empty_message")} />
+          </div>
+        </Panel>
       ) : (
         <div className="space-y-2">
           {items.map((item) => {
@@ -227,14 +231,14 @@ export default function BinStatement({ inject }: BinStatementProps) {
             return (
               <div
                 key={item.id}
-                className="flex items-center gap-3 rounded-[18px] border border-border bg-surface p-3.5 shadow-[0_2px_8px_var(--sf-set-card-shadow)]"
+                className="flex items-center gap-3 rounded-xl border border-border bg-surface p-3.5 transition-colors hover:border-faint"
               >
                 <button
                   type="button"
                   onClick={() => void handleRestore(item)}
                   disabled={busy}
                   aria-label={t("bin_restore")}
-                  className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-[13px] transition disabled:opacity-50"
+                  className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-lg transition disabled:opacity-50"
                   style={{
                     backgroundColor: `color-mix(in srgb, ${iconColor} ${isDark ? "15%" : "10%"}, transparent)`,
                     color: iconColor,
@@ -244,11 +248,11 @@ export default function BinStatement({ inject }: BinStatementProps) {
                 </button>
 
                 <div className="min-w-0 flex-1 space-y-[3px]">
-                  <p className="truncate text-[14.5px] font-bold text-text">
+                  <p className="truncate text-sm font-semibold text-text">
                     {itemTitle(item, item.kind === "expense" ? t("bin_item_expense") : t("bin_item_recurring"))}
                   </p>
                   <p className="flex items-center gap-2">
-                    <span className="numeric truncate text-[12.5px] font-bold text-text-muted">
+                    <span className="numeric truncate text-[12.5px] font-semibold text-text-muted">
                       {priced.shown}
                       {priced.nativeText ? ` (${priced.nativeText})` : ""}
                       {item.kind === "expense" && item.expense.type === "income"
@@ -256,14 +260,14 @@ export default function BinStatement({ inject }: BinStatementProps) {
                         : ""}
                     </span>
                     <span
-                      className="inline-flex shrink-0 items-center gap-1 rounded-lg px-[7px] py-[2.5px]"
+                      className="inline-flex shrink-0 items-center gap-1 rounded-md px-[7px] py-[2.5px]"
                       style={{
                         backgroundColor: `color-mix(in srgb, ${tone} 12%, transparent)`,
                         color: tone,
                       }}
                     >
                       <Trash2 size={10} aria-hidden />
-                      <span className="text-[10.5px] font-extrabold">
+                      <span className="text-[10.5px] font-bold">
                         {t("bin_days_left").replace("{days}", String(days))}
                       </span>
                     </span>
@@ -276,11 +280,11 @@ export default function BinStatement({ inject }: BinStatementProps) {
                     className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-primary border-t-transparent"
                   />
                 ) : (
-                  <div className="flex shrink-0 items-center gap-1">
+                  <div className="flex shrink-0 items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => void handleRestore(item)}
-                      className="flex items-center gap-[5px] rounded-[10px] bg-[var(--sf-bin-restore-bg)] px-2.5 py-[7px] text-[12px] font-extrabold text-primary transition active:opacity-70"
+                      className="flex items-center gap-[5px] rounded-lg bg-[var(--sf-bin-restore-bg)] px-2.5 py-2 text-xs font-semibold text-primary transition-colors hover:bg-[var(--sf-primary-light)]"
                     >
                       <RotateCcw size={13} aria-hidden />
                       {t("bin_restore")}
@@ -289,7 +293,7 @@ export default function BinStatement({ inject }: BinStatementProps) {
                       type="button"
                       onClick={() => setPurgeTarget(item)}
                       aria-label={t("bin_delete_forever")}
-                      className="grid h-8 w-8 place-items-center rounded-[10px] bg-[var(--sf-bin-purge-bg)] text-danger transition active:opacity-70"
+                      className="grid h-8 w-8 place-items-center rounded-lg bg-[var(--sf-bin-purge-bg)] text-danger transition-colors hover:bg-rust-tint"
                     >
                       <Trash2 size={15} aria-hidden />
                     </button>

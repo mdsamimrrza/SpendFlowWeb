@@ -528,7 +528,7 @@ export default function LandingPage() {
         {/* ===== Closing CTA ===== */}
         <section className="border-t border-border py-14">
           <Reveal>
-            <div className="relative overflow-hidden rounded-3xl border border-primary/30 bg-gradient-to-br from-primary-light via-surface to-brass-tint p-8 sm:p-12">
+            <div className="relative overflow-hidden rounded-2xl border border-border bg-surface p-8 shadow-soft sm:p-12">
               <div
                 aria-hidden
                 className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-brass-tint opacity-60 blur-3xl"

@@ -214,7 +214,7 @@ export function MoneyPulseHero({
               <p className="mt-0.5 text-xs text-text-muted">{t("homeNoBudgetBody")}</p>
               <Link
                 href="/profit-loss"
-                className="mt-3 inline-flex h-10 items-center gap-1.5 rounded-full bg-gradient-to-r from-primary to-primary-strong px-4 text-xs font-bold uppercase tracking-[0.08em] text-white shadow-soft transition hover:brightness-110 active:scale-[0.98]"
+                className="mt-3 inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3.5 text-[13px] font-semibold text-white transition-colors hover:bg-primary-strong"
               >
                 <Plus size={14} />
                 {t("homeSetBudget")}

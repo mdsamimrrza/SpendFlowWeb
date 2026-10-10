@@ -153,7 +153,7 @@ export function BillsDueStrip() {
       <div className="flex items-center justify-between gap-3 border-b px-4 py-2.5 sm:px-5"
         style={{ borderColor: "color-mix(in srgb, var(--sf-border) 60%, transparent)" }}>
         <p
-          className={`inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-[0.08em] ${
+          className={`inline-flex items-center gap-1.5 text-[11px] font-semibold ${
             hasOverdue ? "text-danger" : "text-primary"
           }`}
         >

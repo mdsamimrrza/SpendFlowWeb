@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Profile & security — identity, avatar, email change (OTP to the CURRENT
+ * Profile & security - identity, avatar, email change (OTP to the CURRENT
  * email), password change, global sign-out, account deletion (OTP-gated edge
  * function). All flows mirror mobile services/auth.ts. Register-style UI:
  * square caps action rows (Settings house style), stepped OTP modals with a
@@ -10,7 +10,7 @@
  */
 import { useEffect, useRef, useState, type ButtonHTMLAttributes } from "react";
 import { useRouter } from "next/navigation";
-import { KeyRound, LogOut, Mail, TriangleAlert, Upload } from "lucide-react";
+import { ArrowLeft, KeyRound, LogOut, Mail, TriangleAlert, Upload } from "lucide-react";
 import { useAuth } from "@/store/AuthContext";
 import { useLanguage } from "@/store/LanguageContext";
 import { useToast } from "@/store/ToastContext";
@@ -83,7 +83,7 @@ export default function ProfilePage() {
   const [signOutAllOpen, setSignOutAllOpen] = useState(false);
 
   // Audit P2-6: a completed password-reset link lands here via /auth/callback
-  // as /profile?recovery=1 — the session is recovery-authenticated, so the
+  // as /profile?recovery=1 - the session is recovery-authenticated, so the
   // user sets the new password directly (no current-password check).
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [recoveryPw, setRecoveryPw] = useState("");
@@ -245,7 +245,7 @@ export default function ProfilePage() {
       });
       if (upError) throw upError;
       // Audit NV-7: GoTrue may hold the change until the NEW address confirms
-      // (two-sided flow — emails/change-email.html). Mirror to the users row
+      // (two-sided flow - emails/change-email.html). Mirror to the users row
       // ONLY when the server actually applied the address; the pending case
       // keeps the profile on the old (still-authoritative) email, and the
       // next confirmed session resyncs it (ensureProfile).
@@ -317,9 +317,10 @@ export default function ProfilePage() {
   return (
     <main className="mx-auto w-full max-w-[880px]">
       <header className="mb-5">
-        <p className="caps !text-primary-strong">{t("profileHolder")}</p>
-        <h1 className="mt-0.5 text-xl font-extrabold tracking-tight text-text">{t("rowProfileSecurity")}</h1>
-        <div className="mt-2 h-0.5 w-14 bg-brass" aria-hidden />
+        <p className="text-[13px] font-medium text-faint">{t("profileHolder")}</p>
+        <h1 className="mt-0.5 text-xl font-bold tracking-[-0.02em] text-text sm:text-2xl">
+          {t("rowProfileSecurity")}
+        </h1>
       </header>
 
       {/* ── Identity register ── */}
@@ -334,7 +335,7 @@ export default function ProfilePage() {
             disabled={uploading}
             aria-label={t("changeAvatar")}
             title={t("changeAvatar")}
-            className="group relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden border border-primary bg-primary-light text-xl font-bold text-primary-strong transition-colors hover:border-primary-strong disabled:opacity-50"
+            className="group relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-elevated text-xl font-bold text-text transition-colors hover:border-primary disabled:opacity-50"
           >
             {profile?.avatar_url && isAllowedAvatarUrl(profile.avatar_url) ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -406,14 +407,15 @@ export default function ProfilePage() {
         </Panel>
 
         {/* ── Danger zone ── */}
-        <section className="panel flex flex-col self-start border-danger">
-          <div className="border-b-2 border-danger px-4 py-2.5 sm:px-5">
+        <section className="panel flex flex-col self-start">
+          <div className="panel-rule flex items-center justify-between gap-2 px-4 py-2.5 sm:px-5">
             <span className="caps !text-danger">{t("dangerZone")}</span>
+            <TriangleAlert size={14} className="text-danger" aria-hidden />
           </div>
           <div className="flex flex-1 flex-col gap-4 p-5">
             <div className="flex items-start gap-3.5">
               <span
-                className="flex h-9 w-9 shrink-0 items-center justify-center border border-danger bg-rust-tint text-danger"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-rust-tint text-danger"
                 aria-hidden
               >
                 <TriangleAlert size={15} />
@@ -447,7 +449,7 @@ export default function ProfilePage() {
           }}
           className="space-y-4 px-5 pt-4"
         >
-          <p className="stamp">{t("pwHint")}</p>
+          <p className="text-xs text-faint">{t("pwHint")}</p>
           <Input
             label={t("currentPassword")}
             type="password"
@@ -484,7 +486,7 @@ export default function ProfilePage() {
           }}
           className="space-y-4 px-5 pt-4 pb-5"
         >
-          <p className="stamp">{t("recoveryHint")}</p>
+          <p className="text-xs text-faint">{t("recoveryHint")}</p>
           <Input
             label={t("newPassword")}
             type="password"
@@ -502,7 +504,7 @@ export default function ProfilePage() {
         </form>
       </Modal>
 
-      {/* ── Email change modal — stepped ── */}
+      {/* ── Email change modal - stepped ── */}
       <Modal open={emailOpen} title={t("emailTitle")} onClose={() => setEmailOpen(false)} maxWidth="max-w-sm">
         <div className="space-y-4 px-5 pt-4">
           <StepRail step={otpStage === "send" ? 1 : 2} />
@@ -529,8 +531,8 @@ export default function ProfilePage() {
             </>
           ) : (
             <>
-              <p className="stamp">
-                {t("deleteOtpLead")} <span className="font-bold text-text">{currentEmail || "—"} ·</span>
+              <p className="text-xs text-faint">
+                {t("deleteOtpLead")} <span className="font-semibold text-text">{currentEmail || "-"}</span> ·
               </p>
               <Input
                 label={t("enterCode")}
@@ -547,15 +549,16 @@ export default function ProfilePage() {
                 <button
                   type="button"
                   onClick={() => setOtpStage("send")}
-                  className="text-[11px] font-bold uppercase tracking-wide text-faint transition-colors hover:text-text"
+                  className="flex items-center gap-1 text-xs font-semibold text-faint transition-colors hover:text-text"
                 >
-                  ← {t("back")}
+                  <ArrowLeft size={13} aria-hidden />
+                  {t("back")}
                 </button>
                 <button
                   type="button"
                   onClick={startEmailChange}
                   disabled={cooldown > 0}
-                  className="text-[11px] font-bold uppercase tracking-wide text-faint transition-colors hover:text-primary disabled:opacity-40"
+                  className="text-xs font-semibold text-faint transition-colors hover:text-primary disabled:opacity-40"
                 >
                   {`${t("resendCode")}${cooldown > 0 ? ` · ${cooldown}s` : ""}`}
                 </button>
@@ -587,13 +590,13 @@ export default function ProfilePage() {
         <div className="space-y-4 px-5 pt-4">
           <div className="flex items-start gap-3">
             <span
-              className="flex h-9 w-9 shrink-0 items-center justify-center border border-danger bg-rust-tint text-danger"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-rust-tint text-danger"
               aria-hidden
             >
               <TriangleAlert size={15} />
             </span>
             <p className="min-w-0 flex-1 pt-1 text-sm text-text-muted">
-              {t("deleteOtpLead")} <span className="font-bold text-text">{currentEmail || "—"}</span>.{" "}
+              {t("deleteOtpLead")} <span className="font-bold text-text">{currentEmail || "-"}</span>.{" "}
               {t("deleteOtpTail")}
             </p>
           </div>
@@ -618,15 +621,16 @@ export default function ProfilePage() {
             <button
               type="button"
               onClick={() => setDeleteStage("warn")}
-              className="text-[11px] font-bold uppercase tracking-wide text-faint transition-colors hover:text-text"
+              className="flex items-center gap-1 text-xs font-semibold text-faint transition-colors hover:text-text"
             >
-              ← {t("back")}
+              <ArrowLeft size={13} aria-hidden />
+              {t("back")}
             </button>
             <button
               type="button"
               onClick={requestDelete}
               disabled={cooldown > 0}
-              className="text-[11px] font-bold uppercase tracking-wide text-faint transition-colors hover:text-danger disabled:opacity-40"
+              className="text-xs font-semibold text-faint transition-colors hover:text-danger disabled:opacity-40"
             >
               {`${t("resendCode")}${cooldown > 0 ? ` · ${cooldown}s` : ""}`}
             </button>
@@ -664,21 +668,21 @@ function SecurityRow({
   return (
     <div className={`flex items-center gap-3.5 px-5 py-4 ${last ? "" : "border-b border-border/60"}`}>
       <span
-        className="flex h-9 w-9 shrink-0 items-center justify-center border border-primary bg-primary-light text-primary-strong"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--sf-primary-light)] text-primary"
         aria-hidden
       >
         <Icon size={15} />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-bold text-text">{label}</p>
-        <p className="mt-0.5 text-[11px] leading-snug text-faint">{desc}</p>
+        <p className="text-sm font-semibold text-text">{label}</p>
+        <p className="mt-0.5 text-xs leading-snug text-faint">{desc}</p>
       </div>
       {action}
     </div>
   );
 }
 
-/** Square caps button — the ledger action language of this register. */
+/** V2 action button - rounded-lg, sentence case, semantic variants. */
 function SquareBtn({
   variant = "primary",
   loading = false,
@@ -691,19 +695,19 @@ function SquareBtn({
   loading?: boolean;
 }) {
   const VARIANTS = {
-    primary: "border border-primary bg-primary text-white hover:bg-primary-strong",
-    outline: "border border-border bg-input text-primary hover:border-primary hover:bg-primary-light",
-    danger: "border-2 border-danger bg-danger text-white hover:opacity-90",
-    ghost: "border border-border text-text-muted hover:border-text-muted hover:text-text",
+    primary: "bg-primary text-white hover:bg-primary-strong",
+    outline: "border border-border bg-surface text-text-muted hover:border-faint hover:text-text",
+    danger: "bg-danger text-white hover:opacity-90",
+    ghost: "border border-border bg-surface text-text-muted hover:bg-surface-elevated hover:text-text",
   } as const;
   return (
     <button
       {...rest}
       disabled={disabled || loading}
-      className={`inline-flex h-9 shrink-0 items-center justify-center gap-2 px-4 text-xs font-bold uppercase tracking-[0.08em] transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${VARIANTS[variant]} ${className}`}
+      className={`inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${VARIANTS[variant]} ${className}`}
     >
       {loading && (
-        <span aria-hidden className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+        <span aria-hidden className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
       )}
       {children}
     </button>
@@ -713,13 +717,13 @@ function SquareBtn({
 /** Two-segment OTP step indicator. */
 function StepRail({ step }: { step: 1 | 2 }) {
   const { t } = useLanguage();
-  const seg = "caps flex-1 border px-2 py-1.5 text-center transition-colors";
+  const seg = "flex-1 rounded-lg border px-2 py-2 text-center text-xs font-semibold transition-colors";
   return (
     <div className="flex items-center gap-1.5">
-      <span className={`${seg} ${step === 1 ? "border-primary bg-primary-light text-primary-strong" : "border-border text-faint"}`}>
+      <span className={`${seg} ${step === 1 ? "border-primary bg-[var(--sf-primary-light)] text-primary-strong" : "border-border text-faint"}`}>
         1 · {t("stepAuthorize")}
       </span>
-      <span className={`${seg} ${step === 2 ? "border-primary bg-primary-light text-primary-strong" : "border-border text-faint"}`}>
+      <span className={`${seg} ${step === 2 ? "border-primary bg-[var(--sf-primary-light)] text-primary-strong" : "border-border text-faint"}`}>
         2 · {t("stepConfirm")}
       </span>
     </div>

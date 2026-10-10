@@ -384,14 +384,14 @@ export default function HomePage() {
           </h1>
         </div>
         <div className="flex shrink-0 items-center gap-2.5">
-          <span className="hidden h-11 items-center gap-2 rounded-full border border-border bg-surface px-4 shadow-soft sm:flex">
+          <span className="hidden h-10 items-center gap-2 rounded-lg border border-border bg-surface px-3.5 sm:flex">
             <CurrencyFlag currency={displayCurrency} size={16} />
-            <span className="caps whitespace-nowrap">{cycleLabel}</span>
+            <span className="whitespace-nowrap text-[12.5px] font-medium text-text-muted">{cycleLabel}</span>
           </span>
           <Link
             href="/expense/new"
             aria-label={t("addTransaction")}
-            className="flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-br from-primary to-primary-strong px-3.5 text-xs font-bold uppercase tracking-[0.08em] text-white shadow-pop transition hover:brightness-110 active:scale-[0.97] sm:px-5"
+            className="flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-strong active:scale-[0.98]"
           >
             <Plus size={17} />
             <span className="hidden sm:inline">{t("addTransaction")}</span>
@@ -536,7 +536,7 @@ export default function HomePage() {
             {rows.length > 8 && (
               <Link
                 href="/history"
-                className="mt-3 flex h-12 items-center justify-center gap-1.5 rounded-2xl border border-border bg-surface text-xs font-bold uppercase tracking-[0.08em] text-text-muted transition hover:border-primary hover:text-primary active:scale-[0.99]"
+                className="mt-3 flex h-11 items-center justify-center gap-1.5 rounded-lg border border-border bg-surface text-sm font-semibold text-text-muted transition-colors hover:border-faint hover:text-text"
               >
                 <Layers size={14} aria-hidden />
                 {t("viewAll")} — {rows.length} {t("homeEntriesWord")}

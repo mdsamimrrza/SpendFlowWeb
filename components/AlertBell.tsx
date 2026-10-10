@@ -186,7 +186,7 @@ export function AlertBell({ buttonClassName }: { buttonClassName?: string }) {
                 <button
                   onClick={() => void markAll()}
                   disabled={unread === 0}
-                  className="h-8 rounded-full border border-primary px-3.5 text-xs font-bold uppercase tracking-[0.08em] text-primary transition-colors hover:bg-primary hover:text-white disabled:opacity-40"
+                  className="h-8 rounded-lg bg-primary px-3.5 text-xs font-semibold text-white transition-colors hover:bg-primary-strong disabled:opacity-40"
                 >
                   {t("markAllRead")}
                 </button>

@@ -269,9 +269,8 @@ function CycleReportInner() {
   return (
     <main className="mx-auto w-full max-w-[560px] space-y-4 p-0.5 lg:max-w-[1100px] lg:space-y-5">
       {/* ── STATEMENT MASTHEAD — the page's one bold element ── */}
-      <section className="relative overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-br from-primary-light via-surface to-surface shadow-pop">
-        <div className="pointer-events-none absolute -top-24 right-2 h-64 w-64 rounded-full bg-primary/10 blur-3xl" aria-hidden />
-        <div className="relative p-5 sm:p-6">
+      <section className="rounded-2xl border border-border bg-surface shadow-soft">
+        <div className="p-5 sm:p-6">
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <button
@@ -300,7 +299,7 @@ function CycleReportInner() {
           <div className="mt-5 lg:flex lg:items-end lg:justify-between lg:gap-10">
             <div className="min-w-0">
               <p className="caps text-faint">Net</p>
-              <FitText basePx={44} minPx={26} className={`figures font-extrabold leading-tight ${net >= 0 ? "text-income" : "text-danger"}`} title={money(Math.abs(net))}>
+              <FitText basePx={44} minPx={26} className={`figures-display leading-tight ${net >= 0 ? "text-income" : "text-danger"}`} title={money(Math.abs(net))}>
                 {net >= 0 ? "+" : "−"}
                 {money(Math.abs(net))}
               </FitText>

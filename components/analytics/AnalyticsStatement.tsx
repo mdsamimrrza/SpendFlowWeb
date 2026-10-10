@@ -62,6 +62,7 @@ import { PrivacyEyeButton } from "@/components/ui/PrivacyEyeButton";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { ExpenseDetailSheet } from "@/components/expense/ExpenseDetailSheet";
 import { categoryGlyph } from "@/components/ui/Glyph";
+import { ProgressRing } from "@/components/charts/ProgressRing";
 import {
   formatMoney,
   formatDate,
@@ -73,25 +74,25 @@ import {
 } from "@/utils/format";
 
 /**
- * Analytics — a 1:1 port of the mobile app's analytics screen
+ * Analytics - a 1:1 port of the mobile app's analytics screen
  * (SpendFlow/app/(tabs)/analytics.tsx + its card components). Same card
  * order, same structure, same color language:
  *  · Top bar: "Financial Intelligence" kicker + title + privacy eye + theme.
  *  · Dual in-place floating dropdowns: period (Day/Week/Month/Year/Custom/All)
  *    and section focus (Overview/Categories/Habits/All).
- *  · Overview: Income-Expense-Budget tri-flow card → 4-tile KPI grid (tappable
- *    calculation explainers) → 0–100 Financial Health Score card.
- *  · Categories: segmented flip breakdown (Categories → Payment → Income),
+ *  · Overview: Income-Expense-Budget tri-flow card -> 4-tile KPI grid (tappable
+ *    calculation explainers) -> 0–100 Financial Health Score card.
+ *  · Categories: segmented flip breakdown (Categories -> Payment -> Income),
  *    category budget caps matrix, payment-method breakdown.
  *  · Habits: Day-of-Week rhythm with week navigation + flow flip, chrono
  *    Time-of-Day pattern, budget burn & pacing forecast.
  * Formulas follow the mobile components exactly (FinancialHealthScoreCard,
  * BudgetAnalyticsCard, FinancialInsights, IncomeExpenseBudgetCard). All UI
- * colors flow through the `--sf-*` tokens (globals.css) — mobile's fixed
+ * colors flow through the `--sf-*` tokens (globals.css) - mobile's fixed
  * accent hues are tokenized too, so nothing carries a raw hex.
  */
 
-/* ── mobile VIBRANT_PALETTE (components/expense/Charts.tsx) — the breakdown
+/* ── mobile VIBRANT_PALETTE (components/expense/Charts.tsx) - the breakdown
    ranks its top-6 slices with these fixed DATA colors, by position. They are
    data colors (mobile renders the same hexes), not UI chrome. ── */
 export const VIBRANT_PALETTE = [
@@ -103,7 +104,7 @@ export const VIBRANT_PALETTE = [
   "#06B6D4", // Cyan
 ] as const;
 
-/* mobile CalendarModal constants (ui/CalendarModal.tsx) — the app renders
+/* mobile CalendarModal constants (ui/CalendarModal.tsx) - the app renders
    these English calendar labels in every language; mirrored exactly. */
 const CAL_WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 const CAL_MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -130,7 +131,7 @@ const SECTION_TABS: { key: SectionKey; labelKey: TranslationKey; Icon: typeof La
   { key: "all", labelKey: "anSecAll", Icon: Layers },
 ];
 
-/* The mobile screen's KPI tiles — tapping one opens its live formula. */
+/* The mobile screen's KPI tiles - tapping one opens its live formula. */
 type KpiMetricKey = "total" | "velocity" | "peak" | "ticket";
 
 type BreakdownView = "expense" | "payment" | "income";
@@ -144,7 +145,7 @@ interface Insight {
 }
 
 /* Design-preview seam: /preview-analytics passes mock rows/profile/budget so
-   the screen renders without auth. Undefined in production — the page then
+   the screen renders without auth. Undefined in production - the page then
    reads everything from its own hooks exactly as before. */
 export interface AnalyticsInject {
   rows: Awaited<ReturnType<typeof listExpenses>>["rows"];
@@ -156,7 +157,7 @@ export interface AnalyticsInject {
     cycle_end_day?: number | null;
   } | null;
   budget?: number | null;
-  /** Category monthly caps (name → amount) for the preview seam — the live
+  /** Category monthly caps (name -> amount) for the preview seam - the live
    *  page reads them from useCategories instead. */
   limits?: Record<string, number>;
 }
@@ -315,7 +316,7 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
     return sum;
   }, [periodRows, convertFrozen]);
 
-  // Window aggregate builder — called twice: once for the selected period
+  // Window aggregate builder - called twice: once for the selected period
   // (KPIs/composition) and once for the cycle (burn analysis + budget
   // adherence). Mobile splits the same way: its KPI tiles follow the period
   // dropdown while BudgetAnalyticsCard filters to the cycle internally.
@@ -422,7 +423,7 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
     [buildStats, cycle, cycleFrom, cycleTo],
   );
 
-  /* ── Financial Health Score — mobile FinancialHealthScoreCard, 1:1 ── */
+  /* ── Financial Health Score - mobile FinancialHealthScoreCard, 1:1 ── */
   const health = useMemo(() => {
     const expenseItems = periodRows.filter((e) => e.type !== "income");
     const incomeItems = periodRows.filter((e) => e.type === "income");
@@ -450,7 +451,7 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
     const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     const monthProgress = currentDay / daysInMonth;
 
-    let budgetPoints = 30; // max 35 — default when no budget on file
+    let budgetPoints = 30; // max 35 - default when no budget on file
     let volatilityPoints = 20; // max 25
     let categoryPoints = 18; // max 20
     let weekendPoints = 16; // max 20
@@ -491,7 +492,7 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
       }
     }
 
-    // 2. Budget adherence (0–35) — budget is a cycle figure, pinned to the
+    // 2. Budget adherence (0–35) - budget is a cycle figure, pinned to the
     // cycle window regardless of the period dropdown (mobile parity).
     if (budget != null && budget > 0) {
       const budgetUsedRatio = cycleStats.spent / budget;
@@ -524,7 +525,7 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
       }
     }
 
-    // 3. Spending volatility & spikes (0–25) — CV of active-day totals
+    // 3. Spending volatility & spikes (0–25) - CV of active-day totals
     const dailyMap = new Map<string, number>();
     for (const e of expenseItems) {
       dailyMap.set(e.date, (dailyMap.get(e.date) ?? 0) + convert(e));
@@ -627,7 +628,7 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
     };
   }, [stats, cycleStats, budget, periodRows, convert, fmt, t]);
 
-  // Burn analysis — ALWAYS the salary cycle window (mobile parity: the burn
+  // Burn analysis - ALWAYS the salary cycle window (mobile parity: the burn
   // card ignores the period dropdown; pacing only makes sense against the
   // cycle the budget was set for).
   const burn = useMemo(() => {
@@ -724,8 +725,8 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
     };
   }, [rows, weekOffset, flowType, convert, t, locale]);
 
-  /* ── Flip-cycle breakdown (mobile CategoryBreakdown: Categories →
-     Payment → Income) ── */
+  /* ── Flip-cycle breakdown (mobile CategoryBreakdown: Categories ->
+     Payment -> Income) ── */
   const [view, setView] = useState<BreakdownView>("expense");
   const availableViews = useMemo<BreakdownView[]>(() => {
     const list: BreakdownView[] = ["expense"];
@@ -850,11 +851,9 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
         {/* ── 1. TOP APP BAR ── */}
         <header className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-[0.6px] text-text-muted">{t("anKicker")}</p>
-            <h1 className="mt-0.5 text-[28px] font-extrabold leading-9 tracking-[-0.3px] text-text">
-              <FitText basePx={28} minPx={22} title={t("anTitle")}>
-                {t("anTitle")}
-              </FitText>
+            <p className="text-[13px] font-medium text-faint">{t("anKicker")}</p>
+            <h1 className="mt-0.5 text-xl font-bold tracking-[-0.02em] text-text sm:text-2xl">
+              {t("anTitle")}
             </h1>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -948,25 +947,8 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
           <section aria-label={t("anSecOverview")} className="space-y-3">
             {section === "all" && <SectionHead Icon={LayoutGrid} label={t("anHeadOverview")} />}
 
-            {/* Income, Expense & Budget analysis card */}
-            <TriFlowCard
-              t={t}
-              fmt={fmt}
-              income={stats.income}
-              spent={stats.spent}
-              net={stats.net}
-              incomeCount={incomeCount}
-              expenseCount={stats.expenseCount}
-              budget={budget}
-              savingsRateNum={
-                stats.income > 0 ? Math.max(-100, Math.round(((stats.income - stats.spent) / stats.income) * 100)) : 0
-              }
-              expenseToIncome={stats.income > 0 ? Math.round((stats.spent / stats.income) * 100) : 0}
-              utilization={budget != null && budget > 0 ? Math.round((stats.spent / budget) * 100) : 0}
-            />
-
-            {/* 4-tile executive KPI grid — tapping opens the explainer */}
-            <div className="grid grid-cols-1 gap-2.5 min-[390px]:grid-cols-2 xl:grid-cols-4">
+            {/* 4-tile executive KPI grid - tapping opens the explainer */}
+            <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
               <KpiTile
                 label={t("anTotalSpending")}
                 labelTone="text-primary"
@@ -1012,8 +994,29 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
               />
             </div>
 
-            {/* 0–100 Financial Health Score card */}
-            <HealthScoreCard health={health} t={t} entries={stats.entries} onOpen={() => setHealthModalOpen(true)} />
+            {/* Flow analysis + health score pair - stacked on phones, two
+                columns from lg up. */}
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-start">
+              {/* Income, Expense & Budget analysis card */}
+              <TriFlowCard
+                t={t}
+                fmt={fmt}
+                income={stats.income}
+                spent={stats.spent}
+                net={stats.net}
+                incomeCount={incomeCount}
+                expenseCount={stats.expenseCount}
+                budget={budget}
+                savingsRateNum={
+                  stats.income > 0 ? Math.max(-100, Math.round(((stats.income - stats.spent) / stats.income) * 100)) : 0
+                }
+                expenseToIncome={stats.income > 0 ? Math.round((stats.spent / stats.income) * 100) : 0}
+                utilization={budget != null && budget > 0 ? Math.round((stats.spent / budget) * 100) : 0}
+              />
+
+              {/* 0-100 Financial Health Score card */}
+              <HealthScoreCard health={health} t={t} entries={stats.entries} onOpen={() => setHealthModalOpen(true)} />
+            </div>
           </section>
         )}
 
@@ -1022,41 +1025,45 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
           <section aria-label={t("anSecCategories")} className="space-y-3">
             {section === "all" && <SectionHead Icon={PieChart} label={t("anHeadCategories")} className="pt-3" />}
 
-            {/* Segmented flip breakdown: Categories → Payment → Income */}
-            <BreakdownFlipCard
-              t={t}
-              fmt={fmt}
-              view={view}
-              availableViews={availableViews}
-              onNextView={nextView}
-              slices={slicesForView}
-              paymentRows={paymentRows}
-              selectedCat={selectedCat}
-              onSelectCat={(c) => setSelectedCat((cur) => (cur === c ? null : c))}
-              drawerRows={drawerRows}
-              drawerTotal={selectedSlice?.value ?? 0}
-              drawerPct={selectedSlice?.pct ?? 0}
-              conv={convert}
-              displayCurrency={displayCurrency}
-              onInspect={(row, amount) => {
-                setInspectRow(row);
-                setInspectAmount(amount);
-              }}
-            />
+            {/* Breakdown + caps matrix pair - stacked on phones, two columns
+                from lg up. */}
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-start">
+              {/* Segmented flip breakdown: Categories -> Payment -> Income */}
+              <BreakdownFlipCard
+                t={t}
+                fmt={fmt}
+                view={view}
+                availableViews={availableViews}
+                onNextView={nextView}
+                slices={slicesForView}
+                paymentRows={paymentRows}
+                selectedCat={selectedCat}
+                onSelectCat={(c) => setSelectedCat((cur) => (cur === c ? null : c))}
+                drawerRows={drawerRows}
+                drawerTotal={selectedSlice?.value ?? 0}
+                drawerPct={selectedSlice?.pct ?? 0}
+                conv={convert}
+                displayCurrency={displayCurrency}
+                onInspect={(row, amount) => {
+                  setInspectRow(row);
+                  setInspectAmount(amount);
+                }}
+              />
 
-            {/* Category budget caps matrix */}
-            <CapsMatrixCard
-              t={t}
-              fmt={fmt}
-              capRows={capRows}
-              totalAllocated={totalAllocated}
-              daysRemaining={daysRemaining}
-              expanded={capsExpanded}
-              onToggleExpand={() => setCapsExpanded((v) => !v)}
-              openId={openCapId}
-              onToggleCat={(id) => setOpenCapId((cur) => (cur === id ? null : id))}
-              displayCurrency={displayCurrency}
-            />
+              {/* Category budget caps matrix */}
+              <CapsMatrixCard
+                t={t}
+                fmt={fmt}
+                capRows={capRows}
+                totalAllocated={totalAllocated}
+                daysRemaining={daysRemaining}
+                expanded={capsExpanded}
+                onToggleExpand={() => setCapsExpanded((v) => !v)}
+                openId={openCapId}
+                onToggleCat={(id) => setOpenCapId((cur) => (cur === id ? null : id))}
+                displayCurrency={displayCurrency}
+              />
+            </div>
 
             {/* Payment Method Breakdown */}
             {paymentRows.length > 0 && (
@@ -1104,24 +1111,27 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
           <section aria-label={t("anSecHabits")} className="space-y-3">
             {section === "all" && <SectionHead Icon={Activity} label={t("anHeadHabits")} className="pt-3" />}
 
-            {/* Day-of-Week Rhythm with week navigation + flow flip */}
-            <WeekRhythmCard
-              t={t}
-              fmt={fmt}
-              week={week}
-              flowType={flowType}
-              onFlipFlowType={() => {
-                setFlowType((p) => (p === "income" ? "expense" : "income"));
-                setSelectedDayIso(null);
-              }}
-              onPrevWeek={() => setWeekOffset((w) => w - 1)}
-              onNextWeek={() => setWeekOffset((w) => Math.min(0, w + 1))}
-              onSelectDay={setSelectedDayIso}
-              chartColor={chartColor}
-            />
+            {/* Rhythm + chrono pair - stacked on phones, two columns from lg up. */}
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-start">
+              {/* Day-of-Week Rhythm with week navigation + flow flip */}
+              <WeekRhythmCard
+                t={t}
+                fmt={fmt}
+                week={week}
+                flowType={flowType}
+                onFlipFlowType={() => {
+                  setFlowType((p) => (p === "income" ? "expense" : "income"));
+                  setSelectedDayIso(null);
+                }}
+                onPrevWeek={() => setWeekOffset((w) => w - 1)}
+                onNextWeek={() => setWeekOffset((w) => Math.min(0, w + 1))}
+                onSelectDay={setSelectedDayIso}
+                chartColor={chartColor}
+              />
 
-            {/* Time-of-Day Chrono Pattern */}
-            <TimeOfDayCard t={t} fmt={fmt} week={week} chartColor={chartColor} />
+              {/* Time-of-Day Chrono Pattern */}
+              <TimeOfDayCard t={t} fmt={fmt} week={week} chartColor={chartColor} />
+            </div>
 
             {/* Budget Burn Velocity & Pacing Forecast */}
             <BurnPacingCard t={t} fmt={fmt} flowType={flowType} burn={burn} budget={budget} cycleStats={cycleStats} />
@@ -1183,7 +1193,7 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
                       : t("anKpiTicketDef")}
               </p>
               <div className="space-y-1 rounded-xl border border-border p-3" style={{ backgroundColor: "var(--sf-surface-elevated)" }}>
-                <p className="text-xs font-extrabold uppercase tracking-[0.5px] text-primary">
+                <p className="text-xs font-bold text-primary">
                   {kpiModal === "peak" ? t("anKpiPeakCalcLabel") : t("analyticsKpiHow")}
                 </p>
                 <p className="numeric text-[12.5px] leading-[17px] text-text">
@@ -1225,7 +1235,7 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
             <button
               type="button"
               onClick={() => setKpiModal(null)}
-              className="w-full rounded-xl bg-primary py-3 text-sm font-extrabold text-white transition active:scale-[0.99]"
+              className="w-full rounded-lg bg-primary py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-strong active:scale-[0.99]"
             >
               {t("anGotIt")}
             </button>
@@ -1254,7 +1264,7 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
                 { Icon: Sparkles, c: "var(--sf-hue-emerald)", title: t("anHmP5"), pts: t("anHmP5Pts"), desc: t("anHmP5Desc") },
               ] as const
             ).map((p, i) => (
-              <div key={i} className="space-y-1.5 rounded-[14px] border border-border p-3" style={{ backgroundColor: "var(--sf-surface-elevated)" }}>
+              <div key={i} className="space-y-1.5 rounded-xl border border-border p-3" style={{ backgroundColor: "var(--sf-surface-elevated)" }}>
                 <div className="flex items-center justify-between gap-2">
                   <span className="flex min-w-0 items-center gap-2">
                     <p.Icon size={16} aria-hidden style={{ color: p.c }} />
@@ -1315,7 +1325,7 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
         }}
       />
 
-      {/* ── CUSTOM RANGE CALENDAR — shared mobile CalendarModal (range mode) ── */}
+      {/* ── CUSTOM RANGE CALENDAR - shared mobile CalendarModal (range mode) ── */}
       <CalendarModal
         open={calendarOpen}
         onClose={() => setCalendarOpen(false)}
@@ -1344,12 +1354,12 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
 
 /* ══════════════════════ shared bits ══════════════════════ */
 
-/** {token} substitution — i18n fragments composed with live figures. */
+/** {token} substitution - i18n fragments composed with live figures. */
 function tr(s: string, map: Record<string, string>): string {
   return s.replace(/\{(\w+)\}/g, (_, k: string) => map[k] ?? "");
 }
 
-// Payment method glyph — Lucide only (AGENTS: emoji are data, never icons).
+// Payment method glyph - Lucide only (AGENTS: emoji are data, never icons).
 function methodGlyph(m: string) {
   const s = m.toLowerCase();
   if (s.includes("card")) return CreditCard;
@@ -1363,7 +1373,7 @@ function SectionHead({ Icon, label, className = "" }: { Icon: typeof LayoutGrid;
   return (
     <div className={`mt-1 flex items-center gap-1.5 ${className}`}>
       <Icon size={16} className="shrink-0 text-primary" aria-hidden />
-      <p className="text-[11px] font-extrabold uppercase tracking-[0.8px] text-primary">{label}</p>
+      <p className="text-[12.5px] font-semibold text-primary">{label}</p>
     </div>
   );
 }
@@ -1391,7 +1401,7 @@ function FloatingSelect({
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={onToggle}
-        className={`flex min-h-[44px] w-full items-center justify-between gap-1 rounded-2xl border-[1.2px] bg-surface-elevated px-3.5 py-2.5 transition-colors ${
+        className={`flex min-h-[44px] w-full items-center justify-between gap-1 rounded-lg border bg-surface px-3.5 py-2.5 transition-colors ${
           open ? "border-primary" : "border-border"
         }`}
       >
@@ -1408,7 +1418,7 @@ function FloatingSelect({
       {open && (
         <div
           role="listbox"
-          className="sf-pop absolute left-0 right-0 top-[52px] z-50 space-y-[3px] rounded-2xl border-[1.2px] border-border bg-surface p-[5px] shadow-pop"
+          className="sf-pop absolute left-0 right-0 top-[52px] z-50 space-y-[3px] rounded-xl border border-border bg-surface p-[5px] shadow-pop"
         >
           {children}
         </div>
@@ -1434,7 +1444,7 @@ function SelectRow({
       role="option"
       aria-selected={selected}
       onClick={onSelect}
-      className="flex min-h-[40px] w-full items-center justify-between gap-2 rounded-[10px] px-2.5 py-2 text-left transition active:scale-[0.99]"
+      className="flex min-h-[40px] w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left transition active:scale-[0.99]"
       style={{ backgroundColor: selected ? "var(--sf-select-tint)" : "transparent" }}
     >
       <span className="flex min-w-0 items-center gap-1.5">
@@ -1479,7 +1489,7 @@ function CenterModal({
       role="presentation"
     >
       <div
-        className="max-h-[85vh] w-full overflow-y-auto rounded-3xl border-[1.2px] border-border bg-surface p-5 shadow-pop"
+        className="max-h-[85vh] w-full overflow-y-auto rounded-2xl border border-border bg-surface p-5 shadow-pop"
         style={{ maxWidth }}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
@@ -1532,7 +1542,7 @@ function ModalHead({
   );
 }
 
-/* ── KPI tile — hero variant = the primary-bordered "Total Spending" card ── */
+/* ── KPI tile - hero variant = the primary-bordered "Total Spending" card ── */
 function KpiTile({
   label,
   icon,
@@ -1552,11 +1562,11 @@ function KpiTile({
 }) {
   const inner = (
     <div
-      className={`min-w-0 space-y-1 rounded-[10px] p-3.5 ${hero ? "border-2 border-primary" : "border border-border"}`}
+      className={`min-w-0 space-y-1 rounded-lg p-3.5 ${hero ? "border border-primary" : "border border-border"}`}
       style={{ backgroundColor: hero ? "var(--sf-tile-hero)" : "var(--sf-surface-elevated)" }}
     >
       <div className="flex items-center justify-between gap-2">
-        <p className={`min-w-0 truncate text-[10px] font-bold uppercase tracking-[0.6px] ${labelTone}`}>{label}</p>
+        <p className={`min-w-0 truncate text-[11px] font-semibold ${labelTone}`}>{label}</p>
         {icon}
       </div>
       <div className="numeric min-w-0 text-xl font-extrabold leading-6 text-text">
@@ -1575,7 +1585,7 @@ function KpiTile({
   );
 }
 
-/* ── Tri-flow card — mobile IncomeExpenseBudgetCard, 1:1 ── */
+/* ── Tri-flow card - mobile IncomeExpenseBudgetCard, 1:1 ── */
 function TriFlowCard({
   t,
   fmt,
@@ -1617,12 +1627,12 @@ function TriFlowCard({
           : tr(t("triFlowInsightTracking"), { a: fmt(spent), n: String(expenseCount) });
 
   return (
-    <section className="space-y-4 rounded-[10px] border-[1.2px] border-border bg-surface p-4">
+    <section className="space-y-4 rounded-xl border border-border bg-surface p-4">
       {/* header */}
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <div className="flex min-w-0 items-center gap-2">
           <span
-            className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px]"
+            className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-lg"
             style={{ backgroundColor: "var(--sf-icon-chip)" }}
             aria-hidden
           >
@@ -1650,11 +1660,11 @@ function TriFlowCard({
       {/* telemetry tiles */}
       <div className="grid grid-cols-1 gap-2.5 min-[390px]:grid-cols-3">
         <div
-          className="min-w-0 space-y-1 rounded-[10px] border p-2.5"
+          className="min-w-0 space-y-1 rounded-lg border p-2.5"
           style={{ backgroundColor: "var(--sf-tile-income-bg)", borderColor: "var(--sf-tile-income-border)" }}
         >
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.5px]" style={{ color: "var(--sf-income)" }}>
+            <p className="text-[11px] font-semibold" style={{ color: "var(--sf-income)" }}>
               {t("triFlowIncomeTile")}
             </p>
             <ArrowDownRight size={14} aria-hidden style={{ color: "var(--sf-income)" }} />
@@ -1669,11 +1679,11 @@ function TriFlowCard({
           </p>
         </div>
         <div
-          className="min-w-0 space-y-1 rounded-[10px] border p-2.5"
+          className="min-w-0 space-y-1 rounded-lg border p-2.5"
           style={{ backgroundColor: "var(--sf-tile-expense-bg)", borderColor: "var(--sf-tile-expense-border)" }}
         >
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.5px] text-danger">{t("triFlowExpenseTile")}</p>
+            <p className="text-[11px] font-semibold text-danger">{t("triFlowExpenseTile")}</p>
             <ArrowUpRight size={14} className="text-danger" aria-hidden />
           </div>
           <p className="numeric min-w-0 text-base font-extrabold text-text" title={t("triFlowExpenseTile")}>
@@ -1686,14 +1696,14 @@ function TriFlowCard({
           </p>
         </div>
         <div
-          className="min-w-0 space-y-1 rounded-[10px] border p-2.5"
+          className="min-w-0 space-y-1 rounded-lg border p-2.5"
           style={{
             backgroundColor: "var(--sf-surface-elevated)",
             borderColor: overBudget ? "var(--sf-danger)" : "var(--sf-border)",
           }}
         >
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.5px] text-text-muted">{t("triFlowBudgetTile")}</p>
+            <p className="text-[11px] font-semibold text-text-muted">{t("triFlowBudgetTile")}</p>
             <Target size={14} className="shrink-0 text-primary" aria-hidden />
           </div>
           <p className="numeric min-w-0 text-base font-extrabold text-text" title={t("triFlowBudgetTile")}>
@@ -1776,7 +1786,7 @@ function TriFlowCard({
 
       {/* smart insight pill */}
       <div
-        className="flex items-center gap-2 rounded-[10px] p-2.5"
+        className="flex items-center gap-2 rounded-lg p-2.5"
         style={{
           backgroundColor: overBudget
             ? "var(--sf-tile-expense-bg)"
@@ -1811,7 +1821,7 @@ function TriFlowCard({
   );
 }
 
-/* ── Financial Health Score card — mobile FinancialHealthScoreCard ── */
+/* ── Financial Health Score card - mobile FinancialHealthScoreCard ── */
 function HealthScoreCard({
   health,
   t,
@@ -1830,13 +1840,8 @@ function HealthScoreCard({
   entries: number;
   onOpen: () => void;
 }) {
-  const radius = 40;
-  const strokeWidth = 8;
-  const circumference = 2 * Math.PI * radius;
-  const dashoffset = circumference - (health.score / 100) * circumference;
-
   return (
-    <section className="space-y-3 rounded-[10px] border border-border bg-surface p-4">
+    <section className="space-y-3 rounded-xl border border-border bg-surface p-4">
       {/* header */}
       <div className="flex items-center justify-between gap-2">
         <button type="button" onClick={onOpen} className="flex min-w-0 items-center gap-1.5 text-left transition active:scale-[0.98]">
@@ -1858,35 +1863,19 @@ function HealthScoreCard({
 
       {/* radial dial + grade */}
       <button type="button" onClick={onOpen} className="flex w-full items-center gap-[18px] text-left transition active:scale-[0.99]">
-        <span className="relative flex h-24 w-24 shrink-0 items-center justify-center">
-          <svg width={96} height={96} viewBox="0 0 96 96" aria-hidden>
-            <defs>
-              <linearGradient id="sf-health-grad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor={health.color} stopOpacity="1" />
-                <stop offset="100%" stopColor="var(--sf-primary)" stopOpacity="0.8" />
-              </linearGradient>
-            </defs>
-            <circle cx={48} cy={48} r={radius} stroke="var(--sf-track-2)" strokeWidth={strokeWidth} fill="transparent" />
-            <circle
-              cx={48}
-              cy={48}
-              r={radius}
-              stroke="url(#sf-health-grad)"
-              strokeWidth={strokeWidth}
-              strokeDasharray={`${circumference} ${circumference}`}
-              strokeDashoffset={dashoffset}
-              strokeLinecap="round"
-              fill="transparent"
-              transform="rotate(-90 48 48)"
-            />
-          </svg>
-          <span className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="numeric text-2xl font-bold" style={{ color: health.color }}>
-              {health.score}
-            </span>
-            <span className="text-[9px] font-medium uppercase tracking-[0.5px] text-text-muted">{t("anScoreWord")}</span>
+        <ProgressRing
+          pct={health.score / 100}
+          size={96}
+          strokeWidth={8}
+          color={health.color}
+          trackColor="var(--sf-track-2)"
+          ariaLabel={`${t("anHealthTitle")}: ${health.score}/100`}
+        >
+          <span className="numeric text-2xl font-bold" style={{ color: health.color }}>
+            {health.score}
           </span>
-        </span>
+          <span className="caps-faint !text-[9px]">{t("anScoreWord")}</span>
+        </ProgressRing>
         <span className="min-w-0 flex-1 space-y-1">
           <span className="flex items-center gap-2">
             <span
@@ -1923,7 +1912,7 @@ function HealthScoreCard({
 
       {/* actionable diagnostics */}
       <div className="space-y-2.5 border-t border-border pt-3">
-        <p className="text-[10px] font-bold uppercase tracking-[0.6px] text-text-muted">{t("anDiagnostics")}</p>
+        <p className="text-[11px] font-semibold text-text-muted">{t("anDiagnostics")}</p>
         {health.insights.map((ins, i) => {
           const isWarn = ins.tone === "warning";
           return (
@@ -1931,7 +1920,7 @@ function HealthScoreCard({
               key={i}
               type="button"
               onClick={onOpen}
-              className="flex w-full items-start gap-2.5 rounded-[10px] border border-border p-2.5 text-left transition active:scale-[0.99]"
+              className="flex w-full items-start gap-2.5 rounded-lg border border-border p-2.5 text-left transition active:scale-[0.99]"
               style={{ backgroundColor: "var(--sf-surface-elevated)" }}
             >
               <span
@@ -1953,7 +1942,7 @@ function HealthScoreCard({
   );
 }
 
-/* ── Category/Payment/Income flip card — mobile CategoryBreakdown ── */
+/* ── Category/Payment/Income flip card - mobile CategoryBreakdown ── */
 function BreakdownFlipCard({
   t,
   fmt,
@@ -2001,7 +1990,7 @@ function BreakdownFlipCard({
   const sliceTotal = slices.reduce((s, x) => s + x.value, 0);
 
   return (
-    <section className="rounded-[10px] border border-border bg-surface p-3.5">
+    <section className="rounded-xl border border-border bg-surface p-3.5">
       <div key={view} className="sf-flip-in space-y-2.5">
         {/* header */}
         <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
@@ -2014,7 +2003,7 @@ function BreakdownFlipCard({
               <button
                 type="button"
                 onClick={onNextView}
-                className="flex min-h-[32px] items-center gap-1 rounded-xl border-[1.2px] border-primary px-2 py-1 transition active:scale-[0.97]"
+                className="flex min-h-[32px] items-center gap-1 rounded-lg border border-primary px-2 py-1 transition active:scale-[0.97]"
                 style={{ backgroundColor: "var(--sf-chip-tint)" }}
               >
                 <RefreshCw size={12} className="text-primary" aria-hidden />
@@ -2129,7 +2118,7 @@ function BreakdownFlipCard({
                         key={e.id}
                         type="button"
                         onClick={() => onInspect(e, converted)}
-                        className="flex min-h-[44px] w-full items-center justify-between gap-2 rounded-[10px] border border-border px-3 py-2.5 text-left transition active:scale-[0.99]"
+                        className="flex min-h-[44px] w-full items-center justify-between gap-2 rounded-lg border border-border px-3 py-2.5 text-left transition active:scale-[0.99]"
                         style={{ backgroundColor: "var(--sf-surface-elevated)" }}
                       >
                         <span className="min-w-0 flex-1 space-y-0.5">
@@ -2162,7 +2151,7 @@ function BreakdownFlipCard({
   );
 }
 
-/* ── Category budget caps matrix — mobile BudgetProgress ── */
+/* ── Category budget caps matrix - mobile BudgetProgress ── */
 function CapsMatrixCard({
   t,
   fmt,
@@ -2199,12 +2188,12 @@ function CapsMatrixCard({
   const visible = expanded ? capRows : capRows.slice(0, 2);
 
   return (
-    <section className="space-y-3 rounded-[10px] border border-border bg-surface p-4">
+    <section className="space-y-3 rounded-xl border border-border bg-surface p-4">
       {/* header */}
       <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-2">
         <div className="flex min-w-0 items-center gap-2">
           <span
-            className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px]"
+            className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-lg"
             style={{ backgroundColor: "var(--sf-chip-tint)" }}
             aria-hidden
           >
@@ -2219,7 +2208,7 @@ function CapsMatrixCard({
         </div>
         <Link
           href="/categories"
-          className="flex min-h-[32px] shrink-0 items-center gap-1 rounded-full border border-primary px-2.5 py-[5px] transition active:scale-[0.97]"
+          className="flex min-h-[32px] shrink-0 items-center gap-1 rounded-lg border border-primary px-2.5 py-[5px] transition active:scale-[0.97]"
           style={{ backgroundColor: "var(--sf-chip-tint)" }}
         >
           <Settings size={12} className="text-primary" aria-hidden />
@@ -2229,7 +2218,7 @@ function CapsMatrixCard({
 
       {capRows.length === 0 ? (
         <div
-          className="flex flex-col items-center gap-2 rounded-[10px] border border-dashed border-border p-4 text-center"
+          className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border p-4 text-center"
           style={{ backgroundColor: "var(--sf-surface-elevated)" }}
         >
           <Target size={24} className="text-primary" aria-hidden />
@@ -2237,7 +2226,7 @@ function CapsMatrixCard({
           <p className="text-[11px] leading-[15px] text-text-muted">{t("anNoCapsSub")}</p>
           <Link
             href="/categories"
-            className="mt-1 flex min-h-[36px] items-center gap-1.5 rounded-full bg-primary px-3.5 py-[7px] text-xs font-extrabold text-white transition active:scale-[0.97]"
+            className="mt-1 flex min-h-[36px] items-center gap-1.5 rounded-lg bg-primary px-3.5 py-[7px] text-xs font-semibold text-white transition-colors hover:bg-primary-strong active:scale-[0.97]"
           >
             <Plus size={14} aria-hidden />
             {t("anSetCapsBtn")}
@@ -2257,7 +2246,7 @@ function CapsMatrixCard({
             return (
               <div
                 key={c.id}
-                className="space-y-2 rounded-[10px] border p-3"
+                className="space-y-2 rounded-lg border p-3"
                 style={{
                   backgroundColor: "var(--sf-surface-elevated)",
                   borderColor: isOver ? "var(--sf-tile-expense-border)" : "var(--sf-border)",
@@ -2334,7 +2323,7 @@ function CapsMatrixCard({
 
                 {isOpen && (
                   <div className="space-y-1 border-t border-border pt-2">
-                    <p className="text-[9px] font-bold uppercase tracking-[0.5px] text-text-muted">
+                    <p className="text-[11px] font-semibold text-text-muted">
                       {tr(t("anCatOutflows"), { c: c.name, n: String(c.count) })}
                     </p>
                     {c.count === 0 ? (
@@ -2366,7 +2355,7 @@ function CapsMatrixCard({
             <button
               type="button"
               onClick={onToggleExpand}
-              className="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-[10px] border border-border transition active:scale-[0.99]"
+              className="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-lg border border-border transition active:scale-[0.99]"
               style={{ backgroundColor: "var(--sf-surface-elevated)" }}
             >
               {expanded ? <ChevronUp size={14} className="text-primary" aria-hidden /> : <ChevronDown size={14} className="text-primary" aria-hidden />}
@@ -2381,7 +2370,7 @@ function CapsMatrixCard({
   );
 }
 
-/* ── Day-of-Week rhythm — mobile FinancialInsights card 1 ── */
+/* ── Day-of-Week rhythm - mobile FinancialInsights card 1 ── */
 function WeekRhythmCard({
   t,
   fmt,
@@ -2417,7 +2406,7 @@ function WeekRhythmCard({
   const flowBg = flowType === "income" ? "var(--sf-primary-light)" : "var(--sf-rust-tint)";
 
   return (
-    <section key={flowType} className="sf-flip-in space-y-3 rounded-[10px] border border-border bg-surface p-4">
+    <section key={flowType} className="sf-flip-in space-y-3 rounded-xl border border-border bg-surface p-4">
       {/* header */}
       <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
         <span className="flex min-w-0 flex-1 items-center gap-1.5">
@@ -2432,7 +2421,7 @@ function WeekRhythmCard({
             <button
               type="button"
               onClick={onFlipFlowType}
-              className="flex min-h-[32px] items-center gap-1 rounded-xl border-[1.2px] px-2 py-1 transition active:scale-[0.97]"
+              className="flex min-h-[32px] items-center gap-1 rounded-lg border px-2 py-1 transition active:scale-[0.97]"
               style={{ backgroundColor: flowBg, borderColor: flowInk }}
             >
               <RefreshCw size={12} aria-hidden style={{ color: flowInk }} />
@@ -2558,7 +2547,7 @@ function WeekRhythmCard({
   );
 }
 
-/* ── Time-of-Day chrono pattern — mobile FinancialInsights card 2 ── */
+/* ── Time-of-Day chrono pattern - mobile FinancialInsights card 2 ── */
 function TimeOfDayCard({
   t,
   fmt,
@@ -2576,7 +2565,7 @@ function TimeOfDayCard({
 }) {
   const chronoIcons = [Sunrise, Sun, Sunset, Moon];
   return (
-    <section className="space-y-3 rounded-[10px] border border-border bg-surface p-4">
+    <section className="space-y-3 rounded-xl border border-border bg-surface p-4">
       <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
         <span className="flex min-w-0 items-center gap-1.5">
           <Clock size={18} aria-hidden style={{ color: chartColor }} />
@@ -2617,7 +2606,7 @@ function TimeOfDayCard({
   );
 }
 
-/* ── Budget burn & pacing forecast — mobile BudgetAnalyticsCard ── */
+/* ── Budget burn & pacing forecast - mobile BudgetAnalyticsCard ── */
 function BurnPacingCard({
   t,
   fmt,
@@ -2646,7 +2635,7 @@ function BurnPacingCard({
   const isIncome = flowType === "income";
   const bad = !isIncome && (burn.isOver || burn.isHighBurn);
   return (
-    <section key={flowType} className="sf-flip-in space-y-3 rounded-[10px] border border-border bg-surface p-4">
+    <section key={flowType} className="sf-flip-in space-y-3 rounded-xl border border-border bg-surface p-4">
       <div className="flex items-center gap-1.5">
         <PieChart size={20} className={isIncome ? "text-success" : "text-primary"} aria-hidden />
         <span className="min-w-0 truncate text-lg font-bold text-text">
@@ -2655,7 +2644,7 @@ function BurnPacingCard({
       </div>
 
       {!isIncome && !burn.isBudgetSet ? (
-        <div className="flex flex-col items-center gap-2 rounded-[10px] p-4 text-center" style={{ backgroundColor: "var(--sf-surface-elevated)" }}>
+        <div className="flex flex-col items-center gap-2 rounded-lg p-4 text-center" style={{ backgroundColor: "var(--sf-surface-elevated)" }}>
           <p className="text-sm text-text-muted">{t("anSetBudgetPrompt")}</p>
           <Link
             href="/profit-loss"
@@ -2668,7 +2657,7 @@ function BurnPacingCard({
       ) : (
         <div className="space-y-3">
           <div className="grid grid-cols-1 gap-3 min-[390px]:grid-cols-2">
-            <div className="min-w-0 space-y-1 rounded-[10px] p-3" style={{ backgroundColor: "var(--sf-surface-elevated)" }}>
+            <div className="min-w-0 space-y-1 rounded-lg p-3" style={{ backgroundColor: "var(--sf-surface-elevated)" }}>
               <p className="text-[11px] text-text-muted">{isIncome ? t("anMonthlyIncomeTile") : t("anDailyTargetTile")}</p>
               <p className="numeric min-w-0 text-base font-bold" style={{ color: isIncome ? "var(--sf-success)" : "var(--sf-primary)" }}>
                 <FitText basePx={16} minPx={10}>
@@ -2677,7 +2666,7 @@ function BurnPacingCard({
                 </FitText>
               </p>
             </div>
-            <div className="min-w-0 space-y-1 rounded-[10px] p-3" style={{ backgroundColor: "var(--sf-surface-elevated)" }}>
+            <div className="min-w-0 space-y-1 rounded-lg p-3" style={{ backgroundColor: "var(--sf-surface-elevated)" }}>
               <p className="text-[11px] text-text-muted">{isIncome ? t("anAvgDailyIncomeTile") : t("anActualPaceTile")}</p>
               <p
                 className="numeric min-w-0 text-base font-bold"
@@ -2692,7 +2681,7 @@ function BurnPacingCard({
           </div>
 
           <div
-            className="flex items-center gap-2.5 rounded-[10px] border p-3"
+            className="flex items-center gap-2.5 rounded-lg border p-3"
             style={{
               backgroundColor: bad ? "var(--sf-tint-danger)" : "var(--sf-tint-success)",
               borderColor: bad ? "var(--sf-danger)" : "var(--sf-success)",
@@ -2722,7 +2711,7 @@ function BurnPacingCard({
   );
 }
 
-/* ── Day detail modal — mobile FinancialInsights day sheet ── */
+/* ── Day detail modal - mobile FinancialInsights day sheet ── */
 function DayDetailModal({
   open,
   onClose,

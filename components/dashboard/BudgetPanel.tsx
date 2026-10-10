@@ -68,7 +68,7 @@ export function BudgetPanel({
         {action ?? (
           <a
             href={budgetHref}
-            className="mt-1 flex h-10 items-center justify-center rounded-lg bg-primary px-4 text-xs font-bold uppercase tracking-[0.08em] text-white transition hover:bg-primary-strong"
+            className="mt-1 flex h-10 items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-strong"
           >
             {labels.setBudget}
           </a>

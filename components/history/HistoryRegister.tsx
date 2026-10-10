@@ -60,12 +60,12 @@ const SORTS: { key: SortKey; label: string; sort: ExpenseSort }[] = [
 ];
 
 /**
- * History — "ledger journal" redesign (2026-09-15). Same engine (deep links,
+ * History - "ledger journal" redesign (2026-09-15). Same engine (deep links,
  * 300 ms server-side search, filters, paging, privacy mask, detail sheet),
  * new skin:
- *  · Cash-flow hero — net headline, inflow/outflow split rule, peak chip and
+ *  · Cash-flow hero - net headline, inflow/outflow split rule, peak chip and
  *    the All/Expense/Income switcher live in one statement card.
- *  · Control bar — search + sort + a row of removable filter chips.
+ *  · Control bar - search + sort + a row of removable filter chips.
  *  · Phones: day cards with a date rail (journal timeline), staggered reveal.
  *  · lg+: the same register as an aligned statement table with day bands.
  * `inject` is the /preview-history design seam (static rows, no auth/network).
@@ -79,7 +79,7 @@ export function HistoryRegister({
   const { t, locale } = useLanguage();
   const { mask } = usePrivacy();
 
-  // Deep-link capture (window read once — redirect-landing pattern).
+  // Deep-link capture (window read once - redirect-landing pattern).
   const url = useMemo(
     () => (typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams()),
     [],
@@ -310,13 +310,13 @@ export function HistoryRegister({
     }
   }, []);
 
-  // Removable filter chips — one glance shows what the register is narrowed by.
+  // Removable filter chips - one glance shows what the register is narrowed by.
   const chips: { key: string; label: string; onRemove: () => void }[] = [];
   if (preset !== "all")
     chips.push({
       key: "period",
       label:
-        preset === "today" ? t("histChipToday") : preset === "week" ? t("histChipWeek") : preset === "cycle" ? t("histChipCycle") : `${from || "…"} → ${to || "…"}`,
+        preset === "today" ? t("histChipToday") : preset === "week" ? t("histChipWeek") : preset === "cycle" ? t("histChipCycle") : `${from || "..."} - ${to || "..."}`,
       onRemove: () => applyPreset("all"),
     });
   if (categoryId) {
@@ -337,17 +337,17 @@ export function HistoryRegister({
       {/* ── Masthead ── */}
       <header className="mb-4 flex items-end justify-between gap-3 sm:mb-5">
         <div>
-          <p className="caps-faint">{t("histOverline")}</p>
-          <h1 className="font-display mt-1 text-2xl font-semibold tracking-tight text-text sm:text-[28px]">
+          <p className="text-[13px] font-medium text-faint">{t("histOverline")}</p>
+          <h1 className="mt-0.5 text-xl font-bold tracking-[-0.02em] text-text sm:text-2xl">
             {t("history")}
           </h1>
         </div>
         <div className="flex items-center gap-1">
-          <span className="mr-1 border border-border bg-surface px-2.5 py-1 text-[11px] font-bold text-text-muted">
+          <span className="mr-1 flex h-9 items-center rounded-lg border border-border bg-surface px-2.5 text-[12px] font-semibold text-text-muted">
             {totalCount} {t("entriesLabel")}
           </span>
           <PrivacyEyeButton />
-          {/* Mobile shows the shell's global toggle — hide this page-level one
+          {/* Mobile shows the shell's global toggle - hide this page-level one
               there only (user request 2026-09-16); desktop keeps the APK header. */}
           <ThemeToggle className="hidden p-2 sm:grid" />
         </div>
@@ -384,7 +384,7 @@ export function HistoryRegister({
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("search")}
               aria-label={t("search")}
-              className="h-11 w-full border border-border bg-input pl-9 pr-8 text-sm text-text placeholder:text-faint transition-colors focus:border-primary focus:outline-none sm:h-10"
+              className="h-11 w-full rounded-lg border border-border bg-input pl-9 pr-8 text-sm text-text placeholder:text-faint transition-colors focus:border-primary focus:outline-none sm:h-10"
             />
             {search && (
               <button
@@ -400,7 +400,7 @@ export function HistoryRegister({
             aria-label="Sort entries"
             value={sortKey}
             onChange={(e) => setSortKey(e.target.value as SortKey)}
-            className="h-11 border border-border bg-input px-2 text-xs font-bold text-text-muted sm:h-10"
+            className="h-11 rounded-lg border border-border bg-input px-2.5 text-[13px] font-semibold text-text-muted sm:h-10"
           >
             {SORTS.map((s) => (
               <option key={s.key} value={s.key}>
@@ -410,7 +410,7 @@ export function HistoryRegister({
           </select>
           <button
             onClick={() => setFiltersOpen(true)}
-            className="sf-lift relative flex h-11 shrink-0 items-center gap-1.5 border border-border bg-surface px-3.5 text-[11px] font-bold uppercase tracking-[0.06em] text-text-muted hover:border-text-muted hover:text-text lg:hidden"
+            className="relative flex h-11 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-surface px-3.5 text-sm font-semibold text-text-muted transition-colors hover:border-faint hover:text-text lg:hidden"
           >
             <SlidersHorizontal size={14} /> {t("histFilters")}
             {sheetFilterCount > 0 && (
@@ -422,7 +422,7 @@ export function HistoryRegister({
           {isFiltered && (
             <button
               onClick={resetAll}
-              className="flex h-11 items-center gap-1 px-2 text-[11px] font-bold uppercase tracking-[0.06em] text-rust transition-colors hover:opacity-80 sm:h-10"
+              className="flex h-11 items-center gap-1 rounded-lg px-2 text-[12px] font-semibold text-rust transition-colors hover:opacity-80 sm:h-10"
             >
               {t("filtered")} <X size={12} />
             </button>
@@ -436,7 +436,7 @@ export function HistoryRegister({
             {chips.map((c) => (
               <span
                 key={c.key}
-                className="flex h-7 items-center gap-1.5 border border-border bg-surface pl-2.5 pr-1 text-[11px] font-bold text-text"
+                className="flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface pl-2.5 pr-1 text-[11px] font-semibold text-text"
               >
                 <span className="max-w-[160px] truncate">{c.label}</span>
                 <button
@@ -458,8 +458,10 @@ export function HistoryRegister({
               <button
                 key={p}
                 onClick={() => applyPreset(p)}
-                className={`h-8 border px-3 text-[11px] font-bold uppercase tracking-[0.06em] transition ${
-                  preset === p ? "border-primary bg-primary text-white" : "border-border text-text-muted hover:text-text"
+                className={`h-8 rounded-lg px-3 text-[12px] font-semibold transition-colors ${
+                  preset === p
+                    ? "border border-primary bg-[var(--sf-primary-light)] text-primary-strong"
+                    : "border border-transparent text-text-muted hover:text-text"
                 }`}
               >
                 {p === "all" ? "All time" : p === "cycle" ? "Cycle" : p}
@@ -467,8 +469,10 @@ export function HistoryRegister({
             ))}
             <button
               onClick={() => applyPreset("custom")}
-              className={`h-8 border px-3 text-[11px] font-bold uppercase tracking-[0.06em] transition ${
-                preset === "custom" ? "border-primary bg-primary text-white" : "border-border text-text-muted hover:text-text"
+              className={`h-8 rounded-lg px-3 text-[12px] font-semibold transition-colors ${
+                preset === "custom"
+                  ? "border border-primary bg-[var(--sf-primary-light)] text-primary-strong"
+                  : "border border-transparent text-text-muted hover:text-text"
               }`}
             >
               Custom
@@ -509,7 +513,7 @@ export function HistoryRegister({
               aria-label="Minimum amount"
               value={min}
               onChange={(e) => setMin(e.target.value)}
-              className="h-8 w-20 border border-border bg-input px-2 text-xs text-text placeholder:text-faint focus:border-primary focus:outline-none"
+              className="h-8 w-20 rounded-lg border border-border bg-input px-2 text-xs text-text placeholder:text-faint focus:border-primary focus:outline-none"
             />
             <input
               type="number"
@@ -519,7 +523,7 @@ export function HistoryRegister({
               aria-label="Maximum amount"
               value={max}
               onChange={(e) => setMax(e.target.value)}
-              className="h-8 w-20 border border-border bg-input px-2 text-xs text-text placeholder:text-faint focus:border-primary focus:outline-none"
+              className="h-8 w-20 rounded-lg border border-border bg-input px-2 text-xs text-text placeholder:text-faint focus:border-primary focus:outline-none"
             />
           </div>
         </div>
@@ -568,7 +572,7 @@ export function HistoryRegister({
             <div className="hidden overflow-x-auto lg:block">
               <table className="w-full min-w-[880px] text-sm">
                 <thead>
-                  <tr className="border-b border-border text-left text-[10px] font-bold uppercase tracking-widest text-faint">
+                  <tr className="border-b border-border text-left text-[11px] font-semibold text-faint">
                     <th className="px-5 py-3">Transaction</th>
                     <th className="px-3 py-3">Category</th>
                     <th className="px-3 py-3">Account</th>
@@ -585,7 +589,7 @@ export function HistoryRegister({
                         <td colSpan={7} className="px-5 py-2">
                           <div className="flex items-center gap-2.5">
                             <DayChip date={section.date} locale={locale} compact />
-                            <span className="caps">{groupDate(section.date, locale)}</span>
+                            <span className="text-[12px] font-semibold text-text-muted">{groupDate(section.date, locale)}</span>
                             <span className="rule-after" />
                             <span
                               className={`numeric text-xs font-bold ${
@@ -617,9 +621,9 @@ export function HistoryRegister({
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr className="end-rule bg-surface-elevated/50">
+                  <tr className="border-t border-border bg-surface-elevated/50">
                     <td colSpan={5} className="px-5 py-2.5">
-                      <span className="caps">Totals — {rows.length} matching entries</span>
+                      <span className="text-[12px] font-semibold text-text-muted">Totals · {rows.length} matching entries</span>
                     </td>
                     <td className="numeric px-3 py-2.5 text-right text-xs font-extrabold text-text">
                       <span className="text-income">+{fmt(summary.inflow).replace(/^[^\d]*/, "")}</span>
@@ -646,12 +650,12 @@ export function HistoryRegister({
               </table>
             </div>
 
-            {/* Pager — same page window on both layouts. */}
+            {/* Pager - same page window on both layouts. */}
             <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-3">
               <button
                 onClick={() => goPage(Math.max(0, page - 1))}
                 disabled={page === 0}
-                className="sf-lift flex h-11 items-center gap-1 border border-border bg-surface px-4 text-[11px] font-bold uppercase tracking-[0.06em] text-text-muted hover:border-text-muted hover:text-text disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-10 items-center gap-1 rounded-lg border border-border bg-surface px-4 text-sm font-semibold text-text-muted transition-colors hover:border-faint hover:text-text disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <ChevronLeft size={14} /> {t("prev")}
               </button>
@@ -662,7 +666,7 @@ export function HistoryRegister({
               <button
                 onClick={() => goPage(Math.min(pageCount - 1, page + 1))}
                 disabled={page >= pageCount - 1}
-                className="sf-lift flex h-11 items-center gap-1 border border-border bg-surface px-4 text-[11px] font-bold uppercase tracking-[0.06em] text-text-muted hover:border-text-muted hover:text-text disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-10 items-center gap-1 rounded-lg border border-border bg-surface px-4 text-sm font-semibold text-text-muted transition-colors hover:border-faint hover:text-text disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {t("next")} <ChevronRight size={14} />
               </button>
@@ -671,7 +675,7 @@ export function HistoryRegister({
         )}
       </div>
 
-      {/* Mobile filter sheet — same state as the desktop register. */}
+      {/* Mobile filter sheet - same state as the desktop register. */}
       <Modal open={filtersOpen} title="Filter register" onClose={() => setFiltersOpen(false)} maxWidth="max-w-lg">
         <div className="space-y-4 p-5">
           <div className="grid grid-cols-2 gap-2">
@@ -680,8 +684,10 @@ export function HistoryRegister({
               <button
                 key={p}
                 onClick={() => applyPreset(p)}
-                className={`h-11 border text-xs font-bold uppercase tracking-[0.06em] transition ${
-                  preset === p ? "border-primary bg-primary text-white" : "border-border text-text-muted hover:text-text"
+                className={`h-11 rounded-lg border text-[13px] font-semibold transition-colors ${
+                  preset === p
+                    ? "border-primary bg-[var(--sf-primary-light)] text-primary-strong"
+                    : "border-border text-text-muted hover:text-text"
                 }`}
               >
                 {p === "all" ? "All time" : p === "cycle" ? "This cycle" : p}
@@ -775,13 +781,13 @@ export function HistoryRegister({
           <div className="flex items-center justify-between gap-2 pt-1">
             <button
               onClick={resetAll}
-              className="h-11 px-3 text-[11px] font-bold uppercase tracking-wide text-faint transition-colors hover:text-danger"
+              className="h-11 rounded-lg px-3 text-[13px] font-semibold text-faint transition-colors hover:text-danger"
             >
               Clear all
             </button>
             <button
               onClick={() => setFiltersOpen(false)}
-              className="h-11 min-w-[140px] flex-1 border border-primary bg-primary text-xs font-bold uppercase tracking-[0.08em] text-white transition-colors hover:bg-primary-strong"
+              className="h-11 min-w-[140px] flex-1 rounded-lg border border-primary bg-primary text-sm font-semibold text-white transition-colors hover:bg-primary-strong"
             >
               Show {totalCount} result{totalCount === 1 ? "" : "s"}
             </button>
@@ -799,7 +805,7 @@ export function HistoryRegister({
   );
 }
 
-/* ── cash-flow hero — net headline + split rule + peak + flow switcher ── */
+/* ── cash-flow hero - net headline + split rule + peak + flow switcher ── */
 function HistoryHero({
   inflow,
   outflow,
@@ -822,21 +828,16 @@ function HistoryHero({
   const incomePct = total > 0 ? Math.round((inflow / total) * 100) : 50;
   return (
     <section className="panel shadow-soft relative overflow-hidden">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full opacity-50"
-        style={{ background: "radial-gradient(closest-side, var(--sf-primary-light), transparent 75%)" }}
-      />
       <div className="relative flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2.5 sm:px-5">
         <span className="caps">{t("cashFlow")}</span>
-        {/* Flow switcher — segmented, thumb-sized on phones. */}
-        <div className="flex border border-border bg-input p-0.5" role="group" aria-label={t("allFlow")}>
+        {/* Flow switcher - segmented, thumb-sized on phones. */}
+        <div className="flex rounded-lg border border-border bg-surface-elevated p-0.5" role="group" aria-label={t("allFlow")}>
           {(["all", "expense", "income"] as FlowFilter[]).map((f) => (
             <button
               key={f}
               onClick={() => onFlow(f)}
               aria-pressed={flow === f}
-              className={`h-9 min-w-[64px] px-3 text-[11px] font-bold uppercase tracking-[0.06em] transition active:scale-[0.97] sm:h-8 ${
+              className={`flex h-8 min-w-[64px] items-center justify-center rounded-md px-3 text-[12px] font-semibold transition active:scale-[0.97] ${
                 flow === f
                   ? f === "income"
                     ? "bg-income text-white"
@@ -854,25 +855,23 @@ function HistoryHero({
 
       <div className="relative px-4 py-4 sm:px-5">
         <p className="caps-faint">{t("histNetFlow")}</p>
-        <div className="rule-double mt-2" />
-        <div className={`figures-display mt-1 py-1 ${net >= 0 ? "text-income" : "text-danger"}`}>
+        <div className={`figures-display mt-1 py-1.5 ${net >= 0 ? "text-income" : "text-danger"}`}>
           <FitText basePx={34} minPx={18}>
             {net >= 0 ? "+" : "−"}
             {fmt(Math.abs(net)).replace(/^[^\d]*/, "")}
           </FitText>
         </div>
-        <div className="rule-double-b" />
-        {/* Inflow / outflow split rule — one rounded bar, complement derived. */}
-        <div className="mt-3 flex h-2 overflow-hidden rounded-full" style={{ background: "var(--sf-track)" }}>
+        {/* Inflow / outflow split rule - one rounded bar, complement derived. */}
+        <div className="mt-2 flex h-2 overflow-hidden rounded-full" style={{ background: "var(--sf-track)" }}>
           <span className="bg-income transition-[width] duration-500" style={{ width: `${incomePct}%` }} />
           <span className="bg-danger transition-[width] duration-500" style={{ width: `${100 - incomePct}%` }} />
         </div>
-        <div className="mt-3 grid grid-cols-3 gap-2 sm:gap-4">
+        <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-4">
           <HeroStat label={t("totalInflow")} value={fmt(inflow)} tone="income" icon={ArrowUpRight} />
           <HeroStat label={t("totalOutflow")} value={fmt(outflow)} tone="danger" icon={ArrowDownLeft} />
           <HeroStat
             label={t("analyticsKpiPeakTitle")}
-            value={peak ? peak.value : "—"}
+            value={peak ? peak.value : "-"}
             sub={peak ? peak.label : undefined}
             tone="muted"
             icon={Flame}
@@ -926,12 +925,12 @@ function FilterSelect({
   options: { value: string; label: string }[];
 }) {
   return (
-    <label className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.06em] text-faint">
+    <label className="flex items-center gap-1.5 text-[12px] font-semibold text-faint">
       {label}
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`h-8 border bg-input px-2 text-[11px] font-bold text-text-muted ${
+        className={`h-8 rounded-lg border bg-input px-2 text-[12px] font-semibold text-text-muted ${
           value ? "border-primary text-primary-strong" : "border-border"
         }`}
       >
@@ -950,17 +949,17 @@ function FilterSelect({
 function DayChip({ date, locale, compact }: { date: string; locale: string; compact?: boolean }) {
   const d = new Date(`${date}T00:00:00`);
   const day = new Intl.DateTimeFormat(locale, { day: "numeric" }).format(d);
-  const mon = new Intl.DateTimeFormat(locale, { month: "short" }).format(d).toUpperCase();
+  const mon = new Intl.DateTimeFormat(locale, { month: "short" }).format(d);
   return (
     <span
-      className={`grid shrink-0 place-items-center border border-border bg-surface leading-none ${
+      className={`grid shrink-0 place-items-center rounded-lg border border-border bg-surface leading-none ${
         compact ? "h-8 w-8" : "h-11 w-11"
       }`}
       style={{ background: "var(--sf-select-tint)" }}
       aria-hidden
     >
       <span className={`figures font-bold text-text ${compact ? "text-sm" : "text-base"}`}>{day}</span>
-      <span className={`font-bold tracking-[0.1em] text-faint ${compact ? "text-[7px]" : "text-[8px]"}`}>{mon}</span>
+      <span className={`font-semibold text-faint ${compact ? "text-[7px]" : "text-[8px]"}`}>{mon}</span>
     </span>
   );
 }
@@ -1135,7 +1134,7 @@ function HistoryRow({
         </div>
       </td>
       <td className="px-3 py-2.5">
-        <span className="inline-flex items-center gap-1.5 border border-border bg-surface px-2 py-1 text-xs font-semibold text-text-muted">
+        <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2 py-1 text-xs font-semibold text-text-muted">
           <CategoryGlyph
             size={12}
             style={{ color: row.categories?.color ?? "var(--sf-faint)" }}
@@ -1158,7 +1157,7 @@ function HistoryRow({
         )}
       </td>
       <td className="px-3 py-2.5">
-        <span className="border border-border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-text-muted">
+        <span className="rounded-md border border-border px-1.5 py-0.5 text-[10px] font-semibold text-text-muted">
           {row.payment_method}
         </span>
       </td>
@@ -1202,9 +1201,9 @@ function groupDate(date: string, locale: string): string {
     month: "short",
     year: "numeric",
   }).format(d);
-  if (date === iso(today)) return `Today — ${label}`.toUpperCase();
-  if (date === iso(yest)) return `Yesterday — ${label}`.toUpperCase();
-  return label.toUpperCase();
+  if (date === iso(today)) return `Today · ${label}`;
+  if (date === iso(yest)) return `Yesterday · ${label}`;
+  return label;
 }
 
 /* ── Preview seam: client-side mirror of listExpenses' filtering + sorting. ── */

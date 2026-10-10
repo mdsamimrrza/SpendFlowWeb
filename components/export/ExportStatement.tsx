@@ -7,9 +7,7 @@ import {
   FileSpreadsheet,
   FileText,
   Printer,
-  Share2,
   Upload,
-  Wallet,
   X,
 } from "lucide-react";
 import { useAuth } from "@/store/AuthContext";
@@ -32,7 +30,7 @@ import { formatMoney, todayISO, isValidISODate, toISODate, getCycleWindow } from
 
 type Period = "today" | "week" | "month" | "year" | "all";
 
-/** Mobile PERIODS list (app/export.tsx) — label keys resolve via t(). */
+/** Mobile PERIODS list (app/export.tsx) - label keys resolve via t(). */
 const PERIODS: { value: Period; labelKey: TranslationKey }[] = [
   { value: "today", labelKey: "periodToday" },
   { value: "week", labelKey: "periodWeek" },
@@ -52,12 +50,12 @@ interface ExportPageProps {
 }
 
 /**
- * Export / import — client-side only (mobile services/export.ts parity):
+ * Export / import - client-side only (mobile services/export.ts parity):
  * CSV / multi-sheet Excel / print-PDF statement of the selected period with
  * the full column set, CSV import with guards (≤ 2 MB, ≤ 1000 rows) that
  * round-trips our own exports.
  */
-/** Statement implementation — the default page export renders it bare;
+/** Statement implementation - the default page export renders it bare;
  *  preview harnesses pass inject (mock data, no auth, no network). */
 export function ExportStatement({ inject }: ExportPageProps) {
   const { user, profile } = useAuth();
@@ -108,7 +106,7 @@ export function ExportStatement({ inject }: ExportPageProps) {
     }
     if (period === "month") {
       // "This month" = the user's current billing cycle (History/analytics
-      // parity), not the calendar month — custom cycle starts (cycle_start_day
+      // parity), not the calendar month - custom cycle starts (cycle_start_day
       // 2–31) shift the window. Cycle start day 1 is the calendar-month
       // sentinel, so default profiles are unaffected.
       const cycle = getCycleWindow(now, profile?.cycle_start_day ?? 1, profile?.cycle_end_day ?? null);
@@ -128,7 +126,7 @@ export function ExportStatement({ inject }: ExportPageProps) {
     () => scoped.reduce((s, r) => s + (r.type === "income" ? convert(r) : -convert(r)), 0),
     [scoped, convert],
   );
-  // Period shape — inflow vs outflow drives the split bar.
+  // Period shape - inflow vs outflow drives the split bar.
   const incomeTotal = useMemo(
     () => scoped.reduce((s, r) => (r.type === "income" ? s + convert(r) : s), 0),
     [scoped, convert],
@@ -284,7 +282,7 @@ export function ExportStatement({ inject }: ExportPageProps) {
         const c = parseLine(line);
         const date = c[iDate]?.trim() ?? "";
         const amount = Number(c[iAmount]);
-        // isValidISODate first (real calendar day — the shared validator only
+        // isValidISODate first (real calendar day - the shared validator only
         // compares ranges), then the same money/date rules as every other
         // write path (services/expenses.ts). Invalid rows are skipped, as before.
         if (!isValidISODate(date)) continue;
@@ -351,7 +349,7 @@ export function ExportStatement({ inject }: ExportPageProps) {
         const batch = parsed.slice(i, i + 200);
         const inserts = [];
         for (const p of batch) {
-          // FX snapshot per row (mobile parity) — cached per currency+date.
+          // FX snapshot per row (mobile parity) - cached per currency+date.
           const snapKey = `${p.currency}:${p.date}`;
           if (!snapshotCache.has(snapKey)) {
             snapshotCache.set(snapKey, await getRateSnapshot(supabase, p.currency, p.date));
@@ -391,30 +389,32 @@ export function ExportStatement({ inject }: ExportPageProps) {
   };
 
   return (
-    <main className="mx-auto w-full max-w-[560px] space-y-4 p-0.5 pb-6">
+    <main className="mx-auto w-full max-w-[560px] space-y-5 pb-6">
       {/* ── 1. HEADER ── */}
-      <div className="flex items-center justify-between pt-1">
+      <header className="flex items-end justify-between gap-3 pt-1">
         <div>
-          <p className="text-[11px] font-bold uppercase leading-4 tracking-[0.6px] text-text-muted">
-            {t("expKicker")}
-          </p>
-          <h1 className="mt-0.5 text-[28px] font-extrabold leading-[34px] tracking-tight text-text">
+          <p className="text-[13px] font-medium text-faint">{t("expKicker")}</p>
+          <h1 className="mt-0.5 text-xl font-bold tracking-[-0.02em] text-text sm:text-2xl">
             {t("expCenter")}
           </h1>
         </div>
         <Link
           href="/settings"
           aria-label={t("close")}
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border bg-surface-elevated text-text transition active:opacity-70"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-border bg-surface text-text-muted transition-colors hover:bg-surface-elevated hover:text-text"
         >
-          <X size={18} aria-hidden />
+          <X size={17} aria-hidden />
         </Link>
-      </div>
+      </header>
 
-      {/* ── 2. PERIOD SELECTOR PILLS ── */}
+      {/* ── 2. PERIOD SELECTOR - segmented control ── */}
       <div className="space-y-2">
-        <p className="text-sm font-extrabold text-text">{t("expSelectPeriod")}</p>
-        <div className="scroll-x flex gap-2 overflow-x-auto py-0.5">
+        <p className="caps">{t("expSelectPeriod")}</p>
+        <div
+          className="scroll-x flex rounded-lg border border-border bg-surface-elevated p-0.5"
+          role="group"
+          aria-label={t("expSelectPeriod")}
+        >
           {PERIODS.map((p) => {
             const active = period === p.value;
             return (
@@ -422,10 +422,8 @@ export function ExportStatement({ inject }: ExportPageProps) {
                 key={p.value}
                 onClick={() => setPeriod(p.value)}
                 aria-pressed={active}
-                className={`shrink-0 rounded-full border px-4 py-2 text-[13px] transition active:opacity-80 ${
-                  active
-                    ? "border-primary bg-primary font-extrabold text-white"
-                    : "border-border bg-surface-elevated font-semibold text-text-muted"
+                className={`h-9 min-h-[36px] shrink-0 whitespace-nowrap rounded-md px-3 text-[13px] font-semibold transition active:scale-[0.97] ${
+                  active ? "flex-1 bg-primary text-white" : "flex-1 text-text-muted hover:text-text"
                 }`}
               >
                 {t(p.labelKey)}
@@ -436,102 +434,107 @@ export function ExportStatement({ inject }: ExportPageProps) {
       </div>
 
       {/* ── 3. STATEMENT PREVIEW CARD ── */}
-      <section className="space-y-3 rounded-[16px] border-[1.5px] border-primary bg-[var(--sf-studio-gauge-bg)] p-4">
+      <section className="rounded-xl border border-border bg-surface p-5 shadow-soft">
         <div className="flex items-center justify-between gap-2">
-          <span className="flex min-w-0 items-center gap-1.5">
-            <Wallet size={16} className="shrink-0 text-primary" aria-hidden />
-            <span className="truncate text-[11px] font-extrabold uppercase tracking-[0.6px] text-primary">
-              {t("expSummary").replace("{period}", periodLabel)}
-            </span>
+          <span className="caps truncate">
+            {t("expSummary").replace("{period}", periodLabel)}
           </span>
-          <span className="shrink-0 text-[11px] text-text-muted">
+          <span className="shrink-0 text-[11px] font-medium text-faint">
             {t("expTransactionsIncluded").replace("{count}", String(scoped.length))}
           </span>
         </div>
-        <div>
-          <p className="figures-display truncate py-0.5 text-[32px] leading-9 text-text">
-            {fmt(expenseTotal)}
-          </p>
-          <p className="mt-0.5 text-xs text-text-muted">
-            {t("expVerifiedRecord")} • {displayCurrency}
-          </p>
+        <p
+          className={`figures-display mt-1 truncate py-0.5 text-[32px] leading-9 ${
+            total >= 0 ? "text-text" : "text-danger"
+          }`}
+        >
+          {fmt(total)}
+        </p>
+        <p className="text-xs text-text-muted">{displayCurrency}</p>
+        {/* Period shape - net signed figure above, inflow/outflow split below */}
+        <div className="mt-3 flex items-center gap-2 border-t border-border pt-3 text-xs font-semibold">
+          <span className="numeric shrink-0 whitespace-nowrap text-income">+{fmt(incomeTotal)}</span>
+          <span className="shrink-0 text-faint">/</span>
+          <span className="numeric shrink-0 whitespace-nowrap text-danger">-{fmt(expenseTotal)}</span>
+          <span className="rule-after" />
+          <span className="caps-faint hidden truncate sm:inline">{t("expVerifiedRecord")}</span>
         </div>
       </section>
 
-      {/* ── 4. EXPORT ACTION BUTTONS ── */}
-      <div className="space-y-3">
-        <p className="text-sm font-extrabold text-text">{t("expGenerate")}</p>
+      {/* ── 4. EXPORT ACTION ROWS ── */}
+      <div className="space-y-2">
+        <p className="caps">{t("expGenerate")}</p>
 
-        {/* PDF Statement (primary highlight) */}
+        {/* PDF Statement (primary) */}
         <button
           onClick={() => void onExportPdf()}
           disabled={!!busy}
-          className="flex w-full items-center justify-between gap-3 rounded-2xl bg-primary p-4 text-left shadow-[0_6px_10px_color-mix(in_srgb,var(--sf-primary)_35%,transparent)] transition active:opacity-90 disabled:opacity-70"
+          className="flex w-full items-center justify-between gap-3 rounded-xl bg-primary p-4 text-left transition-colors hover:bg-primary-strong active:scale-[0.99] disabled:opacity-70"
         >
           <span className="flex min-w-0 items-center gap-3">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white/20 text-white">
-              {busy === "pdf" ? <BusyRing /> : <Printer size={22} aria-hidden />}
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-white/15 text-white">
+              {busy === "pdf" ? <BusyRing /> : <Printer size={21} aria-hidden />}
             </span>
             <span className="min-w-0">
               <span className="flex items-center gap-1.5">
-                <span className="text-base font-extrabold text-white">{t("expPdfTitle")}</span>
-                <span className="rounded bg-white px-1.5 py-px text-[10px] font-extrabold text-primary">
+                <span className="text-[15px] font-bold text-white">{t("expPdfTitle")}</span>
+                <span className="rounded-md bg-white px-1.5 py-px text-[10px] font-bold text-primary">
                   {t("expRecommended")}
                 </span>
               </span>
               <span className="block truncate text-xs text-white/80">{t("expPdfSub")}</span>
             </span>
           </span>
-          <ArrowDownToLine size={20} className="shrink-0 text-white" aria-hidden />
+          <ArrowDownToLine size={19} className="shrink-0 text-white" aria-hidden />
         </button>
 
         {/* Excel XLSX */}
         <button
           onClick={() => void onExportExcel()}
           disabled={!!busy}
-          className="flex w-full items-center justify-between gap-3 rounded-2xl border border-border bg-surface-elevated p-4 text-left transition active:opacity-80 disabled:opacity-70"
+          className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4 text-left transition-colors hover:border-faint active:scale-[0.99] disabled:opacity-70"
         >
           <span className="flex min-w-0 items-center gap-3">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[var(--sf-export-excel-bg)] text-success">
-              {busy === "excel" ? <BusyRing tone="text-success" /> : <FileSpreadsheet size={22} aria-hidden />}
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-[var(--sf-export-excel-bg)] text-success">
+              {busy === "excel" ? <BusyRing tone="text-success" /> : <FileSpreadsheet size={21} aria-hidden />}
             </span>
             <span className="min-w-0">
-              <span className="block text-[15px] font-extrabold text-text">{t("expExcelTitle")}</span>
+              <span className="block text-[15px] font-bold text-text">{t("expExcelTitle")}</span>
               <span className="block truncate text-xs text-text-muted">{t("expExcelSub")}</span>
             </span>
           </span>
-          <Share2 size={18} className="shrink-0 text-text-muted" aria-hidden />
+          <ArrowDownToLine size={18} className="shrink-0 text-faint" aria-hidden />
         </button>
 
         {/* CSV */}
         <button
           onClick={() => void onExportCsv()}
           disabled={!!busy}
-          className="flex w-full items-center justify-between gap-3 rounded-2xl border border-border bg-surface-elevated p-4 text-left transition active:opacity-80 disabled:opacity-70"
+          className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4 text-left transition-colors hover:border-faint active:scale-[0.99] disabled:opacity-70"
         >
           <span className="flex min-w-0 items-center gap-3">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[var(--sf-export-csv-bg)] text-hue-sky">
-              {busy === "csv" ? <BusyRing tone="text-hue-sky" /> : <FileText size={22} aria-hidden />}
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-[var(--sf-export-csv-bg)] text-[var(--sf-hue-sky-ink)]">
+              {busy === "csv" ? <BusyRing tone="text-[var(--sf-hue-sky-ink)]" /> : <FileText size={21} aria-hidden />}
             </span>
             <span className="min-w-0">
-              <span className="block text-[15px] font-extrabold text-text">{t("expCsvTitle")}</span>
+              <span className="block text-[15px] font-bold text-text">{t("expCsvTitle")}</span>
               <span className="block truncate text-xs text-text-muted">{t("expCsvSub")}</span>
             </span>
           </span>
-          <Share2 size={18} className="shrink-0 text-text-muted" aria-hidden />
+          <ArrowDownToLine size={18} className="shrink-0 text-faint" aria-hidden />
         </button>
       </div>
 
       {/* ── 5. IMPORT SECTION ── */}
-      <div className="space-y-2.5 pt-1">
-        <p className="text-sm font-extrabold text-text">{t("expBackupTitle")}</p>
-        <label className="flex cursor-pointer items-center justify-center gap-2 rounded-[10px] border border-dashed border-border bg-surface-elevated p-3.5 transition active:opacity-75">
+      <div className="space-y-2 pt-1">
+        <p className="caps">{t("expBackupTitle")}</p>
+        <label className="flex min-h-[48px] cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-surface-elevated px-4 py-3 transition-colors hover:border-primary">
           {busy === "import" ? (
             <BusyRing tone="text-primary" />
           ) : (
             <Upload size={16} className="text-primary" aria-hidden />
           )}
-          <span className="text-xs font-bold text-primary">{t("expImportCsv")}</span>
+          <span className="text-[13px] font-semibold text-primary">{t("expImportCsv")}</span>
           <input
             type="file"
             accept=".csv,text/csv"
@@ -544,20 +547,20 @@ export function ExportStatement({ inject }: ExportPageProps) {
           />
         </label>
         {importResult && (
-          <p className="rounded-xl bg-primary-light px-3 py-2 text-xs font-bold text-income">
+          <p className="rounded-lg bg-[var(--sf-primary-light)] px-3 py-2 text-xs font-semibold text-income">
             {importResult}
           </p>
         )}
       </div>
 
-      <p className="text-center text-[10px] text-text-muted opacity-55">
+      <p className="text-center text-[10.5px] text-faint">
         Export build v7 · web
       </p>
     </main>
   );
 }
 
-/** Mobile ActivityIndicator parity — small ring inside action chips. */
+/** Mobile ActivityIndicator parity - small ring inside action chips. */
 function BusyRing({ tone = "text-white" }: { tone?: string }) {
   return (
     <span

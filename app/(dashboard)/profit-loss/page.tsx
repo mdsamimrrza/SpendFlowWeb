@@ -645,141 +645,147 @@ export default function ProfitLossPage() {
   }, [modalStartDay, modalEndDay]);
 
   return (
-    <main className="mx-auto w-full max-w-[560px] space-y-4 p-0.5">
+    <main className="mx-auto w-full max-w-[1200px] space-y-4 p-0.5">
       {/* ── 1. HEADER ── */}
       <div className="flex items-center gap-3 pt-1">
         <button
           onClick={() => router.back()}
           aria-label="Back"
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border bg-surface-elevated text-text transition active:opacity-70"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-border bg-surface text-text transition-colors hover:border-faint active:opacity-70"
         >
           <ChevronLeft size={18} aria-hidden />
         </button>
-        <div>
-          <p className="text-[11px] font-bold uppercase leading-4 tracking-[0.6px] text-text-muted">
-            {t("pl_subtitle")}
-          </p>
-          <h1 className="text-[28px] font-extrabold leading-[34px] text-text">{t("pl_title")}</h1>
+        <div className="min-w-0">
+          <p className="truncate text-[13px] font-medium text-faint">{t("pl_subtitle")}</p>
+          <h1 className="mt-0.5 truncate text-xl font-bold tracking-[-0.02em] text-text sm:text-2xl">
+            {t("pl_title")}
+          </h1>
         </div>
       </div>
 
       {/* ── 2. DATE RANGE PICKER ── */}
       <button
         onClick={() => setCalendarOpen(true)}
-        className="flex w-full items-center gap-2.5 rounded-[10px] border border-border bg-surface p-3.5 text-left transition active:opacity-85"
+        className="flex w-full items-center gap-2.5 rounded-xl border border-border bg-surface p-3.5 text-left transition-colors hover:border-faint active:scale-[0.99]"
       >
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[var(--sf-set-chip-teal)]">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--sf-primary-light)]">
           <CalendarDays size={18} className="text-primary" aria-hidden />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[11px] font-bold text-text-muted">{t("plRangeFilter")}</span>
+          <span className="block text-[11px] font-medium text-text-muted">{t("plRangeFilter")}</span>
           <span className="block truncate text-[13.5px] font-bold text-text">
-            {fmtDayMonthYear(parseISO(from))} — {fmtDayMonthYear(parseISO(to))}
+            {fmtDayMonthYear(parseISO(from))} – {fmtDayMonthYear(parseISO(to))}
           </span>
         </span>
-        <span className="shrink-0 text-xs font-extrabold text-primary">{t("pl_change")}</span>
+        <span className="shrink-0 text-xs font-semibold text-primary">{t("pl_change")}</span>
       </button>
 
-      {/* ── 3. PERIOD PERFORMANCE FLOW CHART ── */}
-      <StockChartCard
-        rows={rangeChartRows}
-        mode={chartViewMode}
-        onMode={setChartViewMode}
-        selected={selectedChartIdx}
-        onSelect={setSelectedChartIdx}
-        totalIncome={totalIncome}
-        totalExpense={totalExpense}
-        netResult={netResult}
-        isProfit={isProfit}
-        overallSavingsRate={overallSavingsRate}
-        money={money}
-        todayLine={<TodayRateLine live={{ income: totalIncome, expense: totalExpense }} frozen={plFrozenTotals} fmt={money} />}
-        t={t}
-      />
-
-      {/* ── 4. MONTHLY BUDGET ── */}
-      <section className="panel space-y-3 rounded-2xl p-4">
-        <div className="flex items-center justify-between gap-2">
-          <p className="flex items-center gap-2 text-[13px] font-extrabold text-text">
-            <Wallet size={16} className="shrink-0 text-primary" aria-hidden />
-            {t("pl_monthly_budget")}
-          </p>
-          <p className="text-[11px] text-text-muted">
-            {t("plCycle")}: {cycleLabel}
-          </p>
-        </div>
-        <div className="flex items-center gap-2.5">
-          <input
-            inputMode="numeric"
-            value={budgetInput}
-            onChange={(e) => setBudgetInput(e.target.value.replace(/[^0-9.]/g, ""))}
-            placeholder={monthlyBudget && monthlyBudget > 0 ? String(Math.round(monthlyBudget)) : "e.g. 14000"}
-            aria-label={t("pl_monthly_budget")}
-            className="h-12 min-w-0 flex-1 rounded-[10px] border-[1.5px] border-border bg-surface-elevated px-3.5 text-base font-bold text-text outline-none placeholder:font-normal placeholder:text-text-muted focus:border-primary"
+      {/* ── 3-4B. Period summary beside the budget + cycle controls on laptop ── */}
+      <div className="space-y-4 lg:grid lg:grid-cols-3 lg:items-start lg:gap-5 lg:space-y-0">
+        <div className="min-w-0 lg:col-span-2">
+          <StockChartCard
+            rows={rangeChartRows}
+            mode={chartViewMode}
+            onMode={setChartViewMode}
+            selected={selectedChartIdx}
+            onSelect={setSelectedChartIdx}
+            totalIncome={totalIncome}
+            totalExpense={totalExpense}
+            netResult={netResult}
+            isProfit={isProfit}
+            overallSavingsRate={overallSavingsRate}
+            money={money}
+            todayLine={<TodayRateLine live={{ income: totalIncome, expense: totalExpense }} frozen={plFrozenTotals} fmt={money} />}
+            t={t}
           />
-          <button
-            onClick={() => void handleSaveBudget()}
-            disabled={savingBudget}
-            className="h-12 shrink-0 rounded-[10px] bg-primary px-3.5 text-[12.5px] font-extrabold text-white transition active:opacity-85 disabled:opacity-85"
-          >
-            {savingBudget ? t("common_saving") : t("pl_set_budget")}
-          </button>
         </div>
-      </section>
 
-      {/* ── 4B. PAYCHECK & BUDGET CYCLE ── */}
-      <section className="panel space-y-3.5 rounded-2xl p-4">
-        <div className="flex items-center justify-between gap-2.5">
-          <div className="flex min-w-0 flex-1 items-center gap-2.5">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[var(--sf-set-chip-green)]">
-              <Calendar size={18} className="text-primary" aria-hidden />
-            </span>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-extrabold leading-[18px] text-text">
-                {t("plCycleCardTitle")}
+        <div className="min-w-0 space-y-4">
+          {/* ── 4. MONTHLY BUDGET ── */}
+          <section className="panel space-y-3 p-4">
+            <div className="flex items-center justify-between gap-2">
+              <p className="flex items-center gap-2 text-sm font-bold text-text">
+                <Wallet size={16} className="shrink-0 text-primary" aria-hidden />
+                {t("pl_monthly_budget")}
               </p>
-              <p className="truncate text-[11px] leading-[14px] text-text-muted">
-                {t("plCycleCardSub")}
+              <p className="text-[11px] font-medium text-text-muted">
+                {t("plCycle")}: {cycleLabel}
               </p>
             </div>
-          </div>
-          {activeCycleRangeText && (
-            <span className="max-w-[45%] shrink-0 truncate rounded-lg bg-[var(--sf-set-chip-green)] px-2 py-1 text-right text-[11px] font-extrabold text-primary">
-              {t("plActiveBadge").replace("{range}", activeCycleRangeText)}
-            </span>
-          )}
+            <div className="flex items-center gap-2.5">
+              <input
+                inputMode="numeric"
+                value={budgetInput}
+                onChange={(e) => setBudgetInput(e.target.value.replace(/[^0-9.]/g, ""))}
+                placeholder={monthlyBudget && monthlyBudget > 0 ? String(Math.round(monthlyBudget)) : "e.g. 14000"}
+                aria-label={t("pl_monthly_budget")}
+                className="figures h-11 min-w-0 flex-1 rounded-lg border border-border bg-surface-elevated px-3.5 text-base text-text outline-none transition-colors placeholder:font-normal placeholder:text-text-muted focus:border-primary"
+              />
+              <button
+                onClick={() => void handleSaveBudget()}
+                disabled={savingBudget}
+                className="h-11 shrink-0 rounded-lg bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-strong active:scale-[0.98] disabled:opacity-85"
+              >
+                {savingBudget ? t("common_saving") : t("pl_set_budget")}
+              </button>
+            </div>
+          </section>
+
+          {/* ── 4B. PAYCHECK & BUDGET CYCLE ── */}
+          <section className="panel space-y-3.5 p-4">
+            <div className="flex items-center justify-between gap-2.5">
+              <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--sf-primary-light)]">
+                  <Calendar size={18} className="text-primary" aria-hidden />
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold leading-[18px] text-text">
+                    {t("plCycleCardTitle")}
+                  </p>
+                  <p className="truncate text-[11px] leading-[14px] text-text-muted">
+                    {t("plCycleCardSub")}
+                  </p>
+                </div>
+              </div>
+              {activeCycleRangeText && (
+                <span className="max-w-[45%] shrink-0 truncate rounded-lg bg-[var(--sf-primary-light)] px-2 py-1 text-right text-[11px] font-semibold text-primary-strong">
+                  {t("plActiveBadge").replace("{range}", activeCycleRangeText)}
+                </span>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setCycleCalendarMode("range");
+                  setCycleCalendarOpen(true);
+                }}
+                className="flex h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary px-2 text-[13px] font-semibold text-white transition-colors hover:bg-primary-strong active:scale-[0.98]"
+              >
+                <CalendarDays size={15} aria-hidden />
+                <span className="truncate">{t("plPickCalendar")}</span>
+              </button>
+              <button
+                onClick={() => {
+                  setModalStartDay(String(cycleStartDay));
+                  setModalEndDay(cycleEndDay !== null ? String(cycleEndDay) : "");
+                  setCycleSettingsOpen(true);
+                }}
+                className="flex h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg border border-border bg-surface-elevated px-2 text-[13px] font-semibold text-text transition-colors hover:border-faint active:scale-[0.98]"
+              >
+                <Sliders size={15} aria-hidden />
+                <span className="truncate">{t("plConfigureDays")}</span>
+              </button>
+            </div>
+          </section>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => {
-              setCycleCalendarMode("range");
-              setCycleCalendarOpen(true);
-            }}
-            className="flex h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-[10px] bg-primary px-2 text-xs font-extrabold text-white transition active:opacity-85"
-          >
-            <CalendarDays size={15} aria-hidden />
-            <span className="truncate">{t("plPickCalendar")}</span>
-          </button>
-          <button
-            onClick={() => {
-              setModalStartDay(String(cycleStartDay));
-              setModalEndDay(cycleEndDay !== null ? String(cycleEndDay) : "");
-              setCycleSettingsOpen(true);
-            }}
-            className="flex h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-[10px] border border-border bg-surface-elevated px-2 text-xs font-bold text-text transition active:opacity-85"
-          >
-            <Sliders size={15} aria-hidden />
-            <span className="truncate">{t("plConfigureDays")}</span>
-          </button>
-        </div>
-      </section>
+      </div>
 
       {/* ── 5. MONTH BY MONTH ── */}
       <div className="space-y-2.5">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-extrabold text-text">{t("pl_month_by_month")}</p>
+          <p className="text-sm font-bold text-text">{t("pl_month_by_month")}</p>
           {monthRows.length > 0 && (
-            <p className="text-[11px] font-bold text-text-muted">
+            <p className="text-[11px] font-semibold text-text-muted">
               {monthRows.length === 1
                 ? t("plCycleInRange")
                 : t("plCyclesInRange").replace("{count}", String(monthRows.length))}
@@ -788,24 +794,26 @@ export default function ProfitLossPage() {
         </div>
 
         {loading ? (
-          <div className="space-y-2.5">
+          <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-[150px] w-full rounded-[10px]" />
+              <Skeleton key={i} className="h-[150px] w-full rounded-xl" />
             ))}
           </div>
         ) : hasData ? (
-          paginatedMonthRows.map((row) => <MonthRowCard key={row.key} row={row} money={money} t={t} />)
+          <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2 xl:grid-cols-3">
+            {paginatedMonthRows.map((row) => <MonthRowCard key={row.key} row={row} money={money} t={t} />)}
+          </div>
         ) : (
           <MobileEmptyState icon={Scale} title={t("pl_empty_title")} message={t("pl_empty_message")} />
         )}
 
         {monthRows.length > ITEMS_PER_PAGE && (
-          <div className="mt-1 flex items-center justify-between gap-2 rounded-[10px] border border-border bg-surface px-3.5 py-3">
+          <div className="mt-1 flex items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3.5 py-3">
             <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-extrabold text-text">
+              <p className="truncate text-xs font-bold text-text">
                 {t("plPageOf").replace("{page}", String(currentPage)).replace("{total}", String(totalPages))}
               </p>
-              <p className="truncate text-[11px] font-semibold text-text-muted">
+              <p className="truncate text-[11px] font-medium text-text-muted">
                 {t("plShowing")
                   .replace("{from}", String((currentPage - 1) * ITEMS_PER_PAGE + 1))
                   .replace("{to}", String(Math.min(currentPage * ITEMS_PER_PAGE, monthRows.length)))
@@ -816,7 +824,7 @@ export default function ProfitLossPage() {
               <button
                 onClick={() => currentPage > 1 && setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="flex items-center gap-1 rounded-lg border border-border bg-surface-elevated px-2.5 py-[7px] text-[11.5px] font-extrabold text-text transition active:opacity-75 disabled:opacity-35"
+                className="flex items-center gap-1 rounded-lg border border-border bg-surface-elevated px-2.5 py-2 text-[12px] font-semibold text-text transition-colors hover:border-faint active:scale-[0.97] disabled:opacity-35"
               >
                 <ChevronLeft size={14} aria-hidden />
                 {t("plPrev")}
@@ -824,7 +832,7 @@ export default function ProfitLossPage() {
               <button
                 onClick={() => currentPage < totalPages && setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className="flex items-center gap-1 rounded-lg border border-border bg-surface-elevated px-2.5 py-[7px] text-[11.5px] font-extrabold text-text transition active:opacity-75 disabled:opacity-35"
+                className="flex items-center gap-1 rounded-lg border border-border bg-surface-elevated px-2.5 py-2 text-[12px] font-semibold text-text transition-colors hover:border-faint active:scale-[0.97] disabled:opacity-35"
               >
                 {t("plNext")}
                 <ChevronRight size={14} aria-hidden />
@@ -907,19 +915,18 @@ function MonthRowCard({ row, money, t }: { row: MonthRow; money: (n: number) => 
       type="button"
       onClick={() => router.push(`/profit-loss/cycle?from=${row.from}&to=${row.to}`)}
       aria-label={t("plOpenCycleHistory")}
-      className="w-full cursor-pointer space-y-3 rounded-[10px] border border-border bg-surface p-4 text-left transition hover:border-primary/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:opacity-85"
+      className="w-full cursor-pointer space-y-3 rounded-xl border border-border bg-surface p-4 text-left transition-colors hover:border-primary/60 hover:shadow-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.99]"
     >
       <div className="flex items-center justify-between gap-2">
         <p className="truncate text-sm font-bold text-text">{row.label}</p>
         <span className="flex shrink-0 items-center gap-1.5">
           <p
-            className="text-sm font-extrabold"
-            style={{ color: rowIsProfit ? "var(--sf-income)" : "var(--sf-danger)" }}
+            className={`figures text-sm ${rowIsProfit ? "text-income" : "text-danger"}`}
           >
             {rowIsProfit ? "+" : "−"}
             {money(Math.abs(row.net))}
           </p>
-          <ChevronRight size={15} className="text-text-muted" aria-hidden />
+          <ChevronRight size={15} className="text-faint" aria-hidden />
         </span>
       </div>
       <div className="h-px bg-border" aria-hidden />
@@ -1058,17 +1065,17 @@ function StockChartCard({
   const step = Math.ceil(n / 6) || 1;
 
   return (
-    <section className="panel space-y-4 rounded-2xl p-[18px]">
+    <section className="panel space-y-4 p-4 sm:p-5">
       <div className="space-y-2.5">
         <div className="flex items-center justify-between gap-2">
-          <p className="flex min-w-0 items-center gap-2 text-sm font-extrabold text-text">
-            <TrendingUp size={18} className="shrink-0 text-primary" aria-hidden />
+          <p className="flex min-w-0 items-center gap-2 text-sm font-bold text-text">
+            <TrendingUp size={17} className="shrink-0 text-primary" aria-hidden />
             <span className="truncate">{t("pl_summary")}</span>
           </p>
           {totalIncome > 0 && (
             <span
-              className={`shrink-0 rounded-md px-2 py-1 text-[11px] font-extrabold ${
-                isProfit ? "bg-[var(--sf-set-chip-green)] text-income" : "bg-[var(--sf-set-danger-bg)] text-danger"
+              className={`shrink-0 rounded-lg px-2 py-1 text-[11px] font-bold ${
+                isProfit ? "bg-income/10 text-income" : "bg-rust-tint text-danger"
               }`}
             >
               {isProfit ? <TrendingUp size={10} className="mr-0.5 inline" aria-hidden /> : <TrendingDown size={10} className="mr-0.5 inline" aria-hidden />}
@@ -1090,10 +1097,10 @@ function StockChartCard({
               <button
                 key={tab.m}
                 onClick={() => onMode(tab.m)}
-                className={`shrink-0 rounded-md border px-3 py-1.5 text-[11.5px] transition active:opacity-85 ${
+                className={`shrink-0 rounded-lg border px-3 py-1.5 text-[12px] font-semibold transition-colors ${
                   active
-                    ? "border-primary bg-primary font-extrabold text-white"
-                    : "border-border bg-surface-elevated font-semibold text-text"
+                    ? "border-primary bg-primary text-white"
+                    : "border-border bg-surface-elevated text-text hover:border-faint"
                 }`}
               >
                 {tab.label}
@@ -1104,7 +1111,7 @@ function StockChartCard({
       </div>
 
       {sel && (
-        <div className="space-y-2 rounded-[10px] border border-primary bg-surface-elevated p-3">
+        <div className="space-y-2 rounded-xl border border-primary bg-surface-elevated p-3">
           <div className="flex items-center justify-between gap-2">
             <p className="truncate text-xs font-extrabold text-text">{sel.label}</p>
             <p
@@ -1122,7 +1129,7 @@ function StockChartCard({
               <TrendingDown size={12} aria-hidden />−{money(sel.expense)}
             </span>
             <span
-              className="text-[12.5px] font-black"
+              className="figures text-[12.5px]"
               style={{ color: sel.net >= 0 ? "var(--sf-income)" : "var(--sf-danger)" }}
             >
               Net: {sel.net >= 0 ? "+" : "−"}
@@ -1198,13 +1205,13 @@ function StockChartCard({
                     strokeDasharray="3,3"
                   />
                   {(mode === "all" || mode === "income") && Number.isFinite(incomes[selected]) && (
-                    <circle cx={toX(selected)} cy={toY(incomes[selected])} r={5} fill="#FFFFFF" stroke="var(--sf-income)" strokeWidth={2.5} />
+                    <circle cx={toX(selected)} cy={toY(incomes[selected])} r={5} fill="var(--sf-surface)" stroke="var(--sf-income)" strokeWidth={2.5} />
                   )}
                   {(mode === "all" || mode === "expense") && Number.isFinite(expenses[selected]) && (
-                    <circle cx={toX(selected)} cy={toY(expenses[selected])} r={5} fill="#FFFFFF" stroke="var(--sf-danger)" strokeWidth={2.5} />
+                    <circle cx={toX(selected)} cy={toY(expenses[selected])} r={5} fill="var(--sf-surface)" stroke="var(--sf-danger)" strokeWidth={2.5} />
                   )}
                   {(mode === "all" || mode === "net") && Number.isFinite(nets[selected]) && (
-                    <circle cx={toX(selected)} cy={toY(nets[selected])} r={5} fill="#FFFFFF" stroke="var(--sf-primary)" strokeWidth={2.5} />
+                    <circle cx={toX(selected)} cy={toY(nets[selected])} r={5} fill="var(--sf-surface)" stroke="var(--sf-primary)" strokeWidth={2.5} />
                   )}
                 </>
               )}
@@ -1261,7 +1268,7 @@ function StockChartCard({
       <div className="flex items-center justify-between gap-2">
         <span className="text-[13.5px] font-extrabold text-text">{isProfit ? t("pl_profit") : t("pl_loss")}</span>
         <span
-          className="numeric text-[17px] font-black"
+          className="figures text-[17px]"
           style={{ color: isProfit ? "var(--sf-income)" : "var(--sf-danger)" }}
         >
           {isProfit ? "+" : "−"}
@@ -1327,11 +1334,11 @@ function CycleSettingsModal({
         role="dialog"
         aria-modal="true"
         aria-label={t("plCycleSettingsTitle")}
-        className="sf-pop max-h-[90vh] w-full max-w-[420px] overflow-y-auto rounded-2xl border border-border bg-surface p-5 shadow-[0_10px_20px_rgb(0_0_0/0.3)]"
+        className="sf-pop max-h-[90vh] w-full max-w-[420px] overflow-y-auto rounded-2xl border border-border bg-surface p-5 shadow-soft"
       >
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2.5">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[var(--sf-set-chip-green)]">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--sf-primary-light)]">
               <Sliders size={18} className="text-primary" aria-hidden />
             </span>
             <div className="min-w-0">
@@ -1351,7 +1358,7 @@ function CycleSettingsModal({
         <div className="my-4 h-px bg-border" aria-hidden />
 
         <div className="space-y-2">
-          <p className="text-[11.5px] font-bold uppercase text-text-muted">{t("plQuickPresets")}</p>
+          <p className="caps">{t("plQuickPresets")}</p>
           <div className="scroll-x flex gap-2 overflow-x-auto py-0.5">
             {presets.map((preset) => {
               const active = modalStartDay === preset.start && modalEndDay === preset.end;
@@ -1362,10 +1369,10 @@ function CycleSettingsModal({
                     setModalStartDay(preset.start);
                     setModalEndDay(preset.end);
                   }}
-                  className={`shrink-0 rounded-md border px-3 py-2 text-xs transition active:opacity-85 ${
+                  className={`shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
                     active
-                      ? "border-primary bg-primary font-extrabold text-white"
-                      : "border-border bg-surface-elevated font-semibold text-text"
+                      ? "border-primary bg-primary text-white"
+                      : "border-border bg-surface-elevated text-text hover:border-faint"
                   }`}
                 >
                   {preset.label}
@@ -1384,7 +1391,7 @@ function CycleSettingsModal({
               value={modalStartDay}
               onChange={(e) => setModalStartDay(e.target.value.replace(/[^0-9]/g, ""))}
               placeholder={t("plStartPlaceholder")}
-              className="h-[46px] w-full rounded-[10px] border-[1.5px] border-border bg-surface-elevated px-3.5 text-[15px] font-bold text-text outline-none placeholder:font-normal placeholder:text-text-muted"
+              className="figures h-[46px] w-full rounded-lg border border-border bg-surface-elevated px-3.5 text-[15px] text-text outline-none transition-colors placeholder:font-normal placeholder:text-text-muted focus:border-primary"
             />
           </label>
           <label className="min-w-0 flex-1 space-y-1.5">
@@ -1395,7 +1402,7 @@ function CycleSettingsModal({
               value={modalEndDay}
               onChange={(e) => setModalEndDay(e.target.value.replace(/[^0-9]/g, ""))}
               placeholder={t("plEndAutoPlaceholder")}
-              className="h-[46px] w-full rounded-[10px] border-[1.5px] border-border bg-surface-elevated px-3.5 text-[15px] font-bold text-text outline-none placeholder:font-normal placeholder:text-text-muted"
+              className="figures h-[46px] w-full rounded-lg border border-border bg-surface-elevated px-3.5 text-[15px] text-text outline-none transition-colors placeholder:font-normal placeholder:text-text-muted focus:border-primary"
             />
           </label>
         </div>
@@ -1404,14 +1411,14 @@ function CycleSettingsModal({
 
         {preview.isValid ? (
           <div
-            className={`mt-3 space-y-[3px] rounded-[10px] border px-3.5 py-2.5 ${
+            className={`mt-3 space-y-[3px] rounded-lg border px-3.5 py-2.5 ${
               preview.isShort
-                ? "border-danger bg-[#fef2f2] dark:bg-[rgb(239_68_68/0.12)]"
-                : "border-primary bg-[#ecfdf5] dark:bg-[rgb(16_185_129/0.10)]"
+                ? "border-danger bg-rust-tint"
+                : "border-primary bg-income/10"
             }`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-extrabold uppercase tracking-[0.5px] text-text-muted">
+              <span className="caps">
                 {t("pl_cycle_preview")}
               </span>
               <span className="text-[11.5px] font-bold text-text-muted">{preview.days}d</span>
@@ -1432,14 +1439,14 @@ function CycleSettingsModal({
         <div className="mt-4 flex gap-2.5 pt-1">
           <button
             onClick={onClose}
-            className="h-[46px] min-w-0 flex-1 rounded-[10px] border border-border bg-surface-elevated text-[13px] font-bold text-text transition active:opacity-85"
+            className="h-[46px] min-w-0 flex-1 rounded-lg border border-border bg-surface-elevated text-[13px] font-semibold text-text transition-colors hover:border-faint active:scale-[0.98]"
           >
             {t("cancel")}
           </button>
           <button
             onClick={onSave}
             disabled={saving}
-            className="flex h-[46px] min-w-0 flex-[1.5] items-center justify-center gap-2 rounded-[10px] bg-primary text-[13px] font-extrabold text-white transition active:opacity-85 disabled:opacity-85"
+            className="flex h-[46px] min-w-0 flex-[1.5] items-center justify-center gap-2 rounded-lg bg-primary text-[13px] font-semibold text-white transition-colors hover:bg-primary-strong active:scale-[0.98] disabled:opacity-85"
           >
             {saving && (
               <span aria-hidden className="block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -1494,11 +1501,11 @@ function CycleConfirmDialog({
         role="alertdialog"
         aria-modal="true"
         aria-label={t("plCycleConfirmTitle")}
-        className="sf-pop w-full max-w-[420px] rounded-2xl border border-border bg-surface p-5 shadow-[0_10px_20px_rgb(0_0_0/0.3)]"
+        className="sf-pop w-full max-w-[420px] rounded-2xl border border-border bg-surface p-5 shadow-soft"
       >
         <div className="flex items-center gap-2.5">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] border border-[var(--sf-set-chip-gold-line)] bg-[var(--sf-set-chip-gold)]">
-            <AlertTriangle size={18} className="text-hue-amber" aria-hidden />
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-brass-tint">
+            <AlertTriangle size={18} className="text-brass" aria-hidden />
           </span>
           <p className="text-base font-extrabold text-text">{t("plCycleConfirmTitle")}</p>
         </div>
@@ -1525,13 +1532,13 @@ function CycleConfirmDialog({
         <div className="mt-5 flex gap-2.5">
           <button
             onClick={onCancel}
-            className="h-[46px] min-w-0 flex-1 rounded-[10px] border border-border bg-surface-elevated text-[13px] font-bold text-text transition active:opacity-85"
+            className="h-[46px] min-w-0 flex-1 rounded-lg border border-border bg-surface-elevated text-[13px] font-semibold text-text transition-colors hover:border-faint active:scale-[0.98]"
           >
             {t("cancel")}
           </button>
           <button
             onClick={onConfirm}
-            className="h-[46px] min-w-0 flex-1 rounded-[10px] bg-primary text-[13px] font-extrabold text-white transition active:opacity-85"
+            className="h-[46px] min-w-0 flex-1 rounded-lg bg-primary text-[13px] font-semibold text-white transition-colors hover:bg-primary-strong active:scale-[0.98]"
           >
             {t("plCycleConfirmYes")}
           </button>

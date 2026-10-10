@@ -167,7 +167,7 @@ export function PhoneShowcase({ clock, currency, m, screen, onScreen }: Showcase
     <div className="relative mx-auto w-[300px] max-w-full select-none">
       {/* Light mode: a lighter "screen" than the parchment page so the phone
           reads as a device; dark keeps the near-black background (already
-          contrasts the #101A14 cards). */}
+          contrasts the #111113 cards). */}
       <div className="relative overflow-hidden rounded-[2.6rem] border-[6px] border-surface-elevated bg-[#F5F2E9] shadow-pop dark:bg-background">
         <span aria-hidden className="phone-glare pointer-events-none absolute inset-0 z-20" />
 
@@ -756,15 +756,15 @@ function RecurringScreen({ m }: { m: (n: number) => string }) {
 
 function SettingsScreen({ flag, detail }: { flag: string; detail?: string }) {
   const rows: { icon: React.ReactNode; tint: string; label: string; right?: React.ReactNode }[] = [
-    { icon: <DollarSign size={12} className="text-primary" />, tint: "#17402F", label: "Currency", right: <span className="text-[7px] font-bold text-text-muted">{flag} {detail ?? "Nepalese Rupee"}</span> },
-    { icon: <TrendingUp size={12} className="text-primary" />, tint: "#17402F", label: "Budget & Reports" },
+    { icon: <DollarSign size={12} className="text-primary" />, tint: "#059669", label: "Currency", right: <span className="text-[7px] font-bold text-text-muted">{flag} {detail ?? "Nepalese Rupee"}</span> },
+    { icon: <TrendingUp size={12} className="text-primary" />, tint: "#059669", label: "Budget & Reports" },
     { icon: <Tag size={12} className="text-income" />, tint: "#10B981", label: "Categories & Budgets", right: <span className="text-[7px] font-bold text-text-muted">18</span> },
     { icon: <Landmark size={12} className="text-[#3B82F6]" />, tint: "#3B82F6", label: "Bank Accounts & Wallets" },
     { icon: <Coins size={12} className="text-warning" />, tint: "#F59E0B", label: "Gold & Silver Rates", right: <span className="flex items-center gap-1 rounded-full bg-[var(--sf-tint-success)] px-1.5 py-0.5 text-[6.5px] font-black text-income"><span className="h-1 w-1 rounded-full bg-income" />Live</span> },
     { icon: <List size={12} className="text-[#94A3B8]" />, tint: "#94A3B8", label: "Bin", right: <span className="text-[7px] font-bold text-text-muted">60-day</span> },
-    { icon: <Bell size={12} className="text-primary" />, tint: "#17402F", label: "Notifications", right: <span className="text-[7px] font-bold text-primary">Active</span> },
-    { icon: <Globe size={12} className="text-primary" />, tint: "#17402F", label: "Language", right: <span className="text-[7px] font-bold text-text-muted">🇺 English</span> },
-    { icon: <Upload size={12} className="text-primary" />, tint: "#17402F", label: "Export data", right: <span className="text-[7px] font-bold text-text-muted">CSV / PDF</span> },
+    { icon: <Bell size={12} className="text-primary" />, tint: "#059669", label: "Notifications", right: <span className="text-[7px] font-bold text-primary">Active</span> },
+    { icon: <Globe size={12} className="text-primary" />, tint: "#059669", label: "Language", right: <span className="text-[7px] font-bold text-text-muted">🇺 English</span> },
+    { icon: <Upload size={12} className="text-primary" />, tint: "#059669", label: "Export data", right: <span className="text-[7px] font-bold text-text-muted">CSV / PDF</span> },
   ];
   return (
     <div className="space-y-2">
@@ -909,7 +909,7 @@ function VaultScreen({ m }: { m: (n: number) => string }) {
 
       <div className="space-y-1.5">
         {[
-          { e: "🏦", t: "#17402F", n: "Nabil Bank", ty: "Bank · •••• 4821", a: m(156400), def: true },
+          { e: "🏦", t: "#059669", n: "Nabil Bank", ty: "Bank · •••• 4821", a: m(156400), def: true },
           { e: "💵", t: "#10B981", n: "Cash Wallet", ty: "Cash Wallet", a: m(12500) },
           { e: "👛", t: "#8B5CF6", n: "eSewa", ty: "UPI App · wallet", a: m(3450) },
           { e: "💳", t: "#F59E0B", n: "NIC Asia Card", ty: "Credit Card · •••• 9034", a: `−${m(8400)}`, neg: true },
@@ -931,7 +931,7 @@ function VaultScreen({ m }: { m: (n: number) => string }) {
       </div>
 
       <div className="flex items-center gap-2 rounded-[11px] border border-border bg-surface px-2.5 py-2">
-        <IconTile emoji={<ArrowLeftRight size={11} className="text-primary" />} tint="#17402F" size={22} />
+        <IconTile emoji={<ArrowLeftRight size={11} className="text-primary" />} tint="#059669" size={22} />
         <span className="min-w-0 flex-1">
           <span className="block text-[8px] font-extrabold text-text">🇳🇵 Nabil Bank → eSewa</span>
           <span className="block text-[6.5px] text-text-muted">{m(5000)} · rate 1.0000 · 15 Sep</span>

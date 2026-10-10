@@ -48,10 +48,10 @@ interface TransferHistoryPageProps {
   inject?: TransferHistoryInject;
 }
 
-/** Transfer log — chronological register of internal movements, web-sized:
+/** Transfer log - chronological register of internal movements, web-sized:
  *  filter register (period/sort), per-row detail sheet with the locked FX
  *  math, and all-time movement between the shown pair. */
-/** Statement implementation — the default page export renders it bare;
+/** Statement implementation - the default page export renders it bare;
  *  preview harnesses pass inject (mock data, no auth, no network). */
 export function TransferHistoryStatement({ inject }: TransferHistoryPageProps) {
   const { user, profile } = useAuth();
@@ -152,17 +152,18 @@ export function TransferHistoryStatement({ inject }: TransferHistoryPageProps) {
     }
   };
 
-  // Register telemetry — shape of the movement history at a glance.
+  // Register telemetry - shape of the movement history at a glance.
   const crossCurrency = filtered.filter((r) => r.from_currency !== r.to_currency).length;
   const withFees = filtered.filter((r) => r.fee > 0).length;
 
   return (
     <main className="mx-auto w-full max-w-[1000px]">
       <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <p className="caps !text-primary-strong">{t("registerEyebrow")}</p>
-          <h1 className="mt-0.5 text-xl font-extrabold tracking-tight text-text">{t("transferLog")}</h1>
-          <div className="mt-2 h-0.5 w-14 bg-brass" aria-hidden />
+          <h1 className="mt-0.5 text-xl font-bold tracking-[-0.02em] text-text sm:text-2xl">
+            {t("transferLog")}
+          </h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative">
@@ -172,11 +173,13 @@ export function TransferHistoryStatement({ inject }: TransferHistoryPageProps) {
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("searchTransfers")}
               aria-label={t("searchTransfers")}
-              className="h-10 w-full rounded-full border border-border bg-input pl-9 pr-4 text-sm text-text placeholder:text-faint focus:border-primary focus:outline-none sm:w-56"
+              className="h-10 w-full rounded-lg border border-border bg-input pl-9 pr-4 text-sm text-text placeholder:text-faint focus:border-primary focus:outline-none sm:w-56"
             />
           </div>
           <Link href="/transfer">
-            <Button variant="secondary">{t("newTransfer")}</Button>
+            <Button variant="secondary" className="!rounded-lg">
+              {t("newTransfer")}
+            </Button>
           </Link>
         </div>
       </header>
@@ -216,10 +219,10 @@ export function TransferHistoryStatement({ inject }: TransferHistoryPageProps) {
               key={p.id}
               onClick={() => applyPreset(p.id)}
               aria-pressed={preset === p.id}
-              className={`h-8 rounded-full px-3 text-[11px] font-bold uppercase tracking-[0.06em] transition ${
+              className={`h-8 rounded-lg px-3 text-xs transition ${
                 preset === p.id
-                  ? "bg-primary text-white shadow-soft"
-                  : "bg-surface-elevated text-text-muted hover:text-text"
+                  ? "bg-[var(--sf-primary-light)] font-semibold text-primary-strong"
+                  : "bg-surface-elevated font-medium text-text-muted hover:text-text"
               }`}
             >
               {t(p.labelKey)}
@@ -231,7 +234,7 @@ export function TransferHistoryStatement({ inject }: TransferHistoryPageProps) {
             <RangeField
               from={from}
               to={to}
-              boxClassName="h-8 !min-h-8 rounded-full"
+              boxClassName="h-8 !min-h-8 rounded-lg"
               onChange={(f, t2) => {
                 setFrom(f);
                 setTo(t2);
@@ -245,7 +248,7 @@ export function TransferHistoryStatement({ inject }: TransferHistoryPageProps) {
               setSearch("");
               applyPreset("all");
             }}
-            className="rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-rust transition-colors hover:bg-rust-tint"
+            className="rounded-lg px-2.5 py-1 text-xs font-semibold text-danger transition-colors hover:bg-rust-tint"
           >
             {t("resetFilter")}
           </button>
@@ -254,7 +257,7 @@ export function TransferHistoryStatement({ inject }: TransferHistoryPageProps) {
           aria-label="Sort entries"
           value={sortKey}
           onChange={(e) => setSortKey(e.target.value as SortKey)}
-          className="ml-auto h-8 rounded-full border border-border bg-input px-3 text-[11px] font-bold text-text-muted focus:border-primary focus:outline-none"
+          className="ml-auto h-8 rounded-lg border border-border bg-input px-2.5 text-xs font-medium text-text-muted focus:border-primary focus:outline-none"
         >
           {SORTS.map((s) => (
             <option key={s.key} value={s.key}>
@@ -280,7 +283,7 @@ export function TransferHistoryStatement({ inject }: TransferHistoryPageProps) {
           }
         />
       ) : (
-        <Panel label={`${t("movementsLabel")} — ${filtered.length}${isFiltered ? ` of ${rows.length}` : ""}`}>
+        <Panel label={`${t("movementsLabel")} - ${filtered.length}${isFiltered ? ` of ${rows.length}` : ""}`}>
           <div>
             {filtered.map((r, i) => (
               <div
@@ -297,15 +300,15 @@ export function TransferHistoryStatement({ inject }: TransferHistoryPageProps) {
                 }`}
               >
                 <span
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-light text-primary"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--sf-primary-light)] text-primary"
                   aria-hidden
                 >
                   <ArrowRight size={14} />
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-text">
-                    {r.from_account?.name ?? "—"}{" "}
-                    <ArrowRight size={11} className="inline text-faint" /> {r.to_account?.name ?? "—"}
+                    {r.from_account?.name ?? "-"}{" "}
+                    <ArrowRight size={11} className="inline text-faint" /> {r.to_account?.name ?? "-"}
                   </p>
                   <p className="truncate text-[11px] text-faint">
                     {new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" }).format(
@@ -316,13 +319,13 @@ export function TransferHistoryStatement({ inject }: TransferHistoryPageProps) {
                   </p>
                 </div>
                 <div className="w-[112px] shrink-0 text-right sm:w-auto">
-                  <p className="numeric text-sm font-extrabold text-text">
+                  <p className="numeric text-sm font-semibold text-text">
                     {CURRENCY_DETAILS[r.from_currency as CurrencyCode]?.symbol ?? ""}
                     {mask(formatMoney(r.amount, r.from_currency, locale)).replace(/^[^\d]*/, "")}
                   </p>
                   {r.from_currency !== r.to_currency && (
                     <p className="numeric text-[10px] text-faint">
-                      @ {r.exchange_rate.toFixed(4)} →{" "}
+                      @ {r.exchange_rate.toFixed(4)} <ArrowRight size={9} className="inline" aria-hidden />{" "}
                       {mask(formatMoney(r.converted_amount, r.to_currency, locale)).replace(/^[^\d]*/, "")}
                     </p>
                   )}
@@ -368,7 +371,7 @@ export function TransferHistoryStatement({ inject }: TransferHistoryPageProps) {
   );
 }
 
-/** Movement record sheet — locked FX math + all-time movement between the pair. */
+/** Movement record sheet - locked FX math + all-time movement between the pair. */
 function TransferDetailSheet({
   row,
   all,
@@ -417,20 +420,20 @@ function TransferDetailSheet({
     >
       <div className="px-5 pb-4 pt-5">
         <div className="flex items-center gap-2">
-          <span className="rounded-full bg-surface-elevated px-2.5 py-1 text-[11px] font-semibold text-text">
-            {row.from_account?.name ?? "—"}
+          <span className="rounded-lg bg-surface-elevated px-2.5 py-1 text-[11px] font-semibold text-text">
+            {row.from_account?.name ?? "-"}
           </span>
           <ArrowRight size={13} className="shrink-0 text-faint" aria-hidden />
-          <span className="rounded-full bg-surface-elevated px-2.5 py-1 text-[11px] font-semibold text-text">
-            {row.to_account?.name ?? "—"}
+          <span className="rounded-lg bg-surface-elevated px-2.5 py-1 text-[11px] font-semibold text-text">
+            {row.to_account?.name ?? "-"}
           </span>
         </div>
-        <p className="figures mt-3 text-[32px] font-bold leading-none text-text">
+        <p className="figures-display mt-3 text-[30px] leading-9 text-text">
           {fmt(row.amount, row.from_currency)}
           <span className="ml-1.5 text-xs font-normal text-faint">{row.from_currency}</span>
         </p>
         {!sameCurrency && (
-          <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-accent-bg px-3 py-1 text-xs text-text-muted">
+          <p className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-accent-bg px-3 py-1 text-xs text-text-muted">
             {t("arrivesAs")}{" "}
             <span className="numeric font-bold text-text">{fmt(row.converted_amount, row.to_currency)}</span>{" "}
             ({row.to_currency})
@@ -438,7 +441,7 @@ function TransferDetailSheet({
         )}
         <p className="stamp mt-3 leading-relaxed">
           {sameCurrency
-            ? "Same currency — no conversion"
+            ? "Same currency - no conversion"
             : `1 ${row.from_currency} = ${row.exchange_rate.toFixed(6)} ${row.to_currency} · rate locked at posting (DB-enforced ±0.05)`}
         </p>
       </div>
@@ -448,8 +451,8 @@ function TransferDetailSheet({
           {dFmt.format(new Date(`${row.date}T00:00:00`))}
           {row.time ? ` · ${tFmt.format(new Date(`${row.date}T${row.time}`))}` : ""}
         </Field>
-        <Field label={t("feeLabel")}>{row.fee > 0 ? fmt(row.fee, row.from_currency) : <span className="text-faint">—</span>}</Field>
-        <Field label={t("notesLabel")}>{row.notes || <span className="text-faint">—</span>}</Field>
+        <Field label={t("feeLabel")}>{row.fee > 0 ? fmt(row.fee, row.from_currency) : <span className="text-faint">-</span>}</Field>
+        <Field label={t("notesLabel")}>{row.notes || <span className="text-faint">-</span>}</Field>
         <Field label="Movement between these two">
           <span className="numeric font-bold text-text">{pair.length}</span> transfer
           {pair.length === 1 ? "" : "s"} ·{" "}
@@ -462,7 +465,7 @@ function TransferDetailSheet({
       </div>
 
       <div className="px-5 py-4">
-        <p className="stamp">Form SF-01 · movement ref {row.id.slice(0, 8).toUpperCase()}</p>
+        <p className="stamp">Movement ref {row.id.slice(0, 8).toUpperCase()}</p>
       </div>
     </SlideOver>
   );
