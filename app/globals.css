@@ -31,8 +31,9 @@
   --sf-brass: #a8791f;
   --sf-brass-tint: #f0e3c8;
   --sf-rust-tint: #f1dcd3;
-  /* Chart expense series — mobile paints its charts with `primary`. */
-  --sf-expense-series: var(--sf-primary);
+  /* Chart expense series — theme-conditional per the chart series rule:
+     red in light (income stays green), mint in dark. */
+  --sf-expense-series: var(--sf-danger);
 
   /* Fixed accent hues — mobile renders these as raw hex regardless of
      theme (KPI tiles, health grades, chronotype quadrants). Tokenized here
@@ -180,6 +181,8 @@
   --sf-brass: #f59e0b;
   --sf-brass-tint: rgb(245 158 11 / 0.15);
   --sf-rust-tint: rgb(239 68 68 / 0.15);
+  /* Dark: primary indigo already contrasts with the green income series
+     (the doc's "mint" is the same green family as income). */
   --sf-expense-series: var(--sf-primary);
 
   /* Fixed hues are theme-invariant — repeated for legibility */

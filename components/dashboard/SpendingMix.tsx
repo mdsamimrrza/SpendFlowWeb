@@ -17,6 +17,8 @@ interface SpendingMixProps {
   cycleTotalLabel: string;
   /** Ranked rows shown before folding to Other. */
   maxRows?: number;
+  /** Denser type/spacing for narrow side-column placements (cycle report). */
+  compact?: boolean;
 }
 
 /**
@@ -32,6 +34,7 @@ export function SpendingMix({
   otherLabel,
   cycleTotalLabel,
   maxRows = 5,
+  compact = false,
 }: SpendingMixProps) {
   const sorted = [...slices].filter((s) => s.value > 0).sort((a, b) => b.value - a.value);
   const total = sorted.reduce((s, x) => s + x.value, 0);
@@ -49,7 +52,7 @@ export function SpendingMix({
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Segmented share bar — one glance at the whole mix */}
       <div
-        className="flex h-3 gap-[2px] overflow-hidden rounded-full"
+        className={`flex gap-[2px] overflow-hidden rounded-full ${compact ? "h-2" : "h-3"}`}
         role="img"
         aria-label={rows.map((r) => `${r.label} ${Math.round((r.value / total) * 100)}%`).join(", ")}
       >
@@ -59,8 +62,11 @@ export function SpendingMix({
             className="h-full transition-[flex-basis] duration-500"
             style={{
               flexBasis: `${(r.value / total) * 100}%`,
+              // Shrink, never grow: percent widths + inter-segment gaps must
+              // never push the bar past the card edge.
               flexGrow: 0,
-              flexShrink: 0,
+              flexShrink: 1,
+              minWidth: 0,
               backgroundColor: r.color,
             }}
           />
@@ -69,7 +75,7 @@ export function SpendingMix({
 
       {/* Ranked rows — spread evenly when the panel is stretched to match a
           taller grid sibling, natural spacing otherwise. */}
-      <ul className="mt-1.5 flex flex-1 flex-col justify-evenly">
+      <ul className={`flex flex-1 flex-col justify-evenly ${compact ? "mt-1" : "mt-1.5"}`}>
         {rows.map((r) => {
           const pct = Math.round((r.value / total) * 100);
           // Stored icons are emoji (mobile) OR lucide names — resolve both
@@ -78,25 +84,33 @@ export function SpendingMix({
           return (
             <li
               key={r.label}
-              className="flex min-h-12 items-center gap-3 border-b border-border/50 py-2 last:border-0"
+              className={`flex items-center gap-3 border-b border-border/50 last:border-0 ${
+                compact ? "min-h-9 py-1.5" : "min-h-12 py-2"
+              }`}
             >
               <span
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+                className={`flex shrink-0 items-center justify-center rounded-full ${
+                  compact ? "h-7 w-7" : "h-9 w-9"
+                }`}
                 style={{
                   backgroundColor: `color-mix(in srgb, ${r.color} 14%, transparent)`,
                   color: r.color,
                 }}
                 aria-hidden
               >
-                <Glyph size={16} />
+                <Glyph size={compact ? 13 : 16} />
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-2">
-                  <p className="min-w-0 truncate text-sm font-bold text-text">{r.label}</p>
-                  <p className="numeric shrink-0 text-sm font-bold text-text">{formatValue(r.value)}</p>
+                  <p className={`min-w-0 truncate font-bold text-text ${compact ? "text-[12.5px]" : "text-sm"}`}>
+                    {r.label}
+                  </p>
+                  <p className={`numeric shrink-0 font-bold text-text ${compact ? "text-[12.5px]" : "text-sm"}`}>
+                    {formatValue(r.value)}
+                  </p>
                 </div>
-                <div className="mt-1.5 flex items-center gap-2">
-                  <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-surface-elevated">
+                <div className={`flex items-center gap-2 ${compact ? "mt-1" : "mt-1.5"}`}>
+                  <div className={`min-w-0 flex-1 overflow-hidden rounded-full bg-surface-elevated ${compact ? "h-1" : "h-1.5"}`}>
                     <div
                       className="h-full rounded-full transition-all duration-500"
                       style={{
@@ -105,7 +119,9 @@ export function SpendingMix({
                       }}
                     />
                   </div>
-                  <span className="numeric shrink-0 text-[11px] font-semibold text-faint">{pct}%</span>
+                  <span className="numeric shrink-0 font-semibold text-faint">
+                    <span className={compact ? "text-[10px]" : "text-[11px]"}>{pct}%</span>
+                  </span>
                 </div>
               </div>
             </li>
@@ -115,9 +131,9 @@ export function SpendingMix({
 
       {/* Cycle-total footer — pins to the bottom so the panel fills a taller
           grid row (beside the cash-flow card) without a dead block. */}
-      <div className="mt-auto flex items-center justify-between gap-2 border-t border-border pt-3.5">
+      <div className={`mt-auto flex items-center justify-between gap-2 border-t border-border ${compact ? "pt-2.5" : "pt-3.5"}`}>
         <p className="caps">{cycleTotalLabel}</p>
-        <p className="figures text-base font-bold text-text">{formatValue(total)}</p>
+        <p className={`figures font-bold text-text ${compact ? "text-sm" : "text-base"}`}>{formatValue(total)}</p>
       </div>
     </div>
   );

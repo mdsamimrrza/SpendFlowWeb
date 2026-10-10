@@ -14,6 +14,12 @@ interface TrendChartProps {
   locale?: string;
   /** Compact variant for embedding in narrow cards (shorter, no HI/LO tags). */
   compact?: boolean;
+  /** Full-number formatter for the readout/HI/LO (defaults to compact 15.5K). */
+  formatValue?: (n: number) => string;
+  /** Floating frosted readout card over the crosshair instead of the top strip. */
+  floatingCard?: boolean;
+  /** viewBox height override (rendered height scales with container width). */
+  height?: number;
 }
 
 /**
@@ -23,13 +29,13 @@ interface TrendChartProps {
  * leave clears it) so the phone experience matches desktop. Series colors
  * follow the mobile rule (income = green; outflow = theme expense series).
  */
-export function TrendChart({ points, locale = "en-US", compact = false }: TrendChartProps) {
+export function TrendChart({ points, locale = "en-US", compact = false, formatValue, floatingCard = false, height }: TrendChartProps) {
   const [hover, setHover] = useState<number | null>(null);
   const [pin, setPin] = useState<number | null>(null);
 
   const expenseColor = "var(--sf-expense-series)";
   const W = 680;
-  const H = compact ? 180 : 240;
+  const H = height ?? (compact ? 180 : 240);
 
   // The SVG scales its 680-unit viewBox to the container, which shrinks text
   // to ~half size on a 390 px phone. Measure the container and grow font
@@ -58,9 +64,12 @@ export function TrendChart({ points, locale = "en-US", compact = false }: TrendC
     const max = Math.max(...values, 1);
     const innerW = W - PAD.left - PAD.right;
     const innerH = H - PAD.top - PAD.bottom;
+    // SSR and client can drift in the last float bits, which React reports as
+    // a hydration attribute mismatch on raw cx/cy — round the emitted coords.
+    const round3 = (v: number) => Math.round(v * 1000) / 1000;
     const x = (i: number) =>
-      PAD.left + (points.length === 1 ? innerW / 2 : (i / (points.length - 1)) * innerW);
-    const y = (v: number) => PAD.top + innerH - (v / max) * innerH;
+      round3(PAD.left + (points.length === 1 ? innerW / 2 : (i / (points.length - 1)) * innerW));
+    const y = (v: number) => round3(PAD.top + innerH - (v / max) * innerH);
 
     // Smooth path: Catmull-Rom → cubic Bézier through every data point.
     // Control points are clamped to the plot band so the spline can never
@@ -144,6 +153,8 @@ export function TrendChart({ points, locale = "en-US", compact = false }: TrendC
   const active = hover ?? pin;
   const hovered = active != null ? points[active] : null;
   const lastPoint = points[points.length - 1];
+  // Full figures ("15,500") when a formatter is supplied; compact ("15.5K") otherwise.
+  const fmt = (n: number) => (formatValue ? formatValue(n) : model.compact(n));
 
   const onMove = (i: number, e: React.PointerEvent) => {
     if (e.pointerType === "mouse") setHover(i);
@@ -151,28 +162,71 @@ export function TrendChart({ points, locale = "en-US", compact = false }: TrendC
   const onTap = (i: number) => setPin((cur) => (cur === i ? null : i));
 
   return (
-    <div ref={wrapRef}>
-      {/* Readout strip (hover / pinned) */}
+    <div ref={wrapRef} className="relative">
+      {/* Readout strip (hover / pinned) — suppressed when the floating card is on */}
       <div className="mb-1 flex h-5 items-center justify-between gap-2">
         <span className="stamp truncate">
           {points.length > 1
             ? `${formatShortDate(points[0].date, locale)} — ${formatShortDate(lastPoint.date, locale)}`
             : ""}
         </span>
-        {hovered && (
+        {hovered && !floatingCard && (
           <p className="numeric flex shrink-0 items-baseline gap-1.5 text-xs font-bold text-text">
             <span className="caps !text-faint">{formatShortDate(hovered.date, locale)}</span>
-            <span className="text-income">IN {model.compact(hovered.income)}</span>
+            <span className="text-income">IN {fmt(hovered.income)}</span>
             <span className="text-faint">·</span>
-            <span style={{ color: expenseColor }}>OUT {model.compact(hovered.expense)}</span>
+            <span style={{ color: expenseColor }}>OUT {fmt(hovered.expense)}</span>
             <span className="text-faint">·</span>
             <span className={hovered.income - hovered.expense >= 0 ? "text-income" : "text-danger"}>
               NET {hovered.income - hovered.expense >= 0 ? "+" : "−"}
-              {model.compact(Math.abs(hovered.income - hovered.expense))}
+              {fmt(Math.abs(hovered.income - hovered.expense))}
             </span>
           </p>
         )}
       </div>
+
+      {/* Floating frosted readout card — follows the crosshair, flips at the
+          right edge, never intercepts the pointer. */}
+      {floatingCard && hovered && active != null && (
+        <div
+          className="pointer-events-none absolute z-10 rounded-lg border border-border bg-surface/70 shadow-soft backdrop-blur-sm"
+          style={{
+            top: 30,
+            left: `${(model.x(active) / W) * 100}%`,
+            transform: `translateX(${model.x(active) > W * 0.62 ? "calc(-100% - 10px)" : "10px"})`,
+            padding: "7px 11px",
+          }}
+        >
+          <p className="caps !text-faint">{formatShortDate(hovered.date, locale)}</p>
+          <p className="numeric mt-1 flex items-center gap-1.5 text-[11.5px] font-bold">
+            <span className="h-1.5 w-1.5 rounded-full bg-income" aria-hidden />
+            <span className="text-faint">IN</span>
+            <span className="ml-auto text-income">{fmt(hovered.income)}</span>
+          </p>
+          <p className="numeric mt-0.5 flex items-center gap-1.5 text-[11.5px] font-bold">
+            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: expenseColor }} aria-hidden />
+            <span className="text-faint">OUT</span>
+            <span className="ml-auto" style={{ color: expenseColor }}>
+              {fmt(hovered.expense)}
+            </span>
+          </p>
+          <p
+            className={`numeric mt-0.5 flex items-center gap-1.5 text-[11.5px] font-bold ${
+              hovered.income - hovered.expense >= 0 ? "text-income" : "text-danger"
+            }`}
+          >
+            <span
+              className="h-1.5 w-1.5 rounded-full bg-surface-elevated"
+              aria-hidden
+            />
+            <span className="text-faint">NET</span>
+            <span className="ml-auto">
+              {hovered.income - hovered.expense >= 0 ? "+" : "−"}
+              {fmt(Math.abs(hovered.income - hovered.expense))}
+            </span>
+          </p>
+        </div>
+      )}
 
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full touch-manipulation" role="img" aria-label="Income and expense trend">
         <defs>
@@ -253,8 +307,9 @@ export function TrendChart({ points, locale = "en-US", compact = false }: TrendC
           className="chart-draw"
         />
 
-        {/* High / low markers (outflow) */}
-        {!compact && points.length > 2 && (
+        {/* High / low markers (outflow) — skipped in floating-card mode, the
+            card already carries the exact figures */}
+        {!compact && !floatingCard && points.length > 2 && (
           <g>
             <circle
               cx={model.x(model.maxIdx)}
@@ -271,7 +326,7 @@ export function TrendChart({ points, locale = "en-US", compact = false }: TrendC
               fill={expenseColor}
               style={{ letterSpacing: "0.06em" }}
             >
-              HI {model.compact(points[model.maxIdx].expense)}
+              HI {fmt(points[model.maxIdx].expense)}
             </text>
             <circle
               cx={model.x(model.minIdx)}
@@ -294,12 +349,13 @@ export function TrendChart({ points, locale = "en-US", compact = false }: TrendC
               fill="var(--sf-faint)"
               style={{ letterSpacing: "0.06em" }}
             >
-              LO {model.compact(points[model.minIdx].expense)}
+              LO {fmt(points[model.minIdx].expense)}
             </text>
           </g>
         )}
 
         {/* Last-value tag */}
+        {!floatingCard && (
         <g>
           <line
             x1={model.x(points.length - 1)}
@@ -329,6 +385,7 @@ export function TrendChart({ points, locale = "en-US", compact = false }: TrendC
             {model.compact(lastPoint.expense)}
           </text>
         </g>
+        )}
 
         {/* Crosshair on the active bucket */}
         {hovered && active != null && (

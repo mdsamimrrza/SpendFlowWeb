@@ -10,6 +10,7 @@ import Analytics from "./screens/analytics";
 import Bin from "./screens/bin";
 import Bullion from "./screens/bullion";
 import Categories from "./screens/categories";
+import CycleReport from "./screens/cycle-report";
 import Dash from "./screens/dash";
 import Expense from "./screens/expense";
 import Export from "./screens/export";
@@ -27,6 +28,7 @@ export const SCREENS: Record<string, ComponentType> = {
   bin: Bin,
   bullion: Bullion,
   categories: Categories,
+  "cycle-report": CycleReport,
   dash: Dash,
   expense: Expense,
   export: Export,

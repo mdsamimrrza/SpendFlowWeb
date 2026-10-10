@@ -34,10 +34,12 @@ interface MoneyPulseHeroProps {
 }
 
 /**
- * Money Pulse hero — Tier 1 of the redesigned dashboard. A soft brand-tinted
- * card: the cycle's net figure with a previous-cycle delta chip, a budget
- * progress ring (remaining / projection / pace status), and an inflow vs
- * outflow split bar. Replaces the old "statement masthead" treatment.
+ * Money Pulse hero — Tier 1 of the redesigned dashboard. A statement band of
+ * four labeled segments — NET · INFLOW · OUTFLOW · BUDGET — each a caps
+ * microlabel over a figure with its own supporting detail, separated by
+ * hairline verticals on laptop. Stacks in the same order on phones (the
+ * inflow/outflow pair side by side). The net figure is the protagonist;
+ * everything else stays quiet.
  */
 export function MoneyPulseHero({
   net,
@@ -70,85 +72,105 @@ export function MoneyPulseHero({
         className="pointer-events-none absolute -top-24 right-2 h-64 w-64 rounded-full bg-primary/10 blur-3xl"
       />
 
-      <div className="relative p-5 sm:p-6">
-        {/* Row 1 — net figure and budget ring INLINE at every width (the ring
-            fills the space beside the number on phones). The no-budget CTA
-            card stacks below instead. */}
-        <div
-          className={
-            hasBudget
-              ? "flex items-start justify-between gap-4"
-              : "flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between"
-          }
-        >
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <p className="caps whitespace-nowrap !text-primary-strong">{t("homeNetCashFlow")}</p>
-              <span className="whitespace-nowrap text-[11px] font-semibold text-faint">
-                · {cycleLabel}
+      <div className="relative p-5 sm:p-6 lg:grid lg:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:gap-x-6">
+        {/* Segment 1 — the protagonist: net for the cycle */}
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <p className="caps whitespace-nowrap !text-primary-strong">{t("homeNetCashFlow")}</p>
+            <span className="whitespace-nowrap text-[11px] font-semibold text-faint">
+              · {cycleLabel}
+            </span>
+          </div>
+          <div
+            className={`figures mt-1 font-extrabold ${net < 0 ? "text-danger" : "text-text"}`}
+          >
+            <FitText basePx={40} minPx={16} title={`${t("homeNetCashFlow")} · ${cycleLabel}`}>
+              <span className="mr-1 text-[0.45em] font-semibold text-faint">
+                {net < 0 ? "−" : "+"}
               </span>
-            </div>
-            <div
-              className={`figures mt-1 font-extrabold ${net < 0 ? "text-danger" : "text-text"}`}
-            >
-              {/* FitText: sized to the column, steps down dynamically as the
-                  amount grows (floor 16px so the figure is never clipped
-                  mid-value) — the sign scales with it (em). */}
-              <FitText basePx={40} minPx={16} title={`${t("homeNetCashFlow")} · ${cycleLabel}`}>
-                <span className="mr-1 text-[0.45em] font-semibold text-faint">
-                  {net < 0 ? "−" : "+"}
-                </span>
-                {formatted(Math.abs(net))}
+              {formatted(Math.abs(net))}
+            </FitText>
+          </div>
+          <div className="mt-2.5 flex flex-wrap items-center gap-2">
+            {delta && (
+              <span
+                className={`inline-flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 text-[11px] font-bold ${
+                  delta.positive ? "bg-income/10 text-income" : "bg-rust-tint text-danger"
+                }`}
+              >
+                {delta.positive ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+                <span className="numeric">{delta.text}</span>
+                <span className="font-semibold opacity-70">{t("homeVsPrev")}</span>
+              </span>
+            )}
+            {entries != null && (
+              <span className="inline-flex h-7 shrink-0 items-center whitespace-nowrap rounded-full bg-surface-elevated px-2.5 text-[11px] font-semibold text-text-muted">
+                {entries} {t("homeEntriesWord")}
+              </span>
+            )}
+          </div>
+          <p className="mt-3 text-xs leading-snug text-text-muted">
+            {t("today")}{" "}
+            <span className="numeric font-bold text-text">{formatted(todayTotal)}</span>{" "}
+            <span className="text-faint">{t("homeTodaySpendSub")}</span>
+          </p>
+        </div>
+
+        {/* Segments 2 + 3 — the two flows, side by side on phones */}
+        <div className="mt-4 grid grid-cols-2 gap-4 lg:col-span-2 lg:mt-0 lg:contents">
+          <div className="min-w-0 lg:border-l lg:border-primary/10 lg:pl-6">
+            <p className="caps flex items-center gap-1.5">
+              <span className="h-2 w-2 shrink-0 rounded-full bg-income" aria-hidden />
+              {t("homeInflow")}
+            </p>
+            <div className="figures mt-1 font-bold text-income">
+              <FitText basePx={22} minPx={13} title={t("homeInflow")}>
+                {formatted(income)}
               </FitText>
             </div>
-            <div className="mt-2.5 flex flex-wrap items-center gap-2">
-              {delta && (
-                <span
-                  className={`inline-flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 text-[11px] font-bold ${
-                    delta.positive ? "bg-income/10 text-income" : "bg-rust-tint text-danger"
-                  }`}
-                >
-                  {delta.positive ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-                  <span className="numeric">{delta.text}</span>
-                  <span className="font-semibold opacity-70">{t("homeVsPrev")}</span>
-                </span>
-              )}
-              {entries != null && (
-                <span className="inline-flex h-7 shrink-0 items-center whitespace-nowrap rounded-full bg-surface-elevated px-2.5 text-[11px] font-semibold text-text-muted">
-                  {entries} {t("homeEntriesWord")}
-                </span>
-              )}
+            <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-surface-elevated">
+              <div className="h-full bg-income transition-[width] duration-500" style={{ width: `${incomePct}%` }} />
             </div>
-            <p className="mt-3 text-xs leading-snug text-text-muted">
-              {t("today")}{" "}
-              <span className="numeric font-bold text-text">{formatted(todayTotal)}</span>{" "}
-              <span className="text-faint">{t("homeTodaySpendSub")}</span>
-            </p>
+            <p className="numeric mt-1 text-[11px] font-semibold text-faint">{incomePct}%</p>
           </div>
+          <div className="min-w-0 lg:border-l lg:border-primary/10 lg:pl-6">
+            <p className="caps flex items-center gap-1.5">
+              {t("homeOutflow")}
+              <span className="h-2 w-2 shrink-0 rounded-full bg-danger" aria-hidden />
+            </p>
+            <div className="figures mt-1 font-bold text-danger">
+              <FitText basePx={22} minPx={13} title={t("homeOutflow")}>
+                {formatted(expense)}
+              </FitText>
+            </div>
+            <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-surface-elevated">
+              <div className="h-full bg-danger transition-[width] duration-500" style={{ width: `${outflowPct}%` }} />
+            </div>
+            <p className="numeric mt-1 text-[11px] font-semibold text-faint">{outflowPct}%</p>
+          </div>
+        </div>
 
-          {/* Budget ring — pacing anchor, inline beside the net figure. Kept
-              narrow on phones so the number column still gets real width. */}
+        {/* Segment 4 — budget ring + remaining, pace chips beneath */}
+        <div className="mt-4 min-w-0 lg:mt-0 lg:border-l lg:border-primary/10 lg:pl-6">
           {hasBudget ? (
-            <div className="shrink-0">
-              <div className="flex items-center gap-2.5 sm:gap-4">
+            <>
+              <div className="flex items-center gap-3">
                 <ProgressRing
                   pct={Math.min(pace.spentPct, 1)}
-                  size={76}
+                  size={68}
                   strokeWidth={7}
                   color={over ? "var(--sf-danger)" : "var(--sf-primary)"}
                   trackColor="var(--sf-surface-elevated)"
                   ariaLabel={`${Math.round(pace.spentPct * 100)}% ${t("homeBudgetUsed")}`}
                 >
-                  <span className="numeric text-[13px] font-extrabold text-text">
+                  <span className="numeric text-[12px] font-extrabold text-text">
                     {Math.round(pace.spentPct * 100)}%
                   </span>
                   <span className="caps-faint !text-[7px]">{t("homeBudgetUsed")}</span>
                 </ProgressRing>
                 <div className="min-w-0 max-w-[100px] sm:max-w-[160px]">
                   <p className="caps truncate">{over ? t("homeOverBy") : t("remaining")}</p>
-                  <div
-                    className={`figures mt-0.5 font-bold ${over ? "text-danger" : "text-text"}`}
-                  >
+                  <div className={`figures mt-0.5 font-bold ${over ? "text-danger" : "text-text"}`}>
                     <FitText basePx={22} minPx={13}>
                       {formatted(Math.abs(remaining))}
                     </FitText>
@@ -158,7 +180,34 @@ export function MoneyPulseHero({
                   </p>
                 </div>
               </div>
-            </div>
+              <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                <span className="inline-flex h-6 shrink-0 items-center rounded-full bg-surface-elevated px-2 text-[10px] font-bold text-text-muted">
+                  {t("homeDayWord")} {pace.daysElapsed}/{pace.daysTotal}
+                </span>
+                {pace.onPace != null && (
+                  <span
+                    className={`inline-flex h-6 shrink-0 items-center gap-1 rounded-full px-2 text-[10px] font-bold ${
+                      pace.onPace ? "bg-income/10 text-income" : "bg-rust-tint text-danger"
+                    }`}
+                  >
+                    <Flame size={10} aria-hidden />
+                    {pace.onPace ? t("homeOnPace") : t("homeAheadOfPace")}
+                  </span>
+                )}
+                {pace.projected != null && (
+                  <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-full px-2 text-[10px] font-semibold text-faint">
+                    {t("homeProjectedClose")}{" "}
+                    <span
+                      className={`numeric font-bold ${
+                        pace.onPace === false ? "text-danger" : "text-income"
+                      }`}
+                    >
+                      {formatted(pace.projected)}
+                    </span>
+                  </span>
+                )}
+              </div>
+            </>
           ) : (
             <div className="min-w-0 rounded-xl border border-dashed border-primary/50 bg-surface/70 p-4 lg:max-w-[280px]">
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brass-tint text-brass">
@@ -177,82 +226,7 @@ export function MoneyPulseHero({
           )}
         </div>
 
-        {/* Pace meta row — spans the full card width at every breakpoint so
-            the chips never clip; swipe-scrolls only if localized labels get
-            wider than the card. */}
-        {hasBudget && (
-          <div className="scroll-x mt-4 flex flex-nowrap items-center gap-1.5 overflow-x-auto">
-            <span className="inline-flex h-6 shrink-0 items-center rounded-full bg-surface-elevated px-2 text-[10px] font-bold text-text-muted">
-              {t("homeDayWord")} {pace.daysElapsed}/{pace.daysTotal}
-            </span>
-            {pace.onPace != null && (
-              <span
-                className={`inline-flex h-6 shrink-0 items-center gap-1 rounded-full px-2 text-[10px] font-bold ${
-                  pace.onPace ? "bg-income/10 text-income" : "bg-rust-tint text-danger"
-                }`}
-              >
-                <Flame size={10} aria-hidden />
-                {pace.onPace ? t("homeOnPace") : t("homeAheadOfPace")}
-              </span>
-            )}
-            {pace.projected != null && (
-              <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-full bg-surface-elevated px-2 text-[10px] font-semibold text-faint">
-                {t("homeProjectedClose")}{" "}
-                <span
-                  className={`numeric font-bold ${
-                    pace.onPace === false ? "text-danger" : "text-income"
-                  }`}
-                >
-                  {formatted(pace.projected)}
-                </span>
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Row 2 — inflow vs outflow pulse */}
-        <div className="mt-5 rounded-xl border border-border bg-surface/90 p-4 shadow-soft">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="min-w-0">
-              <p className="caps flex items-center gap-1.5">
-                <span className="h-2 w-2 shrink-0 rounded-full bg-income" aria-hidden />
-                {t("homeInflow")}
-              </p>
-              <div className="figures mt-1 font-bold text-income">
-                <FitText basePx={21} minPx={13} title={t("homeInflow")}>
-                  {formatted(income)}
-                </FitText>
-              </div>
-            </div>
-            <div className="min-w-0 text-right">
-              <p className="caps flex items-center justify-end gap-1.5">
-                {t("homeOutflow")}
-                <span className="h-2 w-2 shrink-0 rounded-full bg-danger" aria-hidden />
-              </p>
-              <div className="figures mt-1 font-bold text-danger">
-                <FitText basePx={21} minPx={13} title={t("homeOutflow")}>
-                  {formatted(expense)}
-                </FitText>
-              </div>
-            </div>
-          </div>
-          <div className="mt-3 flex h-2.5 overflow-hidden rounded-full bg-surface-elevated">
-            <div
-              className="h-full bg-income transition-[width] duration-500"
-              style={{ width: `${incomePct}%` }}
-            />
-            <div
-              className="h-full bg-danger transition-[width] duration-500"
-              style={{ width: `${outflowPct}%` }}
-            />
-          </div>
-          <div className="mt-1.5 flex items-center justify-between text-[11px] font-semibold text-faint">
-            <span className="numeric">{incomePct}%</span>
-            <span className="numeric">{outflowPct}%</span>
-          </div>
-        </div>
-
-        {footer && <div className="mt-3 space-y-2">{footer}</div>}
+        {footer && <div className="mt-4 space-y-2 lg:col-span-4">{footer}</div>}
       </div>
     </section>
   );

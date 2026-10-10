@@ -50,7 +50,7 @@ type FlowFilter = "all" | "expense" | "income";
 type DatePreset = "all" | "today" | "week" | "cycle" | "custom";
 type SortKey = "date_desc" | "date_asc" | "amount_desc" | "amount_asc";
 
-const PAGE = 15;
+const PAGE = 10;
 
 const SORTS: { key: SortKey; label: string; sort: ExpenseSort }[] = [
   { key: "date_desc", label: "Newest first", sort: { field: "date", direction: "desc" } },
