@@ -103,7 +103,7 @@ export function BudgetPanel({
         </ProgressRing>
         <div className="min-w-0 flex-1">
           <p className="caps">{over ? labels.overBy : labels.remaining}</p>
-          <div className={`figures mt-1 font-bold ${over ? "text-danger" : "text-text"}`}>
+          <div className={`figures-display mt-1 text-[26px] leading-8 ${over ? "text-danger" : "text-text"}`}>
             <FitText basePx={28} minPx={16}>{formatted(Math.abs(remaining))}</FitText>
           </div>
           <p className="mt-0.5 text-[11px] text-faint">
@@ -136,9 +136,9 @@ export function BudgetPanel({
         </div>
       </div>
 
-      {/* Ledger rows — flex-1 + even spacing lets the panel fill a taller
-          grid row (next to the flow chart) without a dead block at the end. */}
-      <div className="mt-4 flex flex-1 flex-col justify-evenly border-t border-border">
+      {/* Ledger rows - compact, top-aligned; the card hugs its content
+          instead of distributing giant gaps. */}
+      <div className="mt-3 flex flex-col border-t border-border">
         <MeterRow
           icon={<Flame size={14} className={pace.onPace === false ? "text-danger" : "text-primary"} />}
           label={labels.projectedClose}
@@ -161,8 +161,6 @@ export function BudgetPanel({
         )}
       </div>
 
-      {/* Footer keeps the card visually anchored when a sibling column is taller. */}
-      <p className="stamp mt-auto pt-4">{cycleLabel}</p>
     </div>
   );
 }

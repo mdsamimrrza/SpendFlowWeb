@@ -10,7 +10,6 @@ import { subscribeToExpenseChanges } from "@/hooks/useExpenses";
 import { Panel } from "@/components/ui/Card";
 import { RangeField } from "@/components/ui/CalendarModal";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { FitText } from "@/components/ui/FitText";
 import type { TrendPoint } from "@/components/charts/TrendChart";
 import { TrendChart } from "@/components/charts/TrendChart";
 import { listExpenses } from "@/services/expenses";
@@ -267,18 +266,6 @@ export function FlowChartCard({ label = "Cash flow", bare = false, rows: injecte
     prevNet != null
       ? { text: `${net - prevNet >= 0 ? "+" : "−"}${fmt(Math.abs(net - prevNet)).replace(/^[^\d]*/, "")}`, positive: net - prevNet >= 0 }
       : null;
-  const flowTotal = totals.income + totals.expense;
-  const incomePct = flowTotal > 0 ? Math.round((totals.income / flowTotal) * 100) : 50;
-
-  const rangeLabel = useMemo(() => {
-    if (range === "CUSTOM") return `${window_.from} → ${window_.to}`;
-    if (range === "1D") return t("cfTodayByHour");
-    if (range === "1M") return t("histChipCycle");
-    if (range === "3M") return t("cfTrailingDays").replace("{n}", "90");
-    if (range === "1Y") return t("cfTrailing12M");
-    return t("cfTrailing5Y");
-  }, [range, window_, t]);
-
   // Range strip: swipe-scrolls on narrow screens (buttons never shrink),
   // sits naturally once there is room. A measured pill slides behind the
   // active button. Shared by bare + panel mastheads.
@@ -345,35 +332,36 @@ export function FlowChartCard({ label = "Cash flow", bare = false, rows: injecte
         <Skeleton className="h-[240px] w-full" />
       ) : (
         <>
-          {/* Window headline: net figure + delta chip + date range */}
-          <div className={`flex flex-wrap items-end justify-between gap-x-3 gap-y-1 ${compact ? "mb-2" : "mb-3"}`}>
-            <div className="min-w-0">
-              <p className="caps">{t("cfNet")}</p>
-              <div className={`figures mt-0.5 font-bold transition-colors duration-300 ${net < 0 ? "text-danger" : "text-income"}`}>
-                <FitText basePx={compact ? 20 : 26} minPx={14}>
-                  <span className="mr-1 text-sm font-semibold text-faint">{net < 0 ? "−" : "+"}</span>
-                  {fmt(Math.abs(net))}
-                </FitText>
-              </div>
+          {/* Window headline: one compact line - net figure, delta, IN/OUT
+              totals, date range. The chart is the protagonist; the big
+              inflow/outflow/net tiles are gone (the KPI band owns those). */}
+          <div className={`flex flex-wrap items-center gap-x-3 gap-y-1.5 ${compact ? "mb-2" : "mb-3"}`}>
+            <p className="caps">{t("cfNet")}</p>
+            <div className={`figures-display text-[24px] leading-7 transition-colors duration-300 ${net < 0 ? "text-danger" : "text-income"}`}>
+              <span className="mr-0.5 text-[0.6em] text-faint">{net < 0 ? "−" : "+"}</span>
+              {fmt(Math.abs(net))}
             </div>
-            <div className="flex shrink-0 flex-col items-end gap-1">
-              {delta && (
-                <span
-                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${
-                    delta.positive ? "bg-income/10 text-income" : "bg-rust-tint text-danger"
-                  }`}
-                >
-                  {delta.positive ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
-                  {delta.text}
-                  <span className="font-semibold opacity-70">{t("cfVsPrev")}</span>
-                </span>
-              )}
-              <span className="stamp">
-                {window_.from === window_.to
-                  ? formatShortDate(window_.from, locale)
-                  : `${formatShortDate(window_.from, locale)} — ${formatShortDate(window_.to, locale)}`}
+            {delta && (
+              <span
+                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                  delta.positive ? "bg-income/10 text-income" : "bg-rust-tint text-danger"
+                }`}
+              >
+                {delta.positive ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+                {delta.text}
+                <span className="font-medium opacity-70">{t("cfVsPrev")}</span>
               </span>
-            </div>
+            )}
+            <span className="numeric ml-auto text-[11.5px] text-text-muted">
+              <span className="font-semibold text-income">IN {fmt(totals.income)}</span>
+              <span className="mx-1.5 text-faint">·</span>
+              <span className="font-semibold text-danger">OUT {fmt(totals.expense)}</span>
+            </span>
+            <span className="stamp whitespace-nowrap">
+              {window_.from === window_.to
+                ? formatShortDate(window_.from, locale)
+                : `${formatShortDate(window_.from, locale)} - ${formatShortDate(window_.to, locale)}`}
+            </span>
           </div>
 
           <div key={range} className={`chart-fade ${compact ? "mx-auto w-full max-w-[640px]" : ""}`}>
@@ -385,33 +373,7 @@ export function FlowChartCard({ label = "Cash flow", bare = false, rows: injecte
               locale={locale}
               formatValue={fmt}
               floatingCard
-              height={compact ? 160 : 220}
-            />
-          </div>
-
-          {/* Range summary — soft cards with share bars */}
-          <div className={`grid grid-cols-3 gap-2 ${compact ? "mt-3" : "mt-4"}`}>
-            <SummaryCell
-              label={t("homeInflow")}
-              value={fmt(totals.income)}
-              cls="text-income"
-              sharePct={incomePct}
-              barCls="bg-income"
-              compact={compact}
-            />
-            <SummaryCell
-              label={t("homeOutflow")}
-              value={fmt(totals.expense)}
-              cls="text-danger"
-              sharePct={100 - incomePct}
-              barCls="bg-danger"
-              compact={compact}
-            />
-            <SummaryCell
-              label={`${t("cfNet")} · ${displayCurrency}`}
-              value={`${net >= 0 ? "+" : "−"}${fmt(Math.abs(net)).replace(/^[^\d]*/, "")}`}
-              cls={net >= 0 ? "text-income" : "text-danger"}
-              compact={compact}
+              height={compact ? 160 : 280}
             />
           </div>
 
@@ -435,7 +397,6 @@ export function FlowChartCard({ label = "Cash flow", bare = false, rows: injecte
               <span className="numeric font-bold text-text">{insights.activeDays}</span>&nbsp;{t("cfActiveDays")}
             </span>
           </div>
-          <p className="stamp mt-2">{rangeLabel}</p>
         </>
       )}
     </div>
@@ -460,40 +421,6 @@ export function FlowChartCard({ label = "Cash flow", bare = false, rows: injecte
   );
 }
 
-function SummaryCell({
-  label,
-  value,
-  cls,
-  sharePct,
-  barCls,
-  compact = false,
-}: {
-  label: string;
-  value: string;
-  cls: string;
-  sharePct?: number;
-  barCls?: string;
-  compact?: boolean;
-}) {
-  return (
-    <div className={`min-w-0 rounded-2xl bg-surface-elevated px-2 text-center ${compact ? "py-2" : "py-3"}`}>
-      <p className="caps whitespace-nowrap">{label}</p>
-      <div className={`figures numeric mt-0.5 font-extrabold ${cls}`}>
-        <FitText basePx={compact ? 14 : 17} minPx={12} className="text-center">
-          {value}
-        </FitText>
-      </div>
-      {sharePct != null && barCls && (
-        <>
-          <div className={`mx-auto h-1 w-full max-w-[120px] overflow-hidden rounded-full bg-surface-elevated ${compact ? "mt-1" : "mt-1.5"}`}>
-            <div className={`h-full rounded-full transition-all duration-500 ${barCls}`} style={{ width: `${sharePct}%` }} />
-          </div>
-          <p className="mt-0.5 text-[11px] text-faint">{sharePct}%</p>
-        </>
-      )}
-    </div>
-  );
-}
 
 function today(): string {
   const d = new Date();
