@@ -5,14 +5,15 @@ import Link from "next/link";
 import { BarChart3, PiggyBank, ShieldCheck } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { SpendFlowSeal } from "@/components/ui/SpendFlowSeal";
+import { Guilloche } from "@/components/ui/Guilloche";
 import { LangPills } from "@/components/auth/AuthPrimitives";
 import { useLanguage } from "@/store/LanguageContext";
 import { isSupabaseConfigured } from "@/utils/supabase/browser";
 
 /**
  * Auth shell for /sign-in, /sign-up and /forgot-password.
- * Mobile-first: below lg a compact masthead + aurora ambience behind one
- * parchment card. From lg (laptop) up the whole experience lives in ONE
+ * Mobile-first: below lg a compact masthead + guilloche ambience behind one
+ * note-paper card. From lg (laptop) up the whole experience lives in ONE
  * master card — brand statement half on the left, form half on the right.
  */
 export default function AuthLayout({ children }: { children: ReactNode }) {
@@ -33,11 +34,13 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="relative min-h-dvh bg-background">
-      {/* Aurora ambience behind the form column (phones: behind the card). */}
+      {/* Guilloche engraving behind the form column (phones: behind the card). */}
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="aurora-blob aurora-primary -left-24 top-[-120px] h-[380px] w-[380px] opacity-30" />
-        <div className="aurora-blob aurora-blob-alt aurora-brass bottom-[-140px] right-[-120px] h-[420px] w-[420px] opacity-25" />
-        <div className="aurora-blob aurora-sky left-1/2 top-1/2 h-[320px] w-[320px] opacity-20" />
+        <Guilloche className="absolute -left-28 top-[-90px] h-[380px] w-[380px] text-primary opacity-[0.05]" />
+        <Guilloche
+          className="absolute bottom-[-110px] right-[-100px] h-[400px] w-[400px] text-primary opacity-[0.05]"
+          petals={15}
+        />
       </div>
 
       <div className="relative flex min-h-dvh w-full flex-col">
@@ -71,7 +74,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
               </Link>
 
               <div className="py-6">
-                <h2 className="font-brand gradient-accent text-[28px] font-bold leading-[1.15] tracking-tight xl:text-[32px]">
+                <h2 className="font-display text-[28px] font-semibold leading-[1.15] tracking-tight text-text xl:text-[32px]">
                   {t("brandAuthHead")}
                 </h2>
                 <p className="mt-3 max-w-xs text-[13px] leading-relaxed text-text-muted">

@@ -37,7 +37,7 @@ export function AuthCard({
       <p className="caps-faint" style={{ color: "var(--sf-brass)" }}>
         {overline}
       </p>
-      <h1 className="font-brand mt-1 text-[22px] font-bold leading-tight tracking-tight text-text sm:text-2xl">
+      <h1 className="font-display mt-1 text-[22px] font-semibold leading-tight tracking-tight text-text sm:text-2xl">
         {title}
       </h1>
       {subtitle && (

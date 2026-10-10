@@ -212,13 +212,15 @@ export function AccountsStatement({ inject }: AccountsPageProps) {
               )}
             </button>
           </div>
+          <div className="rule-double mt-2" />
           <p
-            className={`truncate text-[21px] font-black leading-[25px] tracking-[-0.5px] tabular-nums ${
+            className={`figures-display truncate py-1 text-[21px] leading-[25px] ${
               displayTotal >= 0 ? "text-text" : "text-danger"
             }`}
           >
             {formatMoney(displayTotal, displayCurrency, locale)}
           </p>
+          <div className="rule-double-b" />
           <p className="mt-px text-[11px] leading-4 text-text-muted">{t("accAcrossAll")}</p>
         </section>
 

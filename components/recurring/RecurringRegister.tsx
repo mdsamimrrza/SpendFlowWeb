@@ -578,7 +578,7 @@ export function RecurringRegister({
           <p className="text-[11px] font-extrabold uppercase tracking-[0.9px] text-primary">
             {t("recTotalRecurring")}
           </p>
-          <p className="text-[30px] font-extrabold leading-9 tracking-[-0.5px] tabular-nums text-text">
+          <p className="figures-display py-0.5 text-[30px] leading-9 text-text">
             {money(planTotal)}
           </p>
           <p className="text-[12.5px] font-medium text-text-muted">

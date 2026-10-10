@@ -104,6 +104,19 @@ and/or the mobile row payload). These are scope decisions, not drift:
   components still carry no raw hex. Cards use the mobile card language: raised paper on a 1 px
   rule line, 10 px radius, flat (no elevation). Both palettes are fixed unless the user
   re-decides.
+- **Visual identity divergence — "Engraved Banknote" redesign (2026-10-10, user-directed).**
+  The user commissioned a web-only redesign ("complete design my this web app"); direction
+  chosen from three proposals (Engraved Banknote / Precision Terminal / refine-only). The web
+  adopts a currency-note design language — light = note-paper cream `#F2EFE2` + engraved green
+  ink `#17402F` + foil `#8C6D1F` + oxblood stamp `#9C3B2E`; dark = night-vault green-black
+  `#0A100C` + gold foil `#D4B36A` + proof green `#3FBF8A`. Display type: Fraunces (`next/font`)
+  for headlines and hero money figures; body/UI stays system sans. Motifs: guilloche engraved
+  line pattern (one ornament per view), denomination-style tabular hero numerals framed by
+  double rules, stamp chips, SpendFlowSeal promoted to recurring trust mark; depth from ink
+  density and rules, not drop shadows. This is a DELIBERATE divergence from the mobile app's
+  parchment/teal look — the two clients share data and behavior, not skin. Mobile is untouched;
+  if the APK later wants the same skin it can adopt `docs/DESIGN-TOKEN-BRIDGE.md`'s updated
+  token table. All semantics, behavior, i18n keys and screens unchanged — visual layer only.
 - **App-wide date picking — shared mobile CalendarModal (2026-09-15).** The mobile
   `ui/CalendarModal.tsx` is ported once as `components/ui/CalendarModal.tsx` (bottom sheet,
   From/To banner, quick presets, year-list + month-grid jump picker, Sunday-first day grid,

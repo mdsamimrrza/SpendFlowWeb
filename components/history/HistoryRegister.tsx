@@ -338,7 +338,7 @@ export function HistoryRegister({
       <header className="mb-4 flex items-end justify-between gap-3 sm:mb-5">
         <div>
           <p className="caps-faint">{t("histOverline")}</p>
-          <h1 className="font-brand mt-1 text-2xl font-bold tracking-tight text-text sm:text-[28px]">
+          <h1 className="font-display mt-1 text-2xl font-semibold tracking-tight text-text sm:text-[28px]">
             {t("history")}
           </h1>
         </div>
@@ -854,12 +854,14 @@ function HistoryHero({
 
       <div className="relative px-4 py-4 sm:px-5">
         <p className="caps-faint">{t("histNetFlow")}</p>
-        <div className={`figures mt-1 font-bold ${net >= 0 ? "text-income" : "text-danger"}`}>
+        <div className="rule-double mt-2" />
+        <div className={`figures-display mt-1 py-1 ${net >= 0 ? "text-income" : "text-danger"}`}>
           <FitText basePx={34} minPx={18}>
             {net >= 0 ? "+" : "−"}
             {fmt(Math.abs(net)).replace(/^[^\d]*/, "")}
           </FitText>
         </div>
+        <div className="rule-double-b" />
         {/* Inflow / outflow split rule — one rounded bar, complement derived. */}
         <div className="mt-3 flex h-2 overflow-hidden rounded-full" style={{ background: "var(--sf-track)" }}>
           <span className="bg-income transition-[width] duration-500" style={{ width: `${incomePct}%` }} />

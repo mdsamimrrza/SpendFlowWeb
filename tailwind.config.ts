@@ -1,8 +1,9 @@
 import type { Config } from "tailwindcss";
 
 /**
- * Token values come from docs/DESIGN-TOKEN-BRIDGE.md (mirror of mobile
- * constants/theme.ts). Components must use these semantic names — never raw hex.
+ * Token values come from docs/DESIGN-TOKEN-BRIDGE.md (the web's Engraved
+ * Banknote palette, §0). Components must use these semantic names — never
+ * raw hex.
  */
 const config: Config = {
   darkMode: "class",
@@ -73,6 +74,7 @@ const config: Config = {
           "Roboto",
           "sans-serif",
         ],
+        display: ["var(--font-fraunces)", "ui-sans-serif", "system-ui", "serif"],
       },
       keyframes: {
         shimmer: {

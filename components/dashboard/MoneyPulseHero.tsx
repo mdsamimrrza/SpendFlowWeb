@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArrowDownRight, ArrowUpRight, Flame, Plus, Wallet } from "lucide-react";
 import { FitText } from "@/components/ui/FitText";
+import { Guilloche } from "@/components/ui/Guilloche";
 import { ProgressRing } from "@/components/charts/ProgressRing";
 import { useLanguage } from "@/store/LanguageContext";
 
@@ -64,13 +65,10 @@ export function MoneyPulseHero({
   const remaining = hasBudget ? budget - expense : 0;
 
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-br from-primary-light via-surface to-surface shadow-pop">
-      {/* soft brand glow — decorative only; kept inside bounds so the
-          overflow scan stays clean (the card clips it regardless) */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -top-24 right-2 h-64 w-64 rounded-full bg-primary/10 blur-3xl"
-      />
+    <section className="relative overflow-hidden rounded-2xl border border-primary/25 bg-surface shadow-pop">
+      {/* guilloche engraving — the note's one ornament, tucked behind the
+          protagonist figure (one-ornament-per-view rule) */}
+      <Guilloche className="pointer-events-none absolute -right-12 -top-12 h-64 w-64 text-primary opacity-[0.07]" />
 
       <div className="relative p-5 sm:p-6 lg:grid lg:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:gap-x-6">
         {/* Segment 1 — the protagonist: net for the cycle */}
@@ -81,8 +79,10 @@ export function MoneyPulseHero({
               · {cycleLabel}
             </span>
           </div>
+          {/* denomination frame — the value-corner double rules of a note */}
+          <div className="rule-double mt-2" />
           <div
-            className={`figures mt-1 font-extrabold ${net < 0 ? "text-danger" : "text-text"}`}
+            className={`figures-display mt-1 py-1.5 ${net < 0 ? "text-danger" : "text-text"}`}
           >
             <FitText basePx={40} minPx={16} title={`${t("homeNetCashFlow")} · ${cycleLabel}`}>
               <span className="mr-1 text-[0.45em] font-semibold text-faint">
@@ -91,6 +91,7 @@ export function MoneyPulseHero({
               {formatted(Math.abs(net))}
             </FitText>
           </div>
+          <div className="rule-double-b" />
           <div className="mt-2.5 flex flex-wrap items-center gap-2">
             {delta && (
               <span

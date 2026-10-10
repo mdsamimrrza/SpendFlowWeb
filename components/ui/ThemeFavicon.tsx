@@ -3,8 +3,8 @@
 import { useEffect } from "react";
 import { useTheme } from "@/store/ThemeContext";
 
-const LIGHT = "#EDEAE0";
-const DARK = "#0B0F19";
+const LIGHT = "#F2EFE2";
+const DARK = "#0A100C";
 
 /**
  * Keeps the tab icon and browser theme color in sync with the IN-APP theme.

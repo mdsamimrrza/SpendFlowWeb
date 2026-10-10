@@ -257,7 +257,7 @@ export function statementHtml(o: StatementPdfOptions): string {
     .map(([method, total]) => ({ method, total, pct: totalSpent > 0 ? Math.round((total / totalSpent) * 100) : 0 }))
     .sort((a, b) => b.total - a.total);
 
-  const PIE_COLORS = ["#0b8457", "#2563EB", "#D97706", "#DC2626", "#7C3AED", "#0891B2", "#DB2777", "#65A30D", "#EA580C", "#4F46E5"];
+  const PIE_COLORS = ["#17402F", "#2563EB", "#D97706", "#DC2626", "#7C3AED", "#0891B2", "#DB2777", "#65A30D", "#EA580C", "#4F46E5"];
   let cumulative = 0;
   const stops: string[] = [];
   totals.forEach((item, i) => {
@@ -285,9 +285,9 @@ export function statementHtml(o: StatementPdfOptions): string {
           <span style="font-size:16px;">${esc(categoryEmoji(item.icon))}</span>
           <span style="font-weight:600;color:#1E293B;">${esc(item.label)}</span></div></td>
         <td style="text-align:right;font-weight:700;color:#0F172A;">${fmt(item.total)}</td>
-        <td style="text-align:right;font-weight:600;color:#0b8457;">${pct}%</td>
+        <td style="text-align:right;font-weight:600;color:#17402F;">${pct}%</td>
         <td><div style="background-color:#E2E8F0;border-radius:999px;height:6px;width:100%;overflow:hidden;">
-          <div style="background-color:#0b8457;height:100%;width:${pct}%;"></div></div></td></tr>`;
+          <div style="background-color:#17402F;height:100%;width:${pct}%;"></div></div></td></tr>`;
     })
     .join("");
 
@@ -296,7 +296,7 @@ export function statementHtml(o: StatementPdfOptions): string {
       (row) => `<tr>
         <td><span style="display:inline-block;padding:2px 8px;border-radius:4px;background-color:#F1F5F9;font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;">${esc(row.method)}</span></td>
         <td style="text-align:right;font-weight:700;color:#0F172A;">${fmt(row.total)}</td>
-        <td style="text-align:right;font-weight:600;color:#0b8457;">${row.pct}%</td></tr>`,
+        <td style="text-align:right;font-weight:600;color:#17402F;">${row.pct}%</td></tr>`,
     )
     .join("");
 
@@ -314,7 +314,7 @@ export function statementHtml(o: StatementPdfOptions): string {
           <span style="font-weight:600;color:#1E293B;">${esc(e.categories?.name ?? "Uncategorized")}</span></td>
         <td><div style="font-weight:500;color:#334155;">${esc(desc)}</div>${subNotes}</td>
         <td><span style="display:inline-block;padding:2px 8px;border-radius:4px;background-color:#F1F5F9;font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;">${esc(e.payment_method)}</span></td>
-        <td style="text-align:right;font-weight:800;color:#0b8457;white-space:nowrap;">${fmt(converted)}</td></tr>`;
+        <td style="text-align:right;font-weight:800;color:#17402F;white-space:nowrap;">${fmt(converted)}</td></tr>`;
     })
     .join("");
 
@@ -329,15 +329,15 @@ export function statementHtml(o: StatementPdfOptions): string {
        KPI cards would run flush to the viewport edge (a 900px print window).
        Centered padded column keeps a uniform margin in both modes. */
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #0F172A; margin: 0 auto; padding: 28px 28px 40px; max-width: 800px; font-size: 12px; line-height: 1.5; background-color: #FFFFFF; }
-    .header-container { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0b8457; padding-bottom: 16px; margin-bottom: 20px; }
-    .brand-title { font-size: 26px; font-weight: 900; color: #0b8457; letter-spacing: -0.5px; margin: 0; }
+    .header-container { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #17402F; padding-bottom: 16px; margin-bottom: 20px; }
+    .brand-title { font-size: 26px; font-weight: 900; color: #17402F; letter-spacing: -0.5px; margin: 0; }
     .brand-subtitle { font-size: 11px; color: #64748B; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
     .meta-box { text-align: right; font-size: 11px; color: #475569; }
     .meta-title { font-size: 14px; font-weight: 800; color: #0F172A; margin-bottom: 4px; }
     .summary-cards { display: flex; gap: 12px; margin-bottom: 24px; }
     .card { flex: 1; background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px; }
     .card-label { font-size: 10px; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.5px; }
-    .card-value { font-size: 18px; font-weight: 800; color: #0b8457; margin-top: 4px; }
+    .card-value { font-size: 18px; font-weight: 800; color: #17402F; margin-top: 4px; }
     .card-subtext { font-size: 10px; color: #94A3B8; margin-top: 2px; }
     .section-title { font-size: 14px; font-weight: 800; color: #0F172A; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #E2E8F0; padding-bottom: 4px; }
     table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
@@ -352,7 +352,7 @@ export function statementHtml(o: StatementPdfOptions): string {
       <h1 class="brand-title">SpendFlow</h1>
       <div class="brand-subtitle">Official Financial Statement</div>
       <div style="margin-top:10px;font-size:12px;font-weight:700;color:#1E293B;">
-        Account Holder: <span style="color:#0b8457;">${esc(userName)}</span>
+        Account Holder: <span style="color:#17402F;">${esc(userName)}</span>
         ${userEmail ? `<span style="font-weight:400;color:#64748B;"> (${esc(userEmail)})</span>` : ""}
       </div>
     </div>
@@ -375,10 +375,10 @@ export function statementHtml(o: StatementPdfOptions): string {
   <div class="summary-cards">
     <div class="card"><div class="card-label">Monthly Budget</div><div class="card-value" style="color:#0F172A;">${fmt(budget)}</div><div class="card-subtext">Converted for display</div></div>
     <div class="card"><div class="card-label">Exported Spending</div><div class="card-value">${fmt(totalSpent)}</div><div class="card-subtext">${budgetPctUsed}% of budget used</div></div>
-    <div class="card"><div class="card-label">${budgetRemaining >= 0 ? "Remaining" : "Over Budget"}</div><div class="card-value" style="color:${budgetRemaining >= 0 ? "#0b8457" : "#DC2626"};">${fmt(Math.abs(budgetRemaining))}</div><div class="card-subtext">${budgetRemaining >= 0 ? "Under budget" : "Exceeded"}</div></div>
+    <div class="card"><div class="card-label">${budgetRemaining >= 0 ? "Remaining" : "Over Budget"}</div><div class="card-value" style="color:${budgetRemaining >= 0 ? "#17402F" : "#DC2626"};">${fmt(Math.abs(budgetRemaining))}</div><div class="card-subtext">${budgetRemaining >= 0 ? "Under budget" : "Exceeded"}</div></div>
   </div>
   <div style="background-color:#E2E8F0;border-radius:999px;height:10px;width:100%;overflow:hidden;margin-bottom:24px;">
-    <div style="background-color:${budgetPctUsed >= 100 ? "#DC2626" : "#0b8457"};height:100%;width:${Math.min(100, budgetPctUsed)}%;"></div>
+    <div style="background-color:${budgetPctUsed >= 100 ? "#DC2626" : "#17402F"};height:100%;width:${Math.min(100, budgetPctUsed)}%;"></div>
   </div>
   ` : ""}
 

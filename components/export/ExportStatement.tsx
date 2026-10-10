@@ -449,7 +449,7 @@ export function ExportStatement({ inject }: ExportPageProps) {
           </span>
         </div>
         <div>
-          <p className="truncate text-[32px] font-extrabold leading-9 tracking-[-0.5px] text-text tabular-nums">
+          <p className="figures-display truncate py-0.5 text-[32px] leading-9 text-text">
             {fmt(expenseTotal)}
           </p>
           <p className="mt-0.5 text-xs text-text-muted">

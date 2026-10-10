@@ -26,17 +26,18 @@ import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { Reveal } from "@/components/ui/Reveal";
 import { PhoneShowcase, type PhoneScreen } from "@/components/landing/PhoneShowcase";
 import { SpendFlowSeal } from "@/components/ui/SpendFlowSeal";
+import { Guilloche } from "@/components/ui/Guilloche";
 import { useLanguage } from "@/store/LanguageContext";
 import { formatMoney } from "@/utils/format";
 import type { LanguageCode } from "@/utils/format";
 import { CURRENCIES, CURRENCY_DETAILS, ANDROID_DOWNLOAD_URL } from "@/constants/app";
 
 /**
- * Public landing page — 2026-09-15 redesign (reference: SpendFlowWebsite
- * static site), rebuilt on the app's own token system so light (parchment/
- * teal/brass) and dark (slate/indigo) both read as SpendFlow.
+ * Public landing page — 2026-10-10 Engraved Banknote pass on the 2026-09-15
+ * structure: light (note paper/engraved ink/foil) and dark (night vault/gold)
+ * both read as SpendFlow (docs/DESIGN-TOKEN-BRIDGE.md §0).
  *
- * Structure: aurora hero (badge → gradient headline → CTAs → release meta →
+ * Structure: guilloche hero (badge → display headline → CTAs → release meta →
  * trust figures) → app showcase (CSS phone mockup + floating feature chips,
  * mobile-first: chips collapse to a grid under the phone) → features bento →
  * currency/trust strip → 3-step install → closing CTA → footer.
@@ -104,7 +105,7 @@ const FEATURES: {
   },
   {
     icon: <Repeat size={16} />,
-    hex: "#818CF8",
+    hex: "#D4B36A",
     title: "Recurring & transfers",
     body: "Rules that post on schedule; money moves across 7 account types.",
   },
@@ -172,11 +173,13 @@ export default function LandingPage() {
 
   return (
     <div className="relative min-h-screen overflow-x-clip bg-background">
-      {/* ── Aurora ambience (hero region only) ── */}
+      {/* ── Guilloche medallions — a note's left/right rosettes (hero only) ── */}
       <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[720px]">
-        <div className="aurora-blob aurora-primary -left-24 top-[-120px] h-[380px] w-[380px] opacity-40" />
-        <div className="aurora-blob aurora-blob-alt aurora-brass right-[-120px] top-[-60px] h-[420px] w-[420px] opacity-30" />
-        <div className="aurora-blob aurora-sky aurora-blob-alt left-1/3 top-[240px] h-[320px] w-[320px] opacity-25" />
+        <Guilloche className="absolute -left-32 top-16 h-[420px] w-[420px] text-primary opacity-[0.06]" />
+        <Guilloche
+          className="absolute -right-32 top-40 h-[420px] w-[420px] text-primary opacity-[0.06]"
+          petals={15}
+        />
       </div>
 
       {/* ===== Masthead ===== */}
@@ -232,9 +235,9 @@ export default function LandingPage() {
               </span>
             </Reveal>
             <Reveal delay={80}>
-              <h1 className="font-brand mt-5 text-4xl font-bold leading-[1.1] tracking-tight text-text sm:text-5xl lg:text-[3.4rem]">
+              <h1 className="font-display mt-5 text-4xl font-semibold leading-[1.1] tracking-tight text-text sm:text-5xl lg:text-[3.4rem]">
                 {t("landingHeroTitle")}{" "}
-                <span className="gradient-accent">{t("landingHeroAccent")}</span>
+                <span className="italic text-brass">{t("landingHeroAccent")}</span>
               </h1>
             </Reveal>
             <Reveal delay={140}>
@@ -291,14 +294,16 @@ export default function LandingPage() {
         {/* ===== GET THE APP — showcase with floating chips ===== */}
         <section id="get-the-app" className="relative border-t border-border py-14 lg:py-20">
           <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-            <div className="aurora-blob aurora-primary right-[-140px] top-10 h-[360px] w-[360px] opacity-25" />
-            <div className="aurora-blob aurora-blob-alt aurora-brass left-[-140px] bottom-0 h-[320px] w-[320px] opacity-20" />
+            <Guilloche
+              className="absolute -right-28 top-4 h-[380px] w-[380px] text-primary opacity-[0.05]"
+              petals={18}
+            />
           </div>
           <div className="relative grid items-center gap-12 lg:grid-cols-2 xl:grid-cols-[1fr_1.35fr]">
             <div className="order-2 lg:order-1">
               <Reveal>
                 <p className="caps !text-primary-strong">{t("getTheApp")}</p>
-                <h2 className="font-brand mt-3 text-3xl font-bold leading-tight text-text sm:text-4xl">
+                <h2 className="font-display mt-3 text-3xl font-semibold leading-tight text-text sm:text-4xl">
                   {t("appSectionTitle")}
                 </h2>
                 <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-text-muted">
@@ -373,7 +378,7 @@ export default function LandingPage() {
                 <FeatureChip
                   icon={<Coins size={16} className="text-brass" />}
                   sub={t("chipBullionS")}
-                  main={<>Gold 24K: <span className="text-brass">₹7,250/g</span> <span className="text-income">▲ +0.8%</span></>}
+                  main={<>Gold 24K: <span className="text-brass">₹7,250/g</span> <span className="text-income inline-flex items-center gap-0.5"><ArrowUpRight size={11} aria-hidden />+0.8%</span></>}
                 />
               </div>
               <div className="chip-bob pointer-events-none absolute bottom-[5%] right-0 hidden w-[185px] xl:block">
@@ -387,7 +392,7 @@ export default function LandingPage() {
               <div className="mt-6 grid grid-cols-2 gap-2 sm:gap-3 xl:hidden">
                 <FeatureChip icon={<Bell size={17} className="text-hue-amber" />} sub={t("chipMilestoneS")} main="🟡 50% Budget Mark Reached" />
                 <FeatureChip icon={<RefreshCw size={17} className="text-info" />} sub={t("chipRecurringS")} main="Netflix · Due Tomorrow" />
-                <FeatureChip icon={<Coins size={17} className="text-brass" />} sub={t("chipBullionS")} main={<>Fine Gold 24K: <span className="text-brass">₹7,250/g</span> <span className="text-income">▲ +0.8%</span></>} />
+                <FeatureChip icon={<Coins size={17} className="text-brass" />} sub={t("chipBullionS")} main={<>Fine Gold 24K: <span className="text-brass">₹7,250/g</span> <span className="text-income inline-flex items-center gap-0.5"><ArrowUpRight size={11} aria-hidden />+0.8%</span></>} />
                 <FeatureChip icon={<Fingerprint size={17} className="text-income" />} sub={t("chipBiometricS")} main="Face ID / Fingerprint" />
               </div>
             </div>
@@ -401,7 +406,7 @@ export default function LandingPage() {
               <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-[var(--sf-chip-tint)] px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.08em] text-primary">
                 <Sparkles size={11} /> {t("featuresKicker")}
               </span>
-              <h2 className="font-brand mt-4 text-3xl font-bold tracking-tight text-text sm:text-4xl">
+              <h2 className="font-display mt-4 text-3xl font-semibold tracking-tight text-text sm:text-4xl">
                 {t("landingInsideTitle")}
               </h2>
             </div>
@@ -435,7 +440,7 @@ export default function LandingPage() {
           <Reveal>
             <div className="flex flex-col items-center text-center">
               <p className="caps !text-primary-strong">{t("currencyKicker")}</p>
-              <h2 className="font-brand mt-2 text-2xl font-bold text-text sm:text-3xl">
+              <h2 className="font-display mt-2 text-2xl font-semibold text-text sm:text-3xl">
                 {t("landingCurrencyStrip")}
               </h2>
             </div>
@@ -479,14 +484,18 @@ export default function LandingPage() {
         {/* ===== Install — 3 steps ===== */}
         <section id="install" className="relative overflow-hidden border-t border-border py-14 lg:py-16">
           <div aria-hidden className="pointer-events-none absolute inset-0">
-            <div className="aurora-blob aurora-primary left-1/2 top-0 h-[300px] w-[520px] -translate-x-1/2 opacity-20" />
+            <Guilloche
+              className="absolute -left-24 top-1/2 h-[300px] w-[300px] -translate-y-1/2 text-primary opacity-[0.05]"
+              petals={21}
+              rings={4}
+            />
           </div>
           <Reveal>
             <div className="relative flex flex-col items-center text-center">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-[var(--sf-chip-tint)] px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.08em] text-primary">
                 <Download size={11} /> {t("installKicker")}
               </span>
-              <h2 className="font-brand mt-4 text-3xl font-bold tracking-tight text-text sm:text-4xl">
+              <h2 className="font-display mt-4 text-3xl font-semibold tracking-tight text-text sm:text-4xl">
                 {t("installTitle")}
               </h2>
               <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-text-muted">{t("installDesc")}</p>
@@ -496,7 +505,7 @@ export default function LandingPage() {
             {[
               {
                 n: "01",
-                hex: "#818CF8",
+                hex: "#D4B36A",
                 icon: <Download size={18} />,
                 title: t("step1Title"),
                 body: t("step1Body"),
@@ -551,7 +560,7 @@ export default function LandingPage() {
               <div className="relative flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="caps !text-primary-strong">{t("landingCtaStamp")}</p>
-                  <h2 className="font-brand mt-2 text-2xl font-bold tracking-tight text-text sm:text-3xl">
+                  <h2 className="font-display mt-2 text-2xl font-semibold tracking-tight text-text sm:text-3xl">
                     {t("landingCtaTitle")}
                   </h2>
                 </div>
