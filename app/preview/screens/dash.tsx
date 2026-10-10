@@ -171,6 +171,8 @@ export default function PreviewDashPage() {
               pace={pace}
               formatted={fmt}
               cycleLabel="Sep 1 – Sep 30"
+              daily={dailyDays}
+              formatValue={fmt}
               labels={{
                 budgetOnFile: "Monthly budget",
                 spent: "spent",

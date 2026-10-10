@@ -385,6 +385,8 @@ export default function HomePage() {
             pace={pace}
             formatted={fmt}
             cycleLabel={cycleLabel}
+            daily={dailyDays}
+            formatValue={fmt}
             labels={{
               budgetOnFile: t("monthlyBudget"),
               spent: t("spent"),

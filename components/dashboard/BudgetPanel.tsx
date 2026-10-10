@@ -32,6 +32,11 @@ interface BudgetPanelProps {
     day: string;
     of: string;
   };
+  /** Last N days of spending for the mini bar strip (fills the card bottom
+      when the grid row is taller than the content). */
+  daily?: { iso: string; value: number }[];
+  /** Formatter for the strip's tooltips. */
+  formatValue?: (n: number) => string;
   /** Link href for the set-budget CTA. */
   budgetHref?: string;
   /** Optional ReactNode rendered as the set-budget action (e.g. a Next <Link>). */
@@ -52,6 +57,8 @@ export function BudgetPanel({
   formatted,
   cycleLabel,
   labels,
+  daily,
+  formatValue,
   budgetHref = "/profit-loss",
   action,
 }: BudgetPanelProps) {
@@ -161,6 +168,34 @@ export function BudgetPanel({
         )}
       </div>
 
+      {/* Daily spend strip - fills the card's leftover height with real
+          signal: one bar per day, today ringed. */}
+      {daily && daily.length > 0 && (
+        <div className="mt-auto border-t border-border pt-3">
+          <div className="flex h-14 items-end gap-1">
+            {daily.map((d) => {
+              const max = Math.max(...daily.map((x) => x.value), 1);
+              const h = Math.max(4, Math.round((d.value / max) * 100));
+              const now = new Date();
+              const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+              const isToday = d.iso === todayIso;
+              return (
+                <div
+                  key={d.iso}
+                  title={`${d.iso}${formatValue ? ` · ${formatValue(d.value)}` : ""}`}
+                  className={`flex-1 rounded-t-sm transition-colors ${
+                    d.value > 0 ? "bg-rust-tint" : "bg-surface-elevated"
+                  } ${isToday ? "ring-1 ring-danger" : ""}`}
+                  style={{ height: `${d.value > 0 ? h : 6}%` }}
+                />
+              );
+            })}
+          </div>
+          <p className="mt-1.5 text-[11px] text-faint">
+            {labels.dailyAllowance} · {daily.length}d
+          </p>
+        </div>
+      )}
     </div>
   );
 }
