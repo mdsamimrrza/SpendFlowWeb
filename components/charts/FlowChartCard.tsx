@@ -12,7 +12,7 @@ import { RangeField } from "@/components/ui/CalendarModal";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { FitText } from "@/components/ui/FitText";
 import type { TrendPoint } from "@/components/charts/TrendChart";
-import { StockFlowChart } from "@/components/charts/StockFlowChart";
+import { TrendChart } from "@/components/charts/TrendChart";
 import { listExpenses } from "@/services/expenses";
 import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
 import { formatMoney, formatShortDate, getCycleWindow, getPreviousCycleWindow, toISODate } from "@/utils/format";
@@ -377,7 +377,16 @@ export function FlowChartCard({ label = "Cash flow", bare = false, rows: injecte
           </div>
 
           <div key={range} className={`chart-fade ${compact ? "mx-auto w-full max-w-[640px]" : ""}`}>
-            <StockFlowChart points={points} locale={locale} height={compact ? 140 : 240} />
+            {/* Same daily-basis logic as the cycle report's Daily flow: the
+                line height IS the bucket's figure and the floating card
+                matches it — no cumulative plateaus, no tooltip mismatch. */}
+            <TrendChart
+              points={points}
+              locale={locale}
+              formatValue={fmt}
+              floatingCard
+              height={compact ? 160 : 220}
+            />
           </div>
 
           {/* Range summary — soft cards with share bars */}

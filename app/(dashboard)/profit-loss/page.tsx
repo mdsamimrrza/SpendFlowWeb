@@ -457,7 +457,9 @@ export default function ProfitLossPage() {
     [isDefaultCycle, buildCalendarMonthRows, buildPaycheckCycleRows, from, to],
   );
 
-  // Attach the in-force budget per row (mobile converts at the bucket end).
+  // Attach the IN-FORCE budget per row (mobile parity: past cycles use the
+  // budget active at the time — newest settings row effective on/before the
+  // bucket end — never the current figure retro-projected onto history).
   const [monthRows, setMonthRows] = useState<MonthRow[]>([]);
   useEffect(() => {
     let cancelled = false;
@@ -465,8 +467,15 @@ export default function ProfitLossPage() {
       const withBudget: MonthRow[] = [];
       for (const r of rawMonthRows) {
         let budget: number | null = null;
-        if (rawBudget > 0) {
-          budget = Math.round(await convertBudgetAt(rawBudget, budgetCurrency, r.to));
+        let inForce: SettingsPeriod | undefined;
+        for (const p of settingsPeriods) {
+          if (p.effective_from <= r.to) inForce = p;
+        }
+        const amount = inForce ? inForce.monthly_budget : rawBudget;
+        if (amount && amount > 0) {
+          budget = Math.round(
+            await convertBudgetAt(amount, inForce?.budget_currency || budgetCurrency, r.to),
+          );
         }
         withBudget.push({ ...r, budget });
       }
@@ -475,7 +484,7 @@ export default function ProfitLossPage() {
     return () => {
       cancelled = true;
     };
-  }, [rawMonthRows, rawBudget, budgetCurrency, convertBudgetAt]);
+  }, [rawMonthRows, rawBudget, budgetCurrency, convertBudgetAt, settingsPeriods]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -887,22 +896,31 @@ export default function ProfitLossPage() {
 type T = (key: TranslationKey) => string;
 
 function MonthRowCard({ row, money, t }: { row: MonthRow; money: (n: number) => string; t: T }) {
+  const router = useRouter();
   const rowIsProfit = row.net >= 0;
   const peak = Math.max(row.income, row.expense, 1);
   const incomeWidth = Math.round((row.income / peak) * 100);
   const expenseWidth = Math.round((row.expense / peak) * 100);
   const savingsRate = row.income > 0 ? Math.round((row.net / row.income) * 100) : 0;
   return (
-    <div className="space-y-3 rounded-[10px] border border-border bg-surface p-4">
+    <button
+      type="button"
+      onClick={() => router.push(`/profit-loss/cycle?from=${row.from}&to=${row.to}`)}
+      aria-label={t("plOpenCycleHistory")}
+      className="w-full cursor-pointer space-y-3 rounded-[10px] border border-border bg-surface p-4 text-left transition hover:border-primary/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:opacity-85"
+    >
       <div className="flex items-center justify-between gap-2">
         <p className="truncate text-sm font-bold text-text">{row.label}</p>
-        <p
-          className="shrink-0 text-sm font-extrabold"
-          style={{ color: rowIsProfit ? "var(--sf-income)" : "var(--sf-danger)" }}
-        >
-          {rowIsProfit ? "+" : "−"}
-          {money(Math.abs(row.net))}
-        </p>
+        <span className="flex shrink-0 items-center gap-1.5">
+          <p
+            className="text-sm font-extrabold"
+            style={{ color: rowIsProfit ? "var(--sf-income)" : "var(--sf-danger)" }}
+          >
+            {rowIsProfit ? "+" : "−"}
+            {money(Math.abs(row.net))}
+          </p>
+          <ChevronRight size={15} className="text-text-muted" aria-hidden />
+        </span>
       </div>
       <div className="h-px bg-border" aria-hidden />
       <div className="flex items-center justify-between gap-2">
@@ -958,7 +976,7 @@ function MonthRowCard({ row, money, t }: { row: MonthRow; money: (n: number) => 
           </span>
         </div>
       )}
-    </div>
+    </button>
   );
 }
 

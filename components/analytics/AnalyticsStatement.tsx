@@ -94,7 +94,7 @@ import {
 /* ── mobile VIBRANT_PALETTE (components/expense/Charts.tsx) — the breakdown
    ranks its top-6 slices with these fixed DATA colors, by position. They are
    data colors (mobile renders the same hexes), not UI chrome. ── */
-const VIBRANT_PALETTE = [
+export const VIBRANT_PALETTE = [
   "#4F46E5", // Indigo
   "#10B981", // Emerald
   "#F59E0B", // Amber
