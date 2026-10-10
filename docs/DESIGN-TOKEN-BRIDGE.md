@@ -10,41 +10,47 @@ truth: `constants/theme.ts` in the mobile repo (tokens verified in audit, 2026-0
 > components' theme-invariant accent hues and component-level tints). See the Theme divergence note in
 > `FEATURE-PARITY.md`.
 
-> **SUPERSEDED for the web (2026-10-10): "Engraved Banknote" redesign (user-directed, recorded in
-> `FEATURE-PARITY.md`).** The WEB only now runs the note-language palette below; the mobile repo
-> keeps the parchment/teal table in §2 unchanged. The token NAMES and Tailwind classes are identical
-> — only the values swapped, so every component keeps consuming semantic tokens (`bg-background`,
-> `text-text`, `border-border`, never raw hex). Same rule as before: do not "improve" the palette
-> without a user decision.
+> **SUPERSEDED for the web (2026-10-10, second pass): "SpendFlow V2" full redesign
+> (user-directed: "version 2, complete new, professional modern clean, no AI junk").**
+> The earlier 2026-10-10 "Engraved Banknote" palette was replaced the same day by a neutral
+> modern system — the user rejected the ornamental direction as still too stylised. The mobile
+> repo keeps the parchment/teal table in §2 unchanged. Token NAMES and Tailwind classes are
+> identical — only values swapped — so every component keeps consuming semantic tokens
+> (`bg-background`, `text-text`, `border-border`, never raw hex).
 
-## 0. Web banknote palette (2026-10-10)
+## 0. Web V2 palette (2026-10-10, current)
 
-| Token (useTheme key) | Web Light — "Note paper" | Web Dark — "Night vault" |
+Neutral zinc surfaces, emerald brand, Inter everywhere. No ornaments, no glass, no
+uppercase-tracked labels (`.caps` renders sentence-case now), hairline 12px cards.
+
+| Token (useTheme key) | Web Light | Web Dark |
 |---|---|---|
-| primary | `#17402F` (engraved green ink) | `#D4B36A` (gold foil) |
-| primaryStrong | `#0E2B1F` | `#E8CB8B` |
-| primaryLight | `#DDE7DB` | `rgb(212 179 106 / 0.16)` |
-| accent | `#8C6D1F` (foil brass) | `#B08D3E` |
-| success / income | `#1F6F4A` / `#1F6F4A` | `#3FBF8A` / `#3FBF8A` |
-| warning | `#8C6D1F` | `#D4B36A` |
-| danger / rust | `#9C3B2E` (oxblood stamp) | `#E06A55` |
-| info | `#2A5E74` | `#5BA8C9` |
-| background | `#F2EFE2` (note paper) | `#0A100C` (vault black) |
-| surface | `#FAF8EE` | `#101A14` |
-| surfaceElevated | `#EBE7D6` | `#16241C` |
-| text | `#1C231F` | `#EDEBDF` |
-| textMuted | `#55604F` | `#9BA894` |
-| faint | `#8A9284` | `#6B7866` |
-| border | `#D8D2BC` | `#24352B` |
-| input / tab | `#FAF8EE` | `#101A14` |
-| accentBg | `#DDE7DB` | `rgb(212 179 106 / 0.16)` |
-| brass / brassTint | `#8C6D1F` / `#EFE4C3` | `#D4B36A` / `rgb(212 179 106 / 0.15)` |
-| rust / rustTint | `#9C3B2E` / `#F2DED6` | `#E06A55` / `rgb(224 106 85 / 0.15)` |
+| primary | `#059669` (emerald) | `#059669` |
+| primaryStrong | `#047857` | `#34D399` |
+| primaryLight | `#ECFDF5` | `rgb(16 185 129 / 0.14)` |
+| accent | `#059669` | `#34D399` |
+| success / income | `#059669` | `#34D399` |
+| warning | `#D97706` | `#FBBF24` |
+| danger / rust | `#DC2626` | `#F87171` |
+| info | `#2563EB` | `#60A5FA` |
+| background | `#F7F7F8` | `#09090B` |
+| surface | `#FFFFFF` | `#111113` |
+| surfaceElevated | `#F4F4F5` | `#1B1B1F` |
+| text | `#18181B` | `#FAFAFA` |
+| textMuted | `#52525B` | `#A1A1AA` |
+| faint | `#A1A1AA` | `#71717A` |
+| border | `#E4E4E7` | `#26262B` |
+| input / tab | `#FFFFFF` / `#FFFFFF` | `#111113` / `#111113` |
+| accentBg | `#ECFDF5` | `rgb(16 185 129 / 0.14)` |
+| brass / brassTint | `#B45309` / `#FEF3C7` | `#FBBF24` / `rgb(251 191 36 / 0.14)` |
+| rust / rustTint | `#DC2626` / `#FEE2E2` | `#F87171` / `rgb(248 113 113 / 0.14)` |
 
-Typography: Fraunces (variable, `next/font`) is the display face — headlines and hero money
-figures; system sans stays for body/UI. The fixed `--sf-hue-*` / tint tokens keep their values
-(they are theme-invariant data-visualization hues on mobile too).
-
+Typography: Inter (`next/font`, variable `--font-inter`) for EVERYTHING — body, UI, headlines
+and money figures (`.figures-display` is Inter 650 tabular). Chart expense series is red in
+both themes (`--sf-expense-series` = danger). Shell: fixed sidebar nav (lg+) with the full
+destination list, sticky topbar for actions, flat bottom tab bar on phones
+(`components/layout/DashboardShell.tsx`). The fixed `--sf-hue-*` / tint tokens keep their
+values (theme-invariant data-visualization hues).
 
 ## 1. Strategy
 

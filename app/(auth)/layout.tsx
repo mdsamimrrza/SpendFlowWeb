@@ -5,7 +5,6 @@ import Link from "next/link";
 import { BarChart3, PiggyBank, ShieldCheck } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { SpendFlowSeal } from "@/components/ui/SpendFlowSeal";
-import { Guilloche } from "@/components/ui/Guilloche";
 import { LangPills } from "@/components/auth/AuthPrimitives";
 import { useLanguage } from "@/store/LanguageContext";
 import { isSupabaseConfigured } from "@/utils/supabase/browser";
@@ -34,15 +33,6 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="relative min-h-dvh bg-background">
-      {/* Guilloche engraving behind the form column (phones: behind the card). */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-        <Guilloche className="absolute -left-28 top-[-90px] h-[380px] w-[380px] text-primary opacity-[0.05]" />
-        <Guilloche
-          className="absolute bottom-[-110px] right-[-100px] h-[400px] w-[400px] text-primary opacity-[0.05]"
-          petals={15}
-        />
-      </div>
-
       <div className="relative flex min-h-dvh w-full flex-col">
         {/* Mobile masthead */}
         <header className="flex items-center justify-between px-5 py-2 lg:hidden">

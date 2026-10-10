@@ -26,7 +26,6 @@ import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { Reveal } from "@/components/ui/Reveal";
 import { PhoneShowcase, type PhoneScreen } from "@/components/landing/PhoneShowcase";
 import { SpendFlowSeal } from "@/components/ui/SpendFlowSeal";
-import { Guilloche } from "@/components/ui/Guilloche";
 import { useLanguage } from "@/store/LanguageContext";
 import { formatMoney } from "@/utils/format";
 import type { LanguageCode } from "@/utils/format";
@@ -37,7 +36,7 @@ import { CURRENCIES, CURRENCY_DETAILS, ANDROID_DOWNLOAD_URL } from "@/constants/
  * structure: light (note paper/engraved ink/foil) and dark (night vault/gold)
  * both read as SpendFlow (docs/DESIGN-TOKEN-BRIDGE.md §0).
  *
- * Structure: guilloche hero (badge → display headline → CTAs → release meta →
+ * Structure: hero (badge → display headline → CTAs → release meta →
  * trust figures) → app showcase (CSS phone mockup + floating feature chips,
  * mobile-first: chips collapse to a grid under the phone) → features bento →
  * currency/trust strip → 3-step install → closing CTA → footer.
@@ -105,19 +104,19 @@ const FEATURES: {
   },
   {
     icon: <Repeat size={16} />,
-    hex: "#D4B36A",
+    hex: "#2563EB",
     title: "Recurring & transfers",
     body: "Rules that post on schedule; money moves across 7 account types.",
   },
   {
     icon: <BarChart3 size={16} />,
-    hex: "#8B5CF6",
+    hex: "#7C3AED",
     title: "Analytical statements",
     body: "Health score, burn analysis and weekday rhythm, with formulas shown.",
   },
   {
     icon: <ShieldCheck size={16} />,
-    hex: "#14B8A6",
+    hex: "#0891B2",
     title: "Private by design",
     body: "Row Level Security, biometric lock, email-confirmed changes.",
   },
@@ -165,7 +164,7 @@ export default function LandingPage() {
       href={ANDROID_DOWNLOAD_URL}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex h-12 items-center justify-center gap-2.5 border border-primary bg-primary px-7 text-xs font-bold uppercase tracking-[0.08em] text-white transition-colors hover:bg-primary-strong sm:h-11"
+      className="flex h-12 items-center justify-center gap-2.5 rounded-lg bg-primary px-7 text-sm font-semibold text-white transition-colors hover:bg-primary-strong sm:h-11"
     >
       <Download size={16} /> {t("downloadAndroid")}
     </a>
@@ -173,15 +172,6 @@ export default function LandingPage() {
 
   return (
     <div className="relative min-h-screen overflow-x-clip bg-background">
-      {/* ── Guilloche medallions — a note's left/right rosettes (hero only) ── */}
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[720px]">
-        <Guilloche className="absolute -left-32 top-16 h-[420px] w-[420px] text-primary opacity-[0.06]" />
-        <Guilloche
-          className="absolute -right-32 top-40 h-[420px] w-[420px] text-primary opacity-[0.06]"
-          petals={15}
-        />
-      </div>
-
       {/* ===== Masthead ===== */}
       <header className="glass sticky top-0 z-40 border-b border-border">
         <div className="mx-auto flex max-w-[1200px] items-center justify-between px-5 py-3.5 sm:px-8">
@@ -195,7 +185,7 @@ export default function LandingPage() {
                 <button
                   key={l}
                   onClick={() => setLanguage(l)}
-                  className={`h-9 border px-2.5 text-[11px] font-bold uppercase tracking-[0.08em] transition ${
+                  className={`h-9 rounded-lg border px-2.5 text-[11px] font-semibold transition ${
                     language === l
                       ? "border-primary bg-primary text-white"
                       : "border-border bg-transparent text-text-muted"
@@ -210,13 +200,13 @@ export default function LandingPage() {
               href={ANDROID_DOWNLOAD_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden h-9 items-center gap-1.5 border border-border px-4 text-[11px] font-bold uppercase tracking-[0.08em] text-text transition-colors hover:border-primary hover:text-primary-strong md:flex"
+              className="hidden h-9 items-center gap-1.5 rounded-lg border border-border px-4 text-[13px] font-medium text-text transition-colors hover:border-faint md:flex"
             >
               <Download size={13} className="text-primary" /> {t("downloadAndroid")}
             </a>
             <Link
               href="/sign-in"
-              className="flex h-9 items-center border border-primary bg-primary px-4 text-[11px] font-bold uppercase tracking-[0.08em] text-white transition-colors hover:bg-primary-strong"
+              className="flex h-9 items-center rounded-lg bg-primary px-4 text-[13px] font-semibold text-white transition-colors hover:bg-primary-strong"
             >
               {t("signIn")}
             </Link>
@@ -229,15 +219,14 @@ export default function LandingPage() {
         <section className="flex flex-col items-center py-14 text-center lg:py-20">
           <div className="w-full max-w-2xl">
             <Reveal>
-              <span className="inline-flex items-center gap-2 border border-border bg-surface px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-text-muted">
+              <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-medium text-text-muted">
                 <span className="pulse-dot inline-flex h-2 w-2 rounded-full bg-income" />
                 {t("freeBadge")}
               </span>
             </Reveal>
             <Reveal delay={80}>
-              <h1 className="font-display mt-5 text-4xl font-semibold leading-[1.1] tracking-tight text-text sm:text-5xl lg:text-[3.4rem]">
-                {t("landingHeroTitle")}{" "}
-                <span className="italic text-brass">{t("landingHeroAccent")}</span>
+              <h1 className="mt-5 text-4xl font-bold leading-[1.08] tracking-[-0.03em] text-text sm:text-5xl lg:text-[3.4rem]">
+                {t("landingHeroTitle")} {t("landingHeroAccent")}
               </h1>
             </Reveal>
             <Reveal delay={140}>
@@ -250,7 +239,7 @@ export default function LandingPage() {
                 {downloadButton}
                 <Link
                   href="/sign-up"
-                  className="flex h-12 items-center justify-center gap-2 border border-border px-7 text-xs font-bold uppercase tracking-[0.08em] text-text transition-colors hover:border-text-muted sm:h-11"
+                  className="flex h-12 items-center justify-center gap-2 rounded-lg border border-border bg-surface px-7 text-sm font-semibold text-text transition-colors hover:bg-surface-elevated sm:h-11"
                 >
                   {t("landingCtaCreate")} <ArrowUpRight size={15} />
                 </Link>
@@ -293,12 +282,6 @@ export default function LandingPage() {
 
         {/* ===== GET THE APP — showcase with floating chips ===== */}
         <section id="get-the-app" className="relative border-t border-border py-14 lg:py-20">
-          <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-            <Guilloche
-              className="absolute -right-28 top-4 h-[380px] w-[380px] text-primary opacity-[0.05]"
-              petals={18}
-            />
-          </div>
           <div className="relative grid items-center gap-12 lg:grid-cols-2 xl:grid-cols-[1fr_1.35fr]">
             <div className="order-2 lg:order-1">
               <Reveal>
@@ -332,7 +315,7 @@ export default function LandingPage() {
                   {downloadButton}
                   <a
                     href="#install"
-                    className="flex h-12 items-center justify-center gap-1.5 text-xs font-bold uppercase tracking-[0.08em] text-text-muted transition-colors hover:text-text sm:h-11"
+                    className="flex h-12 items-center justify-center gap-1.5 text-sm font-semibold text-text-muted transition-colors hover:text-text sm:h-11"
                   >
                     <Info size={14} /> {t("howToInstall")}
                   </a>
@@ -403,7 +386,7 @@ export default function LandingPage() {
         <section className="border-t border-border py-14 lg:py-16">
           <Reveal>
             <div className="flex flex-col items-center text-center">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-[var(--sf-chip-tint)] px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.08em] text-primary">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-[var(--sf-primary-light)] px-3 py-1 text-xs font-medium text-primary-strong">
                 <Sparkles size={11} /> {t("featuresKicker")}
               </span>
               <h2 className="font-display mt-4 text-3xl font-semibold tracking-tight text-text sm:text-4xl">
@@ -483,16 +466,9 @@ export default function LandingPage() {
 
         {/* ===== Install — 3 steps ===== */}
         <section id="install" className="relative overflow-hidden border-t border-border py-14 lg:py-16">
-          <div aria-hidden className="pointer-events-none absolute inset-0">
-            <Guilloche
-              className="absolute -left-24 top-1/2 h-[300px] w-[300px] -translate-y-1/2 text-primary opacity-[0.05]"
-              petals={21}
-              rings={4}
-            />
-          </div>
           <Reveal>
             <div className="relative flex flex-col items-center text-center">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-[var(--sf-chip-tint)] px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.08em] text-primary">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-[var(--sf-primary-light)] px-3 py-1 text-xs font-medium text-primary-strong">
                 <Download size={11} /> {t("installKicker")}
               </span>
               <h2 className="font-display mt-4 text-3xl font-semibold tracking-tight text-text sm:text-4xl">
@@ -505,7 +481,7 @@ export default function LandingPage() {
             {[
               {
                 n: "01",
-                hex: "#D4B36A",
+                hex: "#2563EB",
                 icon: <Download size={18} />,
                 title: t("step1Title"),
                 body: t("step1Body"),
@@ -567,7 +543,7 @@ export default function LandingPage() {
                 <div className="flex w-full shrink-0 flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
                   <Link
                     href="/sign-up"
-                    className="flex h-11 items-center justify-center gap-2 border border-primary bg-primary px-6 text-xs font-bold uppercase tracking-[0.08em] text-white transition-colors hover:bg-primary-strong"
+                    className="flex h-11 items-center justify-center gap-2 rounded-lg bg-primary px-6 text-sm font-semibold text-white transition-colors hover:bg-primary-strong"
                   >
                     {t("getStarted")} <ArrowUpRight size={15} />
                   </Link>
@@ -575,7 +551,7 @@ export default function LandingPage() {
                     href={ANDROID_DOWNLOAD_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex h-11 items-center justify-center gap-2 border border-border bg-surface/70 px-6 text-xs font-bold uppercase tracking-[0.08em] text-text backdrop-blur transition-colors hover:border-primary hover:text-primary-strong"
+                    className="flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-surface px-6 text-sm font-semibold text-text transition-colors hover:bg-surface-elevated"
                   >
                     <Download size={15} className="text-primary" /> {t("downloadAndroid")}
                   </a>

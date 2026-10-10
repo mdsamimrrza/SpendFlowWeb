@@ -4,7 +4,6 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArrowDownRight, ArrowUpRight, Flame, Plus, Wallet } from "lucide-react";
 import { FitText } from "@/components/ui/FitText";
-import { Guilloche } from "@/components/ui/Guilloche";
 import { ProgressRing } from "@/components/charts/ProgressRing";
 import { useLanguage } from "@/store/LanguageContext";
 
@@ -65,10 +64,7 @@ export function MoneyPulseHero({
   const remaining = hasBudget ? budget - expense : 0;
 
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-primary/25 bg-surface shadow-pop">
-      {/* guilloche engraving — the note's one ornament, tucked behind the
-          protagonist figure (one-ornament-per-view rule) */}
-      <Guilloche className="pointer-events-none absolute -right-12 -top-12 h-64 w-64 text-primary opacity-[0.07]" />
+    <section className="relative overflow-hidden rounded-2xl border border-border bg-surface shadow-soft">
 
       <div className="relative p-5 sm:p-6 lg:grid lg:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:gap-x-6">
         {/* Segment 1 — the protagonist: net for the cycle */}

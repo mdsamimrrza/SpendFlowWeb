@@ -2,38 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Engraved Banknote design system (2026-10-10, user-directed — see
-   docs/FEATURE-PARITY.md and docs/DESIGN-TOKEN-BRIDGE.md §0). Web-only
-   divergence from the mobile parchment palette; token names unchanged so
+/* SpendFlow Web V2 (2026-10-10, user-directed full redesign — see
+   docs/FEATURE-PARITY.md and docs/DESIGN-TOKEN-BRIDGE.md §0). Neutral
+   zinc surfaces, emerald brand, Inter. Token names unchanged so
    components keep consuming semantic vars. */
 :root {
-  /* Light — "Note paper": engraved green ink + foil brass + oxblood stamps */
-  --sf-primary: #17402f;
-  --sf-primary-strong: #0e2b1f;
-  --sf-primary-light: #dde7db;
-  --sf-accent: #8c6d1f;
-  --sf-success: #1f6f4a;
-  --sf-income: #1f6f4a;
-  --sf-warning: #8c6d1f;
-  --sf-danger: #9c3b2e;
-  --sf-rust: #9c3b2e;
-  --sf-info: #2a5e74;
-  --sf-background: #f2efe2;
-  --sf-surface: #faf8ee;
-  --sf-surface-elevated: #ebe7d6;
-  --sf-text: #1c231f;
-  --sf-text-muted: #55604f;
-  --sf-faint: #8a9284;
-  --sf-border: #d8d2bc;
-  --sf-input: #faf8ee;
-  --sf-tab: #faf8ee;
-  --sf-accent-bg: #dde7db;
-  --sf-card-highlight: #dde7db;
-  --sf-brass: #8c6d1f;
-  --sf-brass-tint: #efe4c3;
-  --sf-rust-tint: #f2ded6;
+  /* Light — clean neutral + emerald brand */
+  --sf-primary: #059669;
+  --sf-primary-strong: #047857;
+  --sf-primary-light: #ecfdf5;
+  --sf-accent: #059669;
+  --sf-success: #059669;
+  --sf-income: #059669;
+  --sf-warning: #d97706;
+  --sf-danger: #dc2626;
+  --sf-rust: #dc2626;
+  --sf-info: #2563eb;
+  --sf-background: #f7f7f8;
+  --sf-surface: #ffffff;
+  --sf-surface-elevated: #f4f4f5;
+  --sf-text: #18181b;
+  --sf-text-muted: #52525b;
+  --sf-faint: #a1a1aa;
+  --sf-border: #e4e4e7;
+  --sf-input: #ffffff;
+  --sf-tab: #ffffff;
+  --sf-accent-bg: #ecfdf5;
+  --sf-card-highlight: #ecfdf5;
+  --sf-brass: #b45309;
+  --sf-brass-tint: #fef3c7;
+  --sf-rust-tint: #fee2e2;
   /* Chart expense series — theme-conditional per the chart series rule:
-     oxblood in light (income stays green), gold foil in dark. */
+     red in light, soft red in dark. */
   --sf-expense-series: var(--sf-danger);
 
   /* Fixed accent hues — mobile renders these as raw hex regardless of
@@ -51,7 +51,7 @@
 
   /* Fixed tints — mobile component-level rgba literals shared by both
      themes (hero KPI tile, status banners, savings pills, grade chips). */
-  --sf-tile-hero: #dfe8dc;
+  --sf-tile-hero: #e6f4ed;
   --sf-tint-danger: rgb(239 68 68 / 0.1);
   --sf-tint-success: rgb(16 185 129 / 0.1);
   --sf-tint-emerald-15: rgb(16 185 129 / 0.15);
@@ -78,11 +78,11 @@
   --sf-bar-income: rgba(16, 185, 129, 0.35);
   /* CalendarModal (mobile ui/CalendarModal.tsx) fixed tints */
   --sf-range-tint: rgb(15 159 142 / 0.15); /* in-range day fill */
-  --sf-jump-tint: rgb(23 64 47 / 0.1); /* selected year row in jump picker */
+  --sf-jump-tint: rgb(5 150 105 / 0.1); /* selected year row in jump picker */
   --sf-cell-idle: rgb(0 0 0 / 0.04); /* idle month cell */
 
   /* Settings screen (mobile app/(tabs)/settings.tsx) component literals */
-  --sf-set-chip-teal: #dfe8dc;
+  --sf-set-chip-teal: #e6f4ed;
   --sf-set-chip-green: #d1fae5;
   --sf-set-chip-blue: #dbeafe;
   --sf-set-chip-gold: #fef3c7;
@@ -91,27 +91,27 @@
   --sf-set-icon-slate: #475569;
   --sf-set-icon-blue: #3b82f6;
   --sf-set-live-bg: #d1fae5;
-  --sf-set-cur-selected: #dfe8dc; /* chosen currency chip */
-  --sf-set-option-selected: #dfe8dc; /* chosen theme/language option */
+  --sf-set-cur-selected: #e6f4ed; /* chosen currency chip */
+  --sf-set-option-selected: #e6f4ed; /* chosen theme/language option */
   --sf-set-signout-bg: #f7f5ec;
   --sf-set-signout-line: #f1dcd3;
   --sf-set-danger-bg: #fee2e2;
   --sf-set-danger-line: #fca5a5;
   --sf-set-press: rgb(0 0 0 / 0.02); /* row pressed tint */
-  --sf-set-hero-glow: rgb(23 64 47 / 0.08); /* profile card primary glow */
+  --sf-set-hero-glow: rgb(5 150 105 / 0.08); /* profile card primary glow */
   --sf-set-card-shadow: rgb(0 0 0 / 0.04); /* grouped menu card */
 
   /* Bin screen (mobile app/bin.tsx) component literals */
   --sf-bin-warn: #b45309; /* ≤21-day countdown tone */
   --sf-bin-notice-bg: rgb(180 83 9 / 0.06);
   --sf-bin-notice-line: rgb(180 83 9 / 0.18);
-  --sf-bin-restore-bg: rgb(23 64 47 / 0.08);
+  --sf-bin-restore-bg: rgb(5 150 105 / 0.08);
   --sf-bin-purge-bg: rgb(180 83 9 / 0.08);
 
   /* Categories & Budgets (mobile app/categories.tsx + CategoryBudgetFormModal) */
   --sf-tab-expense: #dc2626; /* active Expense segment */
-  --sf-studio-chip: rgb(23 64 47 / 0.1); /* studio header chip / selected cat */
-  --sf-studio-icon: rgb(23 64 47 / 0.18); /* selected category icon circle */
+  --sf-studio-chip: rgb(5 150 105 / 0.1); /* studio header chip / selected cat */
+  --sf-studio-icon: rgb(5 150 105 / 0.18); /* selected category icon circle */
   --sf-studio-icon-idle: rgb(0 0 0 / 0.04);
   --sf-studio-limit-bg: #d1fae5; /* per-category limit pill */
   --sf-studio-limit-line: #a7f3d0;
@@ -119,7 +119,7 @@
   --sf-studio-nolimit-bg: rgb(0 0 0 / 0.04);
   --sf-studio-clear-bg: rgb(239 68 68 / 0.08); /* delete-forever button on caps */
   --sf-studio-clear-line: rgb(239 68 68 / 0.3);
-  --sf-studio-gauge-bg: #dfe8dc; /* allocation gauge card */
+  --sf-studio-gauge-bg: #e6f4ed; /* allocation gauge card */
   --sf-studio-track: rgb(0 0 0 / 0.08); /* gauge progress track */
   --sf-grab: rgb(0 0 0 / 0.15); /* bottom-sheet grab handle */
 
@@ -152,38 +152,38 @@
   --sf-bull-grid-ink: rgb(0 0 0 / 0.45); /* chart axis labels */
   --sf-bull-tooltip-bg: #1e293b;
   --sf-bull-tooltip-line: rgb(0 0 0 / 0.2);
-  --sf-bull-result-bg: #dfe8dc; /* calculator result box */
+  --sf-bull-result-bg: #e6f4ed; /* calculator result box */
   --sf-bull-result-line: var(--sf-border);
 }
 
 .dark {
-  /* Dark — "Night vault": green-black surfaces + gold foil */
-  --sf-primary: #d4b36a;
-  --sf-primary-strong: #e8cb8b;
-  --sf-primary-light: rgb(212 179 106 / 0.16);
-  --sf-accent: #b08d3e;
-  --sf-success: #3fbf8a;
-  --sf-income: #3fbf8a;
-  --sf-warning: #f59e0b;
-  --sf-danger: #e06a55;
-  --sf-rust: #e06a55;
-  --sf-info: #5ba8c9;
-  --sf-background: #0a100c;
-  --sf-surface: #101a14;
-  --sf-surface-elevated: #16241c;
-  --sf-text: #edebdf;
-  --sf-text-muted: #9ba894;
-  --sf-faint: #6b7866;
-  --sf-border: #24352b;
-  --sf-input: #101a14;
-  --sf-tab: #101a14;
-  --sf-accent-bg: rgb(212 179 106 / 0.16);
-  --sf-card-highlight: #16241c;
-  --sf-brass: #d4b36a;
-  --sf-brass-tint: rgb(212 179 106 / 0.15);
-  --sf-rust-tint: rgb(224 106 85 / 0.15);
-  /* Dark: gold foil contrasts with the proof-green income series. */
-  --sf-expense-series: var(--sf-primary);
+  /* Dark — near-black zinc + emerald */
+  --sf-primary: #059669;
+  --sf-primary-strong: #34d399;
+  --sf-primary-light: rgb(16 185 129 / 0.14);
+  --sf-accent: #34d399;
+  --sf-success: #34d399;
+  --sf-income: #34d399;
+  --sf-warning: #fbbf24;
+  --sf-danger: #f87171;
+  --sf-rust: #f87171;
+  --sf-info: #60a5fa;
+  --sf-background: #09090b;
+  --sf-surface: #111113;
+  --sf-surface-elevated: #1b1b1f;
+  --sf-text: #fafafa;
+  --sf-text-muted: #a1a1aa;
+  --sf-faint: #71717a;
+  --sf-border: #26262b;
+  --sf-input: #111113;
+  --sf-tab: #111113;
+  --sf-accent-bg: rgb(16 185 129 / 0.14);
+  --sf-card-highlight: #1b1b1f;
+  --sf-brass: #fbbf24;
+  --sf-brass-tint: rgb(251 191 36 / 0.14);
+  --sf-rust-tint: rgb(248 113 113 / 0.14);
+  /* Dark: soft red contrasts with the emerald income series. */
+  --sf-expense-series: var(--sf-danger);
 
   /* Fixed hues are theme-invariant — repeated for legibility */
   --sf-hue-amber: #f59e0b;
@@ -195,28 +195,28 @@
   --sf-hue-indigo: #818cf8;
   --sf-hue-violet: #8b5cf6;
 
-  --sf-tile-hero: #14231a;
+  --sf-tile-hero: #17171a;
   --sf-select-tint: rgb(217 119 6 / 0.15);
-  --sf-chip-tint: rgb(212 179 106 / 0.16);
-  --sf-icon-chip: rgb(212 179 106 / 0.15);
+  --sf-chip-tint: rgb(16 185 129 / 0.16);
+  --sf-icon-chip: rgb(16 185 129 / 0.15);
   --sf-tint-amber: rgb(245 158 11 / 0.15);
   --sf-tint-sky: rgb(56 189 248 / 0.15);
   --sf-tint-sky-soft: rgb(56 189 248 / 0.1);
-  --sf-tint-indigo: rgb(212 179 106 / 0.15);
+  --sf-tint-indigo: rgb(16 185 129 / 0.15);
   --sf-tile-income-bg: rgb(16 185 129 / 0.08);
   --sf-tile-income-border: rgb(16 185 129 / 0.25);
   --sf-tile-expense-bg: rgb(239 68 68 / 0.08);
   --sf-tile-expense-border: rgb(239 68 68 / 0.25);
   --sf-track: rgb(255 255 255 / 0.06);
   --sf-track-2: rgb(255 255 255 / 0.08);
-  --sf-bar-expense: rgb(212 179 106 / 0.45);
+  --sf-bar-expense: rgb(16 185 129 / 0.45);
   --sf-bar-income: rgb(16 185 129 / 0.45);
   --sf-range-tint: rgb(45 212 191 / 0.2);
-  --sf-jump-tint: rgb(212 179 106 / 0.18);
+  --sf-jump-tint: rgb(16 185 129 / 0.18);
   --sf-cell-idle: rgb(255 255 255 / 0.04);
 
   /* Settings screen — mobile dark variants of the same literals */
-  --sf-set-chip-teal: rgb(212 179 106 / 0.15);
+  --sf-set-chip-teal: rgb(16 185 129 / 0.15);
   --sf-set-chip-green: rgb(16 185 129 / 0.15);
   --sf-set-chip-blue: rgb(59 130 246 / 0.15);
   --sf-set-chip-gold: rgb(245 158 11 / 0.2);
@@ -224,32 +224,32 @@
   --sf-set-chip-slate: rgb(148 163 184 / 0.15);
   --sf-set-icon-slate: #94a3b8;
   --sf-set-live-bg: rgb(16 185 129 / 0.2);
-  --sf-set-cur-selected: rgb(212 179 106 / 0.2);
-  --sf-set-option-selected: rgb(212 179 106 / 0.16);
+  --sf-set-cur-selected: rgb(16 185 129 / 0.2);
+  --sf-set-option-selected: rgb(16 185 129 / 0.16);
   --sf-set-signout-bg: rgb(239 68 68 / 0.1);
   --sf-set-signout-line: rgb(239 68 68 / 0.35);
   --sf-set-danger-bg: rgb(239 68 68 / 0.16);
   --sf-set-danger-line: rgb(239 68 68 / 0.35);
   --sf-set-press: rgb(255 255 255 / 0.03);
-  --sf-set-hero-glow: rgb(212 179 106 / 0.2);
+  --sf-set-hero-glow: rgb(16 185 129 / 0.2);
   --sf-set-card-shadow: rgb(0 0 0 / 0.2);
 
   --sf-bin-warn: #fbbf24;
   --sf-bin-notice-bg: rgb(251 191 36 / 0.08);
   --sf-bin-notice-line: rgb(251 191 36 / 0.22);
-  --sf-bin-restore-bg: rgb(212 179 106 / 0.12);
+  --sf-bin-restore-bg: rgb(16 185 129 / 0.12);
   --sf-bin-purge-bg: rgb(248 113 113 / 0.12);
 
   --sf-tab-expense: #ef4444;
-  --sf-studio-chip: rgb(212 179 106 / 0.2);
-  --sf-studio-icon: rgb(212 179 106 / 0.35);
+  --sf-studio-chip: rgb(16 185 129 / 0.2);
+  --sf-studio-icon: rgb(16 185 129 / 0.35);
   --sf-studio-icon-idle: rgb(255 255 255 / 0.06);
   --sf-studio-limit-bg: rgb(16 185 129 / 0.2);
   --sf-studio-limit-line: rgb(16 185 129 / 0.4);
   --sf-studio-limit-ink: #34d399;
   --sf-studio-nolimit-bg: rgb(255 255 255 / 0.05);
   --sf-studio-clear-bg: rgb(239 68 68 / 0.15);
-  --sf-studio-gauge-bg: #14231a;
+  --sf-studio-gauge-bg: #17171a;
   --sf-studio-track: rgb(255 255 255 / 0.08);
   --sf-grab: rgb(255 255 255 / 0.2);
 
@@ -267,14 +267,15 @@
   --sf-bull-grid-ink: rgb(255 255 255 / 0.45);
   --sf-bull-tooltip-bg: #0f172a;
   --sf-bull-tooltip-line: rgb(255 255 255 / 0.2);
-  --sf-bull-result-bg: #14231a;
-  --sf-bull-result-line: rgb(212 179 106 / 0.3);
+  --sf-bull-result-bg: #17171a;
+  --sf-bull-result-line: rgb(16 185 129 / 0.3);
 }
 
 body {
   background-color: var(--sf-background);
   color: var(--sf-text);
   font-family:
+    var(--font-inter),
     ui-sans-serif,
     system-ui,
     -apple-system,
@@ -290,24 +291,23 @@ body {
 }
 
 /* ============================================================
-   Engraved Banknote design system — the web's own card language
-   (2026-10-10 redesign, docs/DESIGN-TOKEN-BRIDGE.md §0). Note-paper
-   surfaces, 1 px rule-line borders, 14 px note corners, flat
-   (no elevation — depth comes from ink density and rules).
+   SpendFlow V2 card language — white surfaces on a neutral base,
+   hairline borders, 12px radius, no ornament. Depth comes from
+   borders and type, not shadows or decoration.
    ============================================================ */
 
-/* Card surface: raised note paper on a hairline rule. */
+/* Card surface: white tile on a hairline rule. */
 .panel {
   background: var(--sf-surface);
   border: 1px solid var(--sf-border);
-  border-radius: 14px;
+  border-radius: 12px;
 }
 
 /* Flush variant that sits directly on the background. */
 .panel-flush {
   background: transparent;
   border: 1px solid var(--sf-border);
-  border-radius: 14px;
+  border-radius: 12px;
 }
 
 /* Internal divider under a card header. */
@@ -317,26 +317,24 @@ body {
 
 /* Overline label. */
 .caps {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0;
   color: var(--sf-text-muted);
 }
 
 .caps-faint {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0;
   color: var(--sf-faint);
 }
 
-/* Display figures for money — heavy sans, tight tracking. */
+/* Display figures for money — Inter semibold, tight tracking. */
 .figures {
   font-variant-numeric: lining-nums tabular-nums;
-  font-weight: 800;
-  letter-spacing: -0.03em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 /* Sans tabular figures for dense tabular money. */
@@ -360,31 +358,28 @@ body {
 
 /* Tiny meta caption. */
 .stamp {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
   color: var(--sf-faint);
 }
 
-/* ---- Engraved Banknote motif utilities (2026-10-10 redesign) ---- */
+/* ---- V2 figure helpers ---- */
 
-/* Denomination numerals — the hero money figure. */
+/* Hero money figure — Inter, tabular. */
 .figures-display {
-  font-family: var(--font-fraunces), ui-sans-serif, system-ui, sans-serif;
   font-variant-numeric: lining-nums tabular-nums;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  font-weight: 650;
+  letter-spacing: -0.025em;
 }
 
-/* Banknote double rule — the engraved value-frame lines above/below
-   a denomination-style figure. */
+/* Single hairlines (kept as hook names; V2 has no double rules). */
 .rule-double {
-  border-top: 3px double var(--sf-border);
+  border-top: 1px solid var(--sf-border);
 }
 
 .rule-double-b {
-  border-bottom: 3px double var(--sf-border);
+  border-bottom: 1px solid var(--sf-border);
 }
 /* Frosted glass surface for floating chrome (top bar, dock). */
 .glass {
@@ -697,17 +692,8 @@ tr {
 }
 .sf-auth-card {
   position: relative;
-  overflow: hidden; /* clips the accent hairline to the card radius */
+  overflow: hidden;
   animation: sf-card-in 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-/* Primary→brass accent bar across the card top. */
-.sf-auth-card::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--sf-primary), var(--sf-brass));
 }
 
 /* Staggered rise for the card's direct children (fields, buttons). */
@@ -820,39 +806,18 @@ tr {
       0 16px 40px rgb(10 14 12 / 0.1);
     animation: sf-card-in 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
-  .sf-auth-master::before {
-    content: "";
-    position: absolute;
-    inset: 0 0 auto 0;
-    height: 3px;
-    background: linear-gradient(90deg, var(--sf-primary), var(--sf-brass));
-  }
   .sf-auth-brand {
-    background:
-      radial-gradient(
-        120% 90% at 0% 0%,
-        color-mix(in srgb, var(--sf-primary) 12%, transparent),
-        transparent 60%
-      ),
-      radial-gradient(
-        120% 90% at 100% 100%,
-        color-mix(in srgb, var(--sf-brass) 9%, transparent),
-        transparent 55%
-      ),
-      var(--sf-surface);
+    background: var(--sf-surface);
     border-right: 1px solid var(--sf-border);
   }
   /* The page's own card becomes plain content inside the right half —
-     the master card carries the frame, bar, shadow and entrance. */
+     the master card carries the frame, shadow and entrance. */
   .sf-auth-master .sf-auth-card {
     overflow: visible;
     border: none;
     background: transparent;
     box-shadow: none;
     animation: none;
-  }
-  .sf-auth-master .sf-auth-card::before {
-    display: none;
   }
 }
 

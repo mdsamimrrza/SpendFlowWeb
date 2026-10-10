@@ -3,16 +3,24 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  ArrowLeftRight,
   BarChart3,
   ChevronDown,
+  Coins,
+  Download,
+  Home,
   LogOut,
   Plus,
+  PieChart,
   Repeat,
-  Settings as SettingsIcon,
   ScrollText,
-  Home,
+  Settings as SettingsIcon,
+  Tags,
+  Trash2,
+  Wallet,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import type { TranslationKey } from "@/constants/i18n/dictionaries";
 import { useAuth } from "@/store/AuthContext";
 import { useLanguage } from "@/store/LanguageContext";
 import { isAllowedAvatarUrl } from "@/services/auth";
@@ -21,21 +29,31 @@ import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { AlertBell } from "@/components/AlertBell";
 import { ConfirmDialog } from "@/components/ui/Modal";
 
-const NAV = [
+/* Primary ledger sections — also the phone dock. */
+const NAV: { href: string; labelKey: TranslationKey; Icon: typeof Home; enabled: boolean }[] = [
   { href: "/overview", labelKey: "home", Icon: Home, enabled: true },
   { href: "/history", labelKey: "history", Icon: ScrollText, enabled: true },
   { href: "/analytics", labelKey: "analytics", Icon: BarChart3, enabled: true },
   { href: "/recurring", labelKey: "recurring", Icon: Repeat, enabled: true },
   { href: "/settings", labelKey: "settings", Icon: SettingsIcon, enabled: true },
-] as const;
+];
+
+/* Sidebar-only destinations (V2 navigation surface). */
+const SIDEBAR: { href: string; labelKey: TranslationKey; Icon: typeof Home }[] = [
+  { href: "/accounts", labelKey: "accounts", Icon: Wallet },
+  { href: "/transfer", labelKey: "transferTitle", Icon: ArrowLeftRight },
+  { href: "/profit-loss", labelKey: "pl_title", Icon: PieChart },
+  { href: "/categories", labelKey: "navCategories", Icon: Tags },
+  { href: "/bullion", labelKey: "bullionTitle", Icon: Coins },
+  { href: "/export", labelKey: "exportImportTitle", Icon: Download },
+  { href: "/bin", labelKey: "settings_bin", Icon: Trash2 },
+];
 
 /**
- * Neo header — tab-rule design. The ledger's sections sit in a full-height
- * tab row whose active underline lands directly on the header rule (no
- * floating pills); the brand is fenced off by a hairline divider. Quiet
- * actions (alerts, privacy, theme) collapse into one segmented toolbar, and
- * the account becomes a chip with initials, name and caret. Phones get a
- * compact 44px command row and keep the floating dock for wayfinding.
+ * V2 shell (2026-10-10 redesign): a fixed sidebar carries the full
+ * navigation from lg up; the sticky topbar holds only the quiet actions,
+ * the primary action and the account menu. Phones keep a compact brand row
+ * and a flat, full-width bottom tab bar.
  */
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -73,146 +91,128 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   const memberName = profile?.display_name || profile?.email || null;
 
-  /* Full-height tab that underlines itself onto the header's bottom rule.
-     Icons on md–lg, labels from lg up. */
-  const navTab = ({ href, labelKey, Icon, enabled }: (typeof NAV)[number]) => {
+  const sideItem = ({ href, labelKey, Icon }: { href: string; labelKey: TranslationKey; Icon: typeof Home }) => {
     const label = t(labelKey);
-    const active = enabled && isActive(href);
-    const base =
-      "flex h-full items-center justify-center gap-2 border-b-2 px-3 text-sm transition-colors lg:px-4";
-    if (!enabled) {
-      return (
-        <span
-          key={href}
-          title={`${label} — ${t("comingSoon")}`}
-          className={`${base} cursor-not-allowed border-transparent text-faint`}
-        >
-          <Icon size={16} />
-          <span className="hidden lg:inline">{label}</span>
-        </span>
-      );
-    }
+    const active = isActive(href);
     return (
       <Link
         key={href}
         href={href}
-        title={label}
         aria-current={active ? "page" : undefined}
-        className={`${base} ${
+        className={`flex h-9 items-center gap-2.5 rounded-lg px-3 text-[13.5px] transition-colors ${
           active
-            ? "border-primary font-bold text-primary"
-            : "border-transparent font-semibold text-text-muted hover:border-border hover:text-text"
+            ? "bg-[var(--sf-primary-light)] font-semibold text-primary-strong"
+            : "font-medium text-text-muted hover:bg-surface-elevated hover:text-text"
         }`}
       >
-        <Icon size={16} />
-        <span className="hidden lg:inline">{label}</span>
+        <Icon size={16} className={active ? "text-primary" : "text-faint"} aria-hidden />
+        <span className="truncate">{label}</span>
       </Link>
     );
   };
 
   return (
     <div className="min-h-screen overflow-x-clip bg-background">
-      {/* ===== Header (all sizes) ===== */}
-      <header className="glass sticky top-0 z-40 border-b border-border">
-        <div className="mx-auto flex h-16 w-full max-w-[1400px] items-center gap-1.5 px-4 sm:gap-3 sm:px-6">
-          {/* Brand */}
-          <Link
-            href="/overview"
-            className="flex shrink-0 items-center gap-2.5"
-            aria-label={t("spendFlow")}
+      {/* ===== Sidebar (lg+) ===== */}
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-border bg-surface lg:flex">
+        <Link href="/overview" className="flex h-14 items-center gap-2.5 border-b border-border px-5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/icons/brand-light.png"
+            alt=""
+            width={28}
+            height={28}
+            className="h-7 w-7 rounded-lg ring-1 ring-border dark:hidden"
+          />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/icons/brand-dark.png"
+            alt=""
+            width={28}
+            height={28}
+            className="hidden h-7 w-7 rounded-lg ring-1 ring-border dark:block"
+          />
+          <span className="text-[15px] font-bold tracking-tight text-text">{t("spendFlow")}</span>
+        </Link>
+        <nav aria-label={t("navLedger")} className="flex-1 space-y-0.5 overflow-y-auto p-3">
+          {NAV.filter((n) => n.enabled).map(sideItem)}
+          <div className="pt-4">{SIDEBAR.map(sideItem)}</div>
+        </nav>
+        <div className="border-t border-border p-3">
+          <button
+            onClick={() => setConfirmSignOut(true)}
+            className="flex h-9 w-full items-center gap-2.5 rounded-lg px-3 text-[13.5px] font-medium text-text-muted transition-colors hover:bg-surface-elevated hover:text-danger"
           >
-            {/* Brand emblem from the mobile app — parchment in light, navy in dark. */}
+            <LogOut size={16} className="text-faint" aria-hidden />
+            {t("signOut")}
+          </button>
+        </div>
+      </aside>
+
+      {/* ===== Topbar ===== */}
+      <header className="sticky top-0 z-30 border-b border-border bg-surface lg:ml-60">
+        <div className="mx-auto flex h-14 w-full max-w-[1400px] items-center gap-2 px-4 sm:gap-3 sm:px-6">
+          {/* Brand (phones + tablets below lg — the sidebar carries it above) */}
+          <Link href="/overview" className="flex shrink-0 items-center gap-2 lg:hidden" aria-label={t("spendFlow")}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/icons/brand-light.png"
               alt=""
-              width={40}
-              height={40}
-              className="h-10 w-10 shrink-0 rounded-xl ring-1 ring-border dark:hidden"
+              width={28}
+              height={28}
+              className="h-7 w-7 rounded-lg ring-1 ring-border dark:hidden"
             />
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/icons/brand-dark.png"
               alt=""
-              width={40}
-              height={40}
-              className="hidden h-10 w-10 shrink-0 rounded-xl ring-1 ring-border dark:block"
+              width={28}
+              height={28}
+              className="hidden h-7 w-7 rounded-lg ring-1 ring-border dark:block"
             />
-            <span className="font-brand text-base font-extrabold tracking-tight text-text sm:text-lg">
-              {t("spendFlow")}
-            </span>
+            <span className="text-[15px] font-bold tracking-tight text-text">{t("spendFlow")}</span>
           </Link>
 
-          {/* Hairline fence between brand and tabs */}
-          <div
-            aria-hidden
-            className="my-3 hidden h-10 w-px shrink-0 self-center bg-border md:block"
-          />
-
-          {/* Section tabs — icons on md–lg, labels from lg */}
-          <nav
-            aria-label={t("navLedger")}
-            className="hidden h-full items-stretch self-stretch md:flex"
-          >
-            {NAV.map(navTab)}
-          </nav>
-
           <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-2.5">
-            {/* Quiet-actions segmented toolbar. The frame is sized to its
-                neighbours so the cluster reads as one row: 44px tall on phones
-                (where only the theme flip shows) and 40px from sm up, with the
-                buttons inset 4px inside the border. */}
-            <div className="flex h-11 items-center gap-0.5 rounded-xl border border-border bg-surface-elevated px-1 sm:h-10">
-              <span className="hidden sm:contents">
-                <AlertBell buttonClassName="h-8 w-8 rounded-md hover:bg-primary-light" />
-              </span>
-              <span className="hidden sm:contents">
-                <PrivacyEyeButton className="h-8 w-8" />
-              </span>
-              <ThemeToggle className="h-9 w-9 sm:h-8 sm:w-8" />
-            </div>
+            <AlertBell buttonClassName="h-9 w-9 rounded-lg hover:bg-surface-elevated" />
+            <PrivacyEyeButton className="h-9 w-9" />
+            <ThemeToggle className="h-9 w-9" />
 
-            {/* Primary action — icon on phones, labelled from md */}
             <Link
               href="/expense/new"
               aria-label={t("addTransaction")}
-              className="flex h-11 w-11 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-primary text-sm font-bold text-white shadow-soft transition-all hover:bg-primary-strong active:scale-[0.97] sm:h-10 sm:w-10 md:w-auto md:px-4"
+              className="flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-primary text-sm font-semibold text-white transition-colors hover:bg-primary-strong active:scale-[0.98] sm:w-auto sm:px-3.5"
             >
-              <Plus size={18} />
+              <Plus size={16} />
               <span className="hidden md:inline">{t("addTransaction")}</span>
             </Link>
 
-            {/* Account chip */}
             <div className="relative shrink-0">
               <button
                 onClick={() => setMenuOpen((v) => !v)}
                 aria-expanded={menuOpen}
                 aria-haspopup="menu"
                 aria-label={profile ? memberInitials() : t("signOut")}
-                className={`flex h-11 items-center gap-2 rounded-xl border pl-1.5 pr-1.5 transition-colors sm:h-10 ${
+                className={`flex h-9 items-center gap-2 rounded-lg border pl-1 pr-1 transition-colors sm:pr-2 ${
                   menuOpen
-                    ? "border-primary bg-primary-light"
-                    : "border-border bg-surface-elevated hover:border-primary/50"
+                    ? "border-primary bg-[var(--sf-primary-light)]"
+                    : "border-border bg-surface hover:border-faint"
                 }`}
               >
                 {profile?.avatar_url && isAllowedAvatarUrl(profile.avatar_url) ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={profile.avatar_url} alt="" className="h-8 w-8 shrink-0 rounded-lg object-cover" />
+                  <img src={profile.avatar_url} alt="" className="h-7 w-7 shrink-0 rounded-md object-cover" />
                 ) : (
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-light text-[11px] font-extrabold text-primary-strong">
+                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-[var(--sf-primary-light)] text-[10.5px] font-bold text-primary-strong">
                     {memberInitials()}
                   </span>
                 )}
                 {memberName && (
-                  <span className="hidden max-w-[9rem] truncate text-sm font-bold text-text xl:block">
+                  <span className="hidden max-w-[9rem] truncate text-[13px] font-medium text-text xl:block">
                     {memberName}
                   </span>
                 )}
-                <ChevronDown
-                  size={14}
-                  aria-hidden
-                  className="hidden shrink-0 text-text-muted xl:block"
-                />
+                <ChevronDown size={14} aria-hidden className="hidden shrink-0 text-faint xl:block" />
               </button>
               {menuOpen && (
                 <>
@@ -224,23 +224,21 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                   />
                   <div
                     role="menu"
-                    className="panel absolute right-0 top-[calc(100%+8px)] z-50 w-64 rounded-2xl p-1.5 shadow-pop"
+                    className="panel absolute right-0 top-[calc(100%+8px)] z-50 w-60 p-1.5 shadow-pop"
                   >
                     {profile && (
                       <div className="border-b border-border px-3 pb-2.5 pt-2">
-                        <p className="truncate text-sm font-bold text-text">
+                        <p className="truncate text-sm font-semibold text-text">
                           {profile.display_name ?? "Member"}
                         </p>
-                        <p className="truncate text-xs text-faint">
-                          {profile.email}
-                        </p>
+                        <p className="truncate text-xs text-faint">{profile.email}</p>
                       </div>
                     )}
                     <Link
-                      href="/settings"
+                      href="/profile"
                       role="menuitem"
                       onClick={() => setMenuOpen(false)}
-                      className="mt-1 flex items-center gap-2.5 rounded-xl px-3 py-3 text-sm font-semibold text-text transition-colors hover:bg-surface-elevated"
+                      className="mt-1 flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium text-text transition-colors hover:bg-surface-elevated"
                     >
                       <SettingsIcon size={15} className="text-text-muted" />
                       {t("settings")}
@@ -248,7 +246,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                     <button
                       role="menuitem"
                       onClick={() => setConfirmSignOut(true)}
-                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-3 text-sm font-semibold text-danger transition-colors hover:bg-rust-tint"
+                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium text-danger transition-colors hover:bg-rust-tint"
                     >
                       <LogOut size={15} />
                       {t("signOut")}
@@ -262,64 +260,45 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       </header>
 
       {/* ===== Content ===== */}
-      <main className="mx-auto w-full max-w-[1400px] px-4 pb-36 pt-3 sm:px-6 sm:pt-6 md:pb-10">
+      <main className="mx-auto w-full max-w-[1400px] px-4 pb-28 pt-4 sm:px-6 sm:pt-6 lg:ml-60 lg:w-[calc(100%-15rem)] lg:pb-10 lg:max-w-none xl:px-8">
         {children}
       </main>
 
-      {/* Floating dock (phones only; hidden on expense entry pages — the
-          sticky save bar occupies that corner there). Opaque tab tint rather
-          than `.glass`: at 82% the page scrolled underneath read through the
-          bar, so labels sat on top of the list. */}
+      {/* ===== Bottom tab bar (phones only) ===== */}
       {!pathname.startsWith("/expense/") && (
         <nav
           aria-label={t("navLedger")}
-          className="fixed left-1/2 z-40 flex w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2 items-center justify-between gap-1 rounded-full border border-border px-2 py-1.5 shadow-pop backdrop-blur md:hidden"
-          style={{
-            bottom: "calc(0.75rem + env(safe-area-inset-bottom))",
-            // Opaque tab tint, not `.glass`: at 82% the list scrolled under the
-            // bar and read through it. Alpha modifiers (`bg-tab/95`) are inert
-            // here — the tokens are plain hex vars — so the mix is explicit.
-            backgroundColor: "color-mix(in srgb, var(--sf-tab) 96%, transparent)",
-          }}
+          className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-tab md:hidden"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         >
-          {NAV.map(({ href, labelKey, Icon, enabled }) => {
-            const active = enabled && isActive(href);
-            // Mobile marks the selected tab by colour alone (`tabBarActiveTintColor`
-            // → primary, inactive → textMuted), never a filled pill. The web dock
-            // keeps that, adding only a soft primary chip behind the icon so the
-            // selection still reads on a floating bar.
-            const cls = `flex h-12 min-w-12 flex-col items-center justify-center gap-0.5 px-1.5 text-[9px] font-bold uppercase leading-none transition-colors ${
-              active ? "text-primary" : enabled ? "text-text-muted" : "text-faint"
-            }`;
-            const inner = (
-              <>
-                <span
-                  aria-hidden
-                  className={`grid h-7 w-7 place-items-center rounded-full transition-colors ${
-                    active ? "bg-[var(--sf-primary-light)]" : "bg-transparent"
-                  }`}
+          <div className="mx-auto flex max-w-lg items-stretch">
+            {NAV.map(({ href, labelKey, Icon, enabled }) => {
+              const active = enabled && isActive(href);
+              const cls = `flex h-14 flex-1 flex-col items-center justify-center gap-1 text-[10px] font-medium leading-none transition-colors ${
+                active ? "text-primary" : enabled ? "text-text-muted" : "text-faint"
+              }`;
+              const inner = (
+                <>
+                  <Icon size={19} aria-hidden />
+                  {t(labelKey)}
+                </>
+              );
+              return enabled ? (
+                <Link
+                  key={href}
+                  href={href}
+                  aria-current={active ? "page" : undefined}
+                  className={cls}
                 >
-                  <Icon size={18} />
+                  {inner}
+                </Link>
+              ) : (
+                <span key={href} className={cls}>
+                  {inner}
                 </span>
-                {t(labelKey)}
-              </>
-            );
-            return enabled ? (
-              <Link
-                key={href}
-                href={href}
-                title={t(labelKey)}
-                aria-current={active ? "page" : undefined}
-                className={cls}
-              >
-                {inner}
-              </Link>
-            ) : (
-              <span key={href} className={cls}>
-                {inner}
-              </span>
-            );
-          })}
+              );
+            })}
+          </div>
         </nav>
       )}
 

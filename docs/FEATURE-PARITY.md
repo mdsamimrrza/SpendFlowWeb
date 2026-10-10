@@ -104,7 +104,7 @@ and/or the mobile row payload). These are scope decisions, not drift:
   components still carry no raw hex. Cards use the mobile card language: raised paper on a 1 px
   rule line, 10 px radius, flat (no elevation). Both palettes are fixed unless the user
   re-decides.
-- **Visual identity divergence — "Engraved Banknote" redesign (2026-10-10, user-directed).**
+- **Visual identity divergence — "Engraved Banknote" redesign (2026-10-10, user-directed) — SUPERSEDED the same day by "SpendFlow V2" (below).**
   The user commissioned a web-only redesign ("complete design my this web app"); direction
   chosen from three proposals (Engraved Banknote / Precision Terminal / refine-only). The web
   adopts a currency-note design language — light = note-paper cream `#F2EFE2` + engraved green
@@ -117,6 +117,18 @@ and/or the mobile row payload). These are scope decisions, not drift:
   parchment/teal look — the two clients share data and behavior, not skin. Mobile is untouched;
   if the APK later wants the same skin it can adopt `docs/DESIGN-TOKEN-BRIDGE.md`'s updated
   token table. All semantics, behavior, i18n keys and screens unchanged — visual layer only.
+- **Visual identity divergence — "SpendFlow V2" full redesign (2026-10-10, user-directed:
+  "version 2 of this web app, complete new, professional modern clean, no AI junk, all
+  screens").** Replaces the Engraved Banknote pass (user rejected the ornamental direction).
+  The web now runs a neutral modern system: zinc surfaces (`#F7F7F8` light / `#09090B` dark,
+  white `#111113` cards), emerald `#059669` brand, Inter as the only face, sentence-case
+  labels (`.caps` no longer uppercases), hairline 12px cards, no glass/gradients/ornaments
+  (the Guilloche component was added and deleted the same day). Navigation rebuilt as a real
+  web shell: fixed sidebar (lg+) with all destinations (Home, History, Analytics, Recurring,
+  Accounts, Transfer, Budget & Reports, Categories, Gold & Silver, Export, Bin, Settings),
+  sticky topbar for actions, flat bottom tab bar on phones. New i18n key `navCategories`
+  (en/hi/ne). Deliberate divergence from the mobile app's parchment/teal skin — behavior,
+  schema, i18n coverage and screen semantics unchanged. Token table: `DESIGN-TOKEN-BRIDGE.md` §0.
 - **App-wide date picking — shared mobile CalendarModal (2026-09-15).** The mobile
   `ui/CalendarModal.tsx` is ported once as `components/ui/CalendarModal.tsx` (bottom sheet,
   From/To banner, quick presets, year-list + month-grid jump picker, Sunday-first day grid,

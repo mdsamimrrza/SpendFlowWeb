@@ -134,6 +134,7 @@ export const en = {
   triFlowInsightTracking: "Tracking outflow: {a} spent across {n} transactions.",
   // shell nav groups
   navLedger: "Ledger",
+  navCategories: "Categories",
   navAccount: "Account",
   // home
   spendFlow: "SpendFlow",
@@ -1363,6 +1364,7 @@ export const hi: Partial<Record<TranslationKey, string>> = {
   triFlowInsightHealthy: "स्वस्थ नक़दी प्रवाह: आप आय का {a} ({r}%) बचा रहे हैं।",
   triFlowInsightTracking: "बहिर्वाह ट्रैकिंग: {n} लेन-देन में {a} खर्च।",
   navLedger: "बही",
+  navCategories: "श्रेणियाँ",
   navAccount: "खाता",
   spendFlow: "SpendFlow",
   monthlyBudget: "मासिक बजट",
@@ -2578,6 +2580,7 @@ export const ne: Partial<Record<TranslationKey, string>> = {
   triFlowInsightHealthy: "स्वस्थ नगद प्रवाह: तपाईं आम्दानीको {a} ({r}%) बचत गर्दै हुनुहुन्छ।",
   triFlowInsightTracking: "बहिर्गमन ट्र्याकिङ: {n} कारोबारमा {a} खर्च।",
   navLedger: "बही",
+  navCategories: "श्रेणीहरू",
   navAccount: "खाता",
   spendFlow: "SpendFlow",
   monthlyBudget: "मासिक बजेट",
