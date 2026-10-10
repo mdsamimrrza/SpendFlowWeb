@@ -3,17 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useEffect } from "react";
-import {
-  ArrowDown,
-  ChevronRight,
-  Coffee,
-  Layers,
-  Plus,
-  Repeat,
-  Sparkles,
-  TrendingUp,
-  Wallet,
-} from "lucide-react";
+import { ArrowDown, ChevronRight, Layers, Plus, Repeat } from "lucide-react";
 import { useAuth } from "@/store/AuthContext";
 import { useLanguage } from "@/store/LanguageContext";
 import { usePrivacy } from "@/store/PrivacyContext";
@@ -22,7 +12,7 @@ import { useRowConverter } from "@/hooks/useRates";
 import { cacheExpenses, getCachedExpenses, listExpenses } from "@/services/expenses";
 import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
 import { MoneyPulseHero } from "@/components/dashboard/MoneyPulseHero";
-import { QuickStatTiles, type QuickStat } from "@/components/dashboard/QuickStatTiles";
+import { BudgetPanel } from "@/components/dashboard/BudgetPanel";
 import { BillsDueStrip } from "@/components/dashboard/BillsDueStrip";
 import { RecentFeed } from "@/components/dashboard/RecentFeed";
 import { ExpenseDetailSheet } from "@/components/expense/ExpenseDetailSheet";
@@ -52,10 +42,10 @@ import { useToast } from "@/store/ToastContext";
 import { useBudget } from "@/hooks/useRates";
 
 /**
- * Home — mobile-first money dashboard (modern fintech layout). Tier 1:
- * Money Pulse hero (net + delta chip, budget ring with remaining/projected,
- * inflow/outflow split) → quick-stat tiles → cash-flow chart + ranked
- * spending-mix list → daily-rhythm heat grid → recent entries.
+ * Home - market-pattern money dashboard (Monarch / Simplifi style), rebuilt
+ * 2026-10-11. KPI band (Net / Inflow / Outflow / Savings rate, Fraunces
+ * figures) -> bills strip -> cash-flow chart beside the budget-pacing card
+ * -> recent feed beside the spending-mix + daily-rhythm insight column.
  * All aggregation mirrors the mobile statement logic (cycle-scoped totals,
  * FX-converted rows, previous-cycle delta).
  */
@@ -288,46 +278,6 @@ export default function HomePage() {
       ),
     [locale],
   );
-  const quickStats = useMemo<QuickStat[]>(() => {
-    const avgDaily = stats.spent / Math.max(pace.daysElapsed, 1);
-    const savingsRate = stats.income > 0 ? Math.round(((stats.income - stats.spent) / stats.income) * 100) : null;
-    const top = categorySlices[0];
-    return [
-      {
-        key: "today",
-        label: t("today"),
-        value: fmt(stats.todayTotal),
-        sub: t("homeTodaySpendSub"),
-        icon: <Coffee size={15} />,
-        tone: "primary",
-      },
-      {
-        key: "avg",
-        label: t("homeAvgDaily"),
-        value: fmt(avgDaily),
-        sub: `${pace.daysElapsed} ${t("homeDaysIn")}`,
-        icon: <TrendingUp size={15} />,
-        tone: "danger",
-      },
-      {
-        key: "top",
-        label: t("homeTopCategory"),
-        value: top ? top.label : "—",
-        sub: top ? fmt(top.value) : t("homeNoSpendYet"),
-        icon: <Sparkles size={15} />,
-        tone: top ? "brass" : "primary",
-      },
-      {
-        key: "savings",
-        label: t("homeSavingsRate"),
-        value: savingsRate != null ? `${savingsRate}%` : "—",
-        sub: t("homeKeptOfIncome"),
-        icon: <Wallet size={15} />,
-        tone: savingsRate != null && savingsRate >= 20 ? "income" : "info",
-      },
-    ];
-  }, [stats, pace.daysElapsed, categorySlices, fmt, t]);
-
   const showSkeleton = authLoading || (loading && rows.length === 0);
   if (showSkeleton) {
     // Mirrors the loaded layout — no shift when data lands.
@@ -399,45 +349,68 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Bills due strip (mobile §5): pay_on_due plans with an open slot,
-          one-tap Mark Paid — renders nothing until a slot is actually open. */}
-      <BillsDueStrip />
+      {/* KPI band - Net / Inflow / Outflow / Savings rate (Fraunces figures) */}
+      <MoneyPulseHero
+        net={stats.net}
+        income={stats.income}
+        expense={stats.spent}
+        todayTotal={stats.todayTotal}
+        budget={budget}
+        pace={pace}
+        formatted={fmt}
+        cycleLabel={cycleLabel}
+        delta={prevDelta}
+        entries={stats.entriesInCycle}
+        footer={<TodayRateLine
+          live={{ income: stats.income, expense: stats.spent }}
+          frozen={frozenTotals}
+          fmt={fmt}
+        />}
+      />
 
-      {/* Tier 1 — Money Pulse hero: net + delta, budget ring, flow split */}
-      <div className="mt-1">
-        <MoneyPulseHero
-          net={stats.net}
-          income={stats.income}
-          expense={stats.spent}
-          todayTotal={stats.todayTotal}
-          budget={budget}
-          pace={pace}
-          formatted={fmt}
-          cycleLabel={cycleLabel}
-          delta={prevDelta}
-          entries={stats.entriesInCycle}
-          footer={<TodayRateLine
-            live={{ income: stats.income, expense: stats.spent }}
-            frozen={frozenTotals}
-            fmt={fmt}
-          />}
-        />
-      </div>
-
-      {/* Tier 1.5 — quick stats */}
+      {/* Bills due strip: pay_on_due plans with an open slot, one-tap Mark
+          Paid — renders nothing until a slot is actually open. */}
       <div className="mt-4">
-        <QuickStatTiles tiles={quickStats} />
+        <BillsDueStrip />
       </div>
 
       {/* Tier 2/3 — one grid so every breakpoint stays filled: flow (full
           row) + mix list & heat grid (paired) at md; flow + mix on top, then
           rhythm (⅓) beside the recent feed (⅔) at lg — the compact heat grid
           never stretches across dead space. Budget pacing lives in the hero. */}
-      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <div className="min-w-0 md:col-span-2 lg:col-span-2">
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="min-w-0 lg:col-span-2">
           <FlowChartCard label={t("cashFlow")} />
         </div>
 
+        {/* Budget pacing — the market-style budget card (ring + pace meter +
+            allowance rows), beside the chart on desktop. */}
+        <Panel className="min-w-0">
+          <BudgetPanel
+            budget={budget}
+            spent={stats.spent}
+            income={stats.income}
+            pace={pace}
+            formatted={fmt}
+            cycleLabel={cycleLabel}
+            labels={{
+              budgetOnFile: t("monthlyBudget"),
+              spent: t("spent"),
+              remaining: t("remaining"),
+              overBy: t("homeOverBy"),
+              projectedClose: t("homeProjectedClose"),
+              dailyAllowance: t("homeAvgDaily"),
+              savingsRate: t("homeSavingsRate"),
+              noBudgetTitle: t("homeNoBudgetTitle"),
+              noBudgetBody: t("homeNoBudgetBody"),
+              setBudget: t("homeSetBudget"),
+              day: t("homeDayWord"),
+              of: t("homeOfBudget"),
+            }}
+          />
+        </Panel>
+
+        <div className="flex min-w-0 flex-col gap-4">
         <Panel
           label={t("homeSpendingMix")}
           className="min-w-0"
@@ -463,10 +436,8 @@ export default function HomePage() {
           </div>
         </Panel>
 
-        {/* Daily rhythm — calendar heat grid (intensity per day). self-start:
-            the card hugs its content instead of stretching to the taller
-            recent-feed column and leaving a vertical dead band. */}
-        <Panel label={t("homeDailyRhythm")} className="min-w-0 self-start md:col-span-1 lg:col-span-1">
+        {/* Daily rhythm — calendar heat grid (intensity per day). */}
+        <Panel label={t("homeDailyRhythm")} className="min-w-0">
           <div className="flex h-full flex-col p-4 sm:p-5">
             {dailyDays.length > 0 ? (
               <DailyHeat
@@ -495,9 +466,10 @@ export default function HomePage() {
           </div>
         </Panel>
 
-        {/* Tier 4 — recent entries: date-grouped fintech feed, beside the
-            heat grid at lg so the row never leaves a dead column. */}
-        <section className="min-w-0 md:col-span-2 lg:col-span-2">
+        </div>
+
+        {/* Recent entries: date-grouped feed, beside the insight column. */}
+        <section className="min-w-0 lg:col-span-2">
         <SectionTitle
           action={
             <Link href="/history" className="caps !text-primary hover:underline">

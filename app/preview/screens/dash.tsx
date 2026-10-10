@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Coffee, Plus, Sparkles, TrendingUp, Wallet } from "lucide-react";
 import { MoneyPulseHero } from "@/components/dashboard/MoneyPulseHero";
-import { QuickStatTiles, type QuickStat } from "@/components/dashboard/QuickStatTiles";
+import { BudgetPanel } from "@/components/dashboard/BudgetPanel";
 import { SpendingMix } from "@/components/dashboard/SpendingMix";
 import { DailyHeat } from "@/components/dashboard/DailyHeat";
 import { RecentFeed } from "@/components/dashboard/RecentFeed";
@@ -123,13 +123,6 @@ function today0() {
   return new Date();
 }
 
-const quickStats: QuickStat[] = [
-  { key: "today", label: "Today", value: fmt(byDay.get(iso(new Date())) ?? 850), sub: "spent today", icon: <Coffee size={15} />, tone: "primary" },
-  { key: "avg", label: "Avg per day", value: fmt(Math.round(spent / 14)), sub: "14 days in", icon: <TrendingUp size={15} />, tone: "danger" },
-  { key: "top", label: "Top category", value: slices[0]?.label ?? "—", sub: fmt(slices[0]?.value ?? 0), icon: <Sparkles size={15} />, tone: "brass" },
-  { key: "savings", label: "Savings rate", value: `${Math.max(0, Math.round(((income - spent) / income) * 100))}%`, sub: "kept of income", icon: <Wallet size={15} />, tone: "income" },
-];
-
 export default function PreviewDashPage() {
   return (
     <DashboardShell>
@@ -144,9 +137,9 @@ export default function PreviewDashPage() {
             </h1>
           </div>
           <div className="flex shrink-0 items-center gap-2.5">
-            <span className="hidden h-11 items-center gap-2 rounded-full border border-border bg-surface px-4 shadow-soft sm:flex">
+            <span className="hidden h-10 items-center gap-2 rounded-lg border border-border bg-surface px-3.5 sm:flex">
               <CurrencyFlag currency="NPR" size={16} />
-              <span className="caps whitespace-nowrap">Sep 1 – Sep 30</span>
+              <span className="whitespace-nowrap text-[12.5px] font-medium text-text-muted">Sep 1 – Sep 30</span>
             </span>
             <Link
               href="/expense/new"
@@ -174,14 +167,35 @@ export default function PreviewDashPage() {
           />
         </div>
 
-        <div className="mt-4">
-          <QuickStatTiles tiles={quickStats} />
-        </div>
-
-        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <div className="min-w-0 md:col-span-2">
+        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="min-w-0 lg:col-span-2">
             <FlowChartCard label="Cash flow" rows={mockRows} />
           </div>
+          <Panel className="min-w-0">
+            <BudgetPanel
+              budget={90000}
+              spent={spent}
+              income={income}
+              pace={pace}
+              formatted={fmt}
+              cycleLabel="Sep 1 – Sep 30"
+              labels={{
+                budgetOnFile: "Monthly budget",
+                spent: "spent",
+                remaining: "Remaining",
+                overBy: "Over by",
+                projectedClose: "Projected close",
+                dailyAllowance: "Avg per day",
+                savingsRate: "Savings rate",
+                noBudgetTitle: "No budget yet",
+                noBudgetBody: "File a monthly budget to see pacing here.",
+                setBudget: "Set budget",
+                day: "Day",
+                of: "of",
+              }}
+            />
+          </Panel>
+          <div className="flex min-w-0 flex-col gap-4">
           <Panel label="Spending mix" className="min-w-0">
             <div className="flex min-h-0 flex-1 flex-col p-4 sm:p-5">
               <SpendingMix
@@ -193,7 +207,7 @@ export default function PreviewDashPage() {
             </div>
           </Panel>
 
-          <Panel label="Daily rhythm" className="min-w-0 self-start md:col-span-1 lg:col-span-1">
+          <Panel label="Daily rhythm" className="min-w-0">
             <div className="flex h-full flex-col p-4 sm:p-5">
               <DailyHeat
                 days={dailyDays}
@@ -205,7 +219,9 @@ export default function PreviewDashPage() {
             </div>
           </Panel>
 
-          <section className="min-w-0 md:col-span-2 lg:col-span-2">
+          </div>
+
+          <section className="min-w-0 lg:col-span-2">
             <SectionTitle action={<Link href="/history" className="caps !text-primary hover:underline">View All</Link>}>
               Recent Activity
             </SectionTitle>

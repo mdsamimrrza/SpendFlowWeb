@@ -366,11 +366,12 @@ body {
 
 /* ---- V2 figure helpers ---- */
 
-/* Hero money figure — Inter, tabular. */
+/* Hero money figure — the banknote serif (Fraunces) over tabular digits. */
 .figures-display {
+  font-family: var(--font-fraunces), var(--font-inter), ui-sans-serif, sans-serif;
   font-variant-numeric: lining-nums tabular-nums;
-  font-weight: 650;
-  letter-spacing: -0.025em;
+  font-weight: 560;
+  letter-spacing: -0.01em;
 }
 
 /* Single hairlines (kept as hook names; V2 has no double rules). */

@@ -1,13 +1,18 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Fraunces, Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/store/Providers";
 import { ThemeFavicon } from "@/components/ui/ThemeFavicon";
 
-/* V2 interface face - Inter for everything (docs/DESIGN-TOKEN-BRIDGE.md §0). */
+/* Inter for UI, Fraunces (the banknote serif) for money figures. */
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
+  display: "swap",
+});
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-fraunces",
   display: "swap",
 });
 
@@ -45,7 +50,11 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     // suppressHydrationWarning: ThemeContext toggles the `dark` class pre-hydration.
-    <html lang="en" suppressHydrationWarning className={inter.variable}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${inter.variable} ${fraunces.variable}`}
+    >
       <body className="min-h-screen bg-background text-text antialiased">
         <Providers>
           <ThemeFavicon />
