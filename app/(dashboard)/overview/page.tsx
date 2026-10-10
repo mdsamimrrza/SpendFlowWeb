@@ -338,14 +338,6 @@ export default function HomePage() {
             <CurrencyFlag currency={displayCurrency} size={16} />
             <span className="whitespace-nowrap text-[12.5px] font-medium text-text-muted">{cycleLabel}</span>
           </span>
-          <Link
-            href="/expense/new"
-            aria-label={t("addTransaction")}
-            className="flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-strong active:scale-[0.98]"
-          >
-            <Plus size={17} />
-            <span className="hidden sm:inline">{t("addTransaction")}</span>
-          </Link>
         </div>
       </header>
 

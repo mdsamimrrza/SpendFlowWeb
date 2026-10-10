@@ -141,14 +141,6 @@ export default function PreviewDashPage() {
               <CurrencyFlag currency="NPR" size={16} />
               <span className="whitespace-nowrap text-[12.5px] font-medium text-text-muted">Sep 1 – Sep 30</span>
             </span>
-            <Link
-              href="/expense/new"
-              aria-label="Add transaction"
-              className="flex h-11 items-center justify-center gap-2 rounded-lg bg-primary px-3.5 text-sm font-semibold text-white transition-colors hover:bg-primary-strong active:scale-[0.98] sm:px-5"
-            >
-              <Plus size={17} />
-              <span className="hidden sm:inline">Add</span>
-            </Link>
           </div>
         </header>
 
