@@ -25,6 +25,7 @@ interface BudgetPanelProps {
     overBy: string;
     projectedClose: string;
     dailyAllowance: string;
+    dailySpendLabel: string;
     savingsRate: string;
     noBudgetTitle: string;
     noBudgetBody: string;
@@ -169,13 +170,13 @@ export function BudgetPanel({
       </div>
 
       {/* Daily spend strip - fills the card's leftover height with real
-          signal: one bar per day, today ringed. */}
+          signal: solid outflow-red bars, today in brand emerald. */}
       {daily && daily.length > 0 && (
-        <div className="mt-auto border-t border-border pt-3">
-          <div className="flex h-14 items-end gap-1">
+        <div className="mt-auto border-t border-border pt-4">
+          <div className="flex h-16 items-end gap-1.5">
             {daily.map((d) => {
               const max = Math.max(...daily.map((x) => x.value), 1);
-              const h = Math.max(4, Math.round((d.value / max) * 100));
+              const h = Math.max(6, Math.round((d.value / max) * 100));
               const now = new Date();
               const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
               const isToday = d.iso === todayIso;
@@ -183,17 +184,24 @@ export function BudgetPanel({
                 <div
                   key={d.iso}
                   title={`${d.iso}${formatValue ? ` · ${formatValue(d.value)}` : ""}`}
-                  className={`flex-1 rounded-t-sm transition-colors ${
-                    d.value > 0 ? "bg-rust-tint" : "bg-surface-elevated"
-                  } ${isToday ? "ring-1 ring-danger" : ""}`}
-                  style={{ height: `${d.value > 0 ? h : 6}%` }}
+                  className={`min-w-[6px] flex-1 rounded-t-[3px] ${
+                    isToday
+                      ? d.value > 0
+                        ? "bg-primary"
+                        : "bg-primary-light"
+                      : d.value > 0
+                        ? "bg-danger"
+                        : "bg-surface-elevated"
+                  }`}
+                  style={{ height: `${d.value > 0 ? h : 5}%` }}
                 />
               );
             })}
           </div>
-          <p className="mt-1.5 text-[11px] text-faint">
-            {labels.dailyAllowance} · {daily.length}d
-          </p>
+          <div className="mt-2 flex items-center justify-between">
+            <p className="caps">{labels.dailySpendLabel}</p>
+            <p className="numeric text-[11px] text-faint">{daily.length}d</p>
+          </div>
         </div>
       )}
     </div>

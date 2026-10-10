@@ -180,6 +180,7 @@ export default function PreviewDashPage() {
                 overBy: "Over by",
                 projectedClose: "Projected close",
                 dailyAllowance: "Avg per day",
+                dailySpendLabel: "Daily spending",
                 savingsRate: "Savings rate",
                 noBudgetTitle: "No budget yet",
                 noBudgetBody: "File a monthly budget to see pacing here.",

@@ -394,6 +394,7 @@ export default function HomePage() {
               overBy: t("homeOverBy"),
               projectedClose: t("homeProjectedClose"),
               dailyAllowance: t("homeAvgDaily"),
+              dailySpendLabel: t("homeDailySpend"),
               savingsRate: t("homeSavingsRate"),
               noBudgetTitle: t("homeNoBudgetTitle"),
               noBudgetBody: t("homeNoBudgetBody"),
