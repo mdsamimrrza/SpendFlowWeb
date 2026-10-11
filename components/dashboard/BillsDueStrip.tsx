@@ -146,7 +146,7 @@ export function BillsDueStrip() {
 
   return (
     <section
-      className="panel mb-4 border-2"
+      className="panel mb-4 !rounded-2xl border-2"
       style={{ borderColor: hasOverdue ? "color-mix(in srgb, var(--sf-danger) 50%, transparent)" : "var(--sf-border)" }}
       aria-label={t("recurring_bills_due")}
     >

@@ -1,23 +1,26 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { Coffee, Plus, Sparkles, TrendingUp, Wallet } from "lucide-react";
+import { Coffee, Plus, Sparkles, TrendingUp, Wallet, ArrowDown } from "lucide-react";
 import { MoneyPulseHero } from "@/components/dashboard/MoneyPulseHero";
 import { BudgetPanel } from "@/components/dashboard/BudgetPanel";
 import { SpendingMix } from "@/components/dashboard/SpendingMix";
-import { DailyHeat } from "@/components/dashboard/DailyHeat";
 import { RecentFeed } from "@/components/dashboard/RecentFeed";
 import { FlowChartCard } from "@/components/charts/FlowChartCard";
+import { CalendarHeatmap } from "@/components/charts/CalendarHeatmap";
 import { Panel, SectionTitle } from "@/components/ui/Card";
+import { FitText } from "@/components/ui/FitText";
 import { CurrencyFlag } from "@/components/ui/CurrencyFlag";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import type { ExpenseRow } from "@/services/expenses";
 
 /**
  * Static design preview of the redesigned home dashboard (mock data, no auth,
- * no network) — composes the real DashboardShell + the overview tiers
- * (MoneyPulseHero, quick stats, flow chart + ranked spending mix, daily
- * rhythm heat grid, recent rows) so the layout can be screenshotted without
+ * no network) - composes the real DashboardShell + the overview tiers
+ * (pastel MoneyPulseHero KPI band, flow chart + budget pacing, daily rhythm
+ * heat grid, recent rows) plus the xl-only right widget rail (calendar,
+ * budget progress, spending mix) so the layout can be screenshotted without
  * an account.
  */
 const fmt = (n: number) => `NPR ${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(n)}`;
@@ -124,6 +127,27 @@ function today0() {
 }
 
 export default function PreviewDashPage() {
+  // Rail calendar month (mirrors the real page's local view state).
+  const [calYm, setCalYm] = useState(() => {
+    const n = new Date();
+    return { y: n.getFullYear(), m: n.getMonth() };
+  });
+  const canNextMonth =
+    calYm.y * 12 + calYm.m < new Date().getFullYear() * 12 + new Date().getMonth();
+  const spendByDay: Record<string, number> = {};
+  for (const [k, v] of byDay) spendByDay[k] = v;
+
+  const mixAction = (
+    <Link href="/analytics" className="caps !text-primary hover:underline">
+      Analytics <ArrowDown size={11} className="inline -translate-y-px" />
+    </Link>
+  );
+  const mixBody = (
+    <div className="flex min-h-0 flex-1 flex-col p-4 sm:p-5">
+      <SpendingMix slices={slices} formatValue={fmt} otherLabel="Other" cycleTotalLabel="Cycle outflow" />
+    </div>
+  );
+
   return (
     <DashboardShell>
       <main className="mx-auto w-full max-w-[1200px]">
@@ -159,76 +183,109 @@ export default function PreviewDashPage() {
           />
         </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="min-w-0 lg:col-span-2">
-            <FlowChartCard label="Cash flow" rows={mockRows} />
-          </div>
-          <Panel className="min-w-0">
-            <BudgetPanel
-              budget={90000}
-              spent={spent}
-              income={income}
-              pace={pace}
-              formatted={fmt}
-              cycleLabel="Sep 1 – Sep 30"
-              daily={dailyDays}
-              formatValue={fmt}
-              labels={{
-                budgetOnFile: "Monthly budget",
-                spent: "spent",
-                remaining: "Remaining",
-                overBy: "Over by",
-                projectedClose: "Projected close",
-                dailyAllowance: "Avg per day",
-                dailySpendLabel: "Daily spending",
-                savingsRate: "Savings rate",
-                noBudgetTitle: "No budget yet",
-                noBudgetBody: "File a monthly budget to see pacing here.",
-                setBudget: "Set budget",
-                day: "Day",
-                of: "of",
-              }}
-            />
-          </Panel>
-          <div className="flex min-w-0 flex-col gap-4">
-          <Panel label="Spending mix" className="min-w-0">
-            <div className="flex min-h-0 flex-1 flex-col p-4 sm:p-5">
-              <SpendingMix
-                slices={slices}
-                formatValue={fmt}
-                otherLabel="Other"
-                cycleTotalLabel="Cycle outflow"
-              />
+        <div className="mt-4 grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+          <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-3">
+            <div className="min-w-0 rounded-2xl [&>.panel]:rounded-2xl lg:col-span-2 xl:col-span-3">
+              <FlowChartCard label="Cash flow" rows={mockRows} />
             </div>
-          </Panel>
+            <Panel className="min-w-0 !rounded-2xl xl:hidden">
+              <BudgetPanel
+                budget={90000}
+                spent={spent}
+                income={income}
+                pace={pace}
+                formatted={fmt}
+                cycleLabel="Sep 1 – Sep 30"
+                daily={dailyDays}
+                formatValue={fmt}
+                labels={{
+                  budgetOnFile: "Monthly budget",
+                  spent: "spent",
+                  remaining: "Remaining",
+                  overBy: "Over by",
+                  projectedClose: "Projected close",
+                  dailyAllowance: "Avg per day",
+                  dailySpendLabel: "Daily spending",
+                  savingsRate: "Savings rate",
+                  noBudgetTitle: "No budget yet",
+                  noBudgetBody: "File a monthly budget to see pacing here.",
+                  setBudget: "Set budget",
+                  day: "Day",
+                  of: "of",
+                }}
+              />
+            </Panel>
+            <Panel label="Spending mix" action={mixAction} className="min-w-0 !rounded-2xl xl:hidden">
+              {mixBody}
+            </Panel>
 
-          <Panel label="Daily rhythm" className="min-w-0">
-            <div className="flex h-full flex-col p-4 sm:p-5">
-              <DailyHeat
-                days={dailyDays}
+            <section className="min-w-0 lg:col-span-3">
+              <SectionTitle action={<Link href="/history" className="caps !text-primary hover:underline">View All</Link>}>
+                Recent Activity
+              </SectionTitle>
+              <RecentFeed
+                rows={mockRows}
+                amountFor={(r) => fmt(r.amount)}
+                displayCurrency="NPR"
                 locale="en"
-                formatValue={fmt}
-                todayISO={iso(new Date())}
-                labels={{ less: "less", more: "more", busiest: "Busiest day" }}
+                max={8}
+                labels={{ today: "Today", yesterday: "Yesterday" }}
               />
-            </div>
-          </Panel>
-
+            </section>
           </div>
 
-          <section className="min-w-0 lg:col-span-2">
-            <SectionTitle action={<Link href="/history" className="caps !text-primary hover:underline">View All</Link>}>
-              Recent Activity
-            </SectionTitle>
-            <RecentFeed
-              rows={mockRows}
-              amountFor={(r) => fmt(r.amount)}
-              displayCurrency="NPR"
-              locale="en"
-              max={8}
-              labels={{ today: "Today", yesterday: "Yesterday" }}
-            />
-          </section>
+          <aside className="hidden min-w-0 flex-col gap-4 xl:flex">
+            <Panel label="Spending calendar" className="!rounded-2xl">
+              <div className="p-4 sm:p-5">
+                <CalendarHeatmap
+                  year={calYm.y}
+                  month={calYm.m}
+                  spend={spendByDay}
+                  formatted={fmt}
+                  onPrevMonth={() =>
+                    setCalYm(({ y, m }) => (m === 0 ? { y: y - 1, m: 11 } : { y, m: m - 1 }))
+                  }
+                  onNextMonth={() =>
+                    setCalYm(({ y, m }) => (m === 11 ? { y: y + 1, m: 0 } : { y, m: m + 1 }))
+                  }
+                  canNextMonth={canNextMonth}
+                  totalLabel="Month total"
+                />
+              </div>
+            </Panel>
+
+            <Panel className="!rounded-2xl">
+              <BudgetPanel
+                budget={90000}
+                spent={spent}
+                income={income}
+                pace={pace}
+                formatted={fmt}
+                cycleLabel="Sep 1 – Sep 30"
+                daily={dailyDays}
+                formatValue={fmt}
+                labels={{
+                  budgetOnFile: "Monthly budget",
+                  spent: "spent",
+                  remaining: "Remaining",
+                  overBy: "Over by",
+                  projectedClose: "Projected close",
+                  dailyAllowance: "Avg per day",
+                  dailySpendLabel: "Daily spending",
+                  savingsRate: "Savings rate",
+                  noBudgetTitle: "No budget yet",
+                  noBudgetBody: "File a monthly budget to see pacing here.",
+                  setBudget: "Set budget",
+                  day: "Day",
+                  of: "of",
+                }}
+              />
+            </Panel>
+
+            <Panel label="Spending mix" action={mixAction} className="!rounded-2xl">
+              {mixBody}
+            </Panel>
+          </aside>
         </div>
       </main>
     </DashboardShell>

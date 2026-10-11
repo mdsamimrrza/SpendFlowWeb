@@ -8,16 +8,16 @@ export interface ShareDonutSlice {
   value: number;
 }
 
-/* Deliberate single-hue ramp (design decision 2026-10-11): the ONLY raw hexes
-   allowed in this file. Stored category colors are data (mobile writes them)
-   but are ignored here so the analytics donut stays inside the Neo emerald
-   system; zinc closes the ramp for the "Other" remainder. */
+/* Deliberate PASTEL ramp (soft consumer-dashboard restyle 2026-10-11): mint/
+   emerald/teal soft tints instead of the old deep emeralds, zinc closing the
+   ramp for the "Other" remainder. The ONLY raw hexes allowed in this file;
+   stored category colors are data (mobile writes them) and stay ignored. */
 export const DONUT_RAMP = [
-  "#065f46",
-  "#059669",
   "#10b981",
   "#34d399",
   "#6ee7b7",
+  "#a7f3d0",
+  "#5eead4",
   "#a1a1aa", // "Other"
 ] as const;
 
@@ -33,8 +33,8 @@ interface ShareDonutProps {
  * Category-share donut (Monarch Reports pattern): SVG stroke arcs with 2px
  * gaps, center shows the total or the hovered/tapped slice's share, legend
  * rows below highlight their slice on hover/tap. Slices are colored from the
- * curated single-hue DONUT_RAMP (deepest emerald -> mint -> zinc), not from
- * stored category colors.
+ * curated pastel DONUT_RAMP (emerald -> mint -> teal, zinc for Other), not
+ * from stored category colors.
  */
 export function ShareDonut({ slices, formatted, centerLabel }: ShareDonutProps) {
   const [active, setActive] = useState<number | null>(null);

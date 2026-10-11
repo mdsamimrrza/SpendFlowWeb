@@ -18,6 +18,7 @@ import { RecentFeed } from "@/components/dashboard/RecentFeed";
 import { ExpenseDetailSheet } from "@/components/expense/ExpenseDetailSheet";
 import type { ExpenseRow } from "@/services/expenses";
 import { FlowChartCard } from "@/components/charts/FlowChartCard";
+import { CalendarHeatmap } from "@/components/charts/CalendarHeatmap";
 import type { CategorySlice } from "@/components/charts/CategoryBars";
 import { SpendingMix } from "@/components/dashboard/SpendingMix";
 import { DailyHeat } from "@/components/dashboard/DailyHeat";
@@ -25,6 +26,7 @@ import { Panel, SectionTitle } from "@/components/ui/Card";
 import { SkeletonCard, Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
+import { FitText } from "@/components/ui/FitText";
 import { CurrencyFlag } from "@/components/ui/CurrencyFlag";
 import { TodayRateLine } from "@/components/ui/TodayRateLine";
 import {
@@ -42,10 +44,11 @@ import { useToast } from "@/store/ToastContext";
 import { useBudget } from "@/hooks/useRates";
 
 /**
- * Home - market-pattern money dashboard (Monarch / Simplifi style), rebuilt
- * 2026-10-11. KPI band (Net / Inflow / Outflow / Savings rate, Fraunces
- * figures) -> bills strip -> cash-flow chart beside the budget-pacing card
- * -> recent feed beside the spending-mix + daily-rhythm insight column.
+ * Home - soft consumer-dashboard (2026-10-11 restyle): pastel tinted KPI
+ * band (Net / Inflow / Outflow / Savings rate, Fraunces figures + white icon
+ * chips) -> bills strip -> main column (flow chart + budget pacing, rhythm
+ * heat grid, recent feed) beside the xl-only right widget rail (month
+ * calendar, budget progress, spending mix).
  * All aggregation mirrors the mobile statement logic (cycle-scoped totals,
  * FX-converted rows, previous-cycle delta).
  */
@@ -116,6 +119,13 @@ export default function HomePage() {
     };
   }, [user, supabase]);
   const budget = useBudget();
+
+  // Rail calendar month (local view state only - prev/next shifts the grid,
+  // never the data). Next is capped at the current month.
+  const [calYm, setCalYm] = useState(() => {
+    const n = new Date();
+    return { y: n.getFullYear(), m: n.getMonth() };
+  });
 
   const displayCurrency = profile?.preferred_currency ?? "NPR";
   const fmt = useMemo(
@@ -238,6 +248,17 @@ export default function HomePage() {
     return out;
   }, [rows, cycle, convert]);
 
+  // Same per-day outflow aggregation as dailyDays but unbounded to the cycle,
+  // so the rail calendar still tints the months you navigate back through.
+  const spendByDay = useMemo<Record<string, number>>(() => {
+    const byDay: Record<string, number> = {};
+    for (const row of rows) {
+      if (row.type !== "expense") continue;
+      byDay[row.date] = (byDay[row.date] ?? 0) + convert(row);
+    }
+    return byDay;
+  }, [rows, convert]);
+
   // Threshold alerts (mobile parity): fire once per user/month/threshold when
   // cycle spend crosses 25/50/75/90/100% of budget, and category 90/100%.
   useEffect(() => {
@@ -296,18 +317,25 @@ export default function HomePage() {
             <SkeletonCard key={i} lines={2} />
           ))}
         </div>
-        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <div className="min-w-0 md:col-span-2 lg:col-span-2">
+        <div className="mt-4 grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+          <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="min-w-0 md:col-span-2 lg:col-span-2 xl:col-span-3">
+              <SkeletonCard lines={8} />
+            </div>
+            <div className="min-w-0">
+              <SkeletonCard lines={6} />
+            </div>
+            <div className="min-w-0">
+              <SkeletonCard lines={6} />
+            </div>
+            <div className="min-w-0 md:col-span-2 lg:col-span-2">
+              <SkeletonCard lines={8} />
+            </div>
+          </div>
+          <div className="hidden min-w-0 flex-col gap-4 xl:flex">
             <SkeletonCard lines={8} />
-          </div>
-          <div className="min-w-0">
+            <SkeletonCard lines={3} />
             <SkeletonCard lines={6} />
-          </div>
-          <div className="min-w-0">
-            <SkeletonCard lines={6} />
-          </div>
-          <div className="min-w-0 md:col-span-2 lg:col-span-2">
-            <SkeletonCard lines={8} />
           </div>
         </div>
       </main>
@@ -315,6 +343,33 @@ export default function HomePage() {
   }
 
   const cycleLabel = `${formatShort(cycle.start, locale)} – ${formatShort(cycle.end, locale)}`;
+
+  // Shared analytics link + spending-mix body: the mix panel lives in the
+  // main grid below xl and moves into the right widget rail at xl+.
+  const mixAction = (
+    <Link href="/analytics" className="caps !text-primary hover:underline">
+      {t("analytics")} <ArrowDown size={11} className="inline -translate-y-px" />
+    </Link>
+  );
+  const mixBody = (
+    <div className="flex min-h-0 flex-1 flex-col p-4 sm:p-5">
+      {categorySlices.length > 0 ? (
+        <SpendingMix
+          slices={categorySlices}
+          formatValue={fmt}
+          otherLabel={t("analyticsOther")}
+          cycleTotalLabel={t("homeCycleOutflow")}
+        />
+      ) : (
+        <p className="border border-dashed border-border px-3 py-8 text-center">
+          <span className="caps">{t("homeNoSpendCycle")}</span>
+        </p>
+      )}
+    </div>
+  );
+  // Rail calendar nav bounds: next is capped at the current month.
+  const canNextMonth =
+    calYm.y * 12 + calYm.m < new Date().getFullYear() * 12 + new Date().getMonth();
 
   return (
     <main className="mx-auto w-full max-w-[1200px]">
@@ -366,18 +421,18 @@ export default function HomePage() {
         <BillsDueStrip />
       </div>
 
-      {/* Tier 2/3 — one grid so every breakpoint stays filled: flow (full
-          row) + mix list & heat grid (paired) at md; flow + mix on top, then
-          rhythm (⅓) beside the recent feed (⅔) at lg — the compact heat grid
-          never stretches across dead space. Budget pacing lives in the hero. */}
-      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="min-w-0 lg:col-span-2">
+      {/* Tier 2/3 + right widget rail (xl+): flow (full row) + budget pacing
+          beside it at lg; the rail stacks calendar, budget progress and the
+          spending mix - the signature third column of the soft dashboard. */}
+      <div className="mt-4 grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="grid min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-3">
+        <div className="min-w-0 rounded-2xl [&>.panel]:rounded-2xl lg:col-span-2 xl:col-span-3">
           <FlowChartCard label={t("cashFlow")} />
         </div>
 
-        {/* Budget pacing — the market-style budget card (ring + pace meter +
-            allowance rows), beside the chart on desktop. */}
-        <Panel className="min-w-0">
+        {/* Budget pacing below xl — on xl the full BudgetPanel lives in the
+            widget rail (no duplicate). */}
+        <Panel className="min-w-0 !rounded-2xl xl:hidden">
           <BudgetPanel
             budget={budget}
             spent={stats.spent}
@@ -405,66 +460,12 @@ export default function HomePage() {
           />
         </Panel>
 
-        <div className="flex min-w-0 flex-col gap-4">
-        <Panel
-          label={t("homeSpendingMix")}
-          className="min-w-0"
-          action={
-            <Link href="/analytics" className="caps !text-primary hover:underline">
-              {t("analytics")} <ArrowDown size={11} className="inline -translate-y-px" />
-            </Link>
-          }
-        >
-          <div className="flex min-h-0 flex-1 flex-col p-4 sm:p-5">
-            {categorySlices.length > 0 ? (
-              <SpendingMix
-                slices={categorySlices}
-                formatValue={fmt}
-                otherLabel={t("analyticsOther")}
-                cycleTotalLabel={t("homeCycleOutflow")}
-              />
-            ) : (
-              <p className="border border-dashed border-border px-3 py-8 text-center">
-                <span className="caps">{t("homeNoSpendCycle")}</span>
-              </p>
-            )}
-          </div>
+        <Panel label={t("homeSpendingMix")} action={mixAction} className="min-w-0 !rounded-2xl xl:hidden">
+          {mixBody}
         </Panel>
 
-        {/* Daily rhythm — calendar heat grid (intensity per day). */}
-        <Panel label={t("homeDailyRhythm")} className="min-w-0">
-          <div className="flex h-full flex-col p-4 sm:p-5">
-            {dailyDays.length > 0 ? (
-              <DailyHeat
-                days={dailyDays}
-                locale={locale}
-                formatValue={fmt}
-                todayISO={todayISO()}
-                onDayTap={(iso) => {
-                  window.location.href = `/history?from=${iso}&to=${iso}`;
-                }}
-                labels={{
-                  less: t("homeHeatLess"),
-                  more: t("homeHeatMore"),
-                  busiest: t("cfBusiest"),
-                }}
-              />
-            ) : (
-              <p className="border border-dashed border-border px-3 py-8 text-center">
-                <span className="caps">{t("homeNoSpendCycle")}</span>
-              </p>
-            )}
-            <p className="mt-auto flex items-center gap-1.5 pt-3 text-[11px] text-faint">
-              <Repeat size={12} aria-hidden />
-              {t("homeTapDayHint")}
-            </p>
-          </div>
-        </Panel>
-
-        </div>
-
-        {/* Recent entries: date-grouped feed, beside the insight column. */}
-        <section className="min-w-0 lg:col-span-2">
+        {/* Recent entries: full-width feed (the rail owns per-day + budget). */}
+        <section className="min-w-0 lg:col-span-3">
         <SectionTitle
           action={
             <Link href="/history" className="caps !text-primary hover:underline">
@@ -513,6 +514,64 @@ export default function HomePage() {
           </>
         )}
         </section>
+        </div>
+
+        {/* Right widget rail (xl+ only): month spending calendar, budget
+            progress, spending mix. Hidden below xl - the mix panel reappears
+            in the main grid there. */}
+        <aside className="hidden min-w-0 flex-col gap-4 xl:flex">
+          <Panel label={t("anCalendarHeat")} className="!rounded-2xl">
+            <div className="p-4 sm:p-5">
+              <CalendarHeatmap
+                year={calYm.y}
+                month={calYm.m}
+                spend={spendByDay}
+                formatted={fmt}
+                onPrevMonth={() =>
+                  setCalYm(({ y, m }) => (m === 0 ? { y: y - 1, m: 11 } : { y, m: m - 1 }))
+                }
+                onNextMonth={() =>
+                  setCalYm(({ y, m }) => (m === 11 ? { y: y + 1, m: 0 } : { y, m: m + 1 }))
+                }
+                canNextMonth={canNextMonth}
+                onDayTap={(iso) => {
+                  window.location.href = `/history?from=${iso}&to=${iso}`;
+                }}
+                totalLabel={t("anMonthTotal")}
+              />
+            </div>
+          </Panel>
+
+          <Panel className="!rounded-2xl">
+            <BudgetPanel
+              budget={budget}
+              spent={stats.spent}
+              income={stats.income}
+              pace={pace}
+              formatted={fmt}
+              cycleLabel={cycleLabel}
+              labels={{
+                budgetOnFile: t("monthlyBudget"),
+                spent: t("spent"),
+                remaining: t("remaining"),
+                overBy: t("homeOverBy"),
+                projectedClose: t("homeProjectedClose"),
+                dailyAllowance: t("homeAvgDaily"),
+                dailySpendLabel: t("homeDailySpend"),
+                savingsRate: t("homeSavingsRate"),
+                noBudgetTitle: t("homeNoBudgetTitle"),
+                noBudgetBody: t("homeNoBudgetBody"),
+                setBudget: t("homeSetBudget"),
+                day: t("homeDayWord"),
+                of: t("homeOfBudget"),
+              }}
+            />
+          </Panel>
+
+          <Panel label={t("homeSpendingMix")} action={mixAction} className="!rounded-2xl">
+            {mixBody}
+          </Panel>
+        </aside>
       </div>
 
       <ExpenseDetailSheet
