@@ -542,13 +542,14 @@ export function HistoryRegister({
               />
             </div>
           ) : (
-            <div className="panel mt-3 overflow-hidden">
+            <div className="panel mt-3">
               {sections.map((section, gi) => (
                 <section key={section.date} className={gi > 0 ? "border-t border-border" : undefined}>
                   {/* Day header: label left, signed day net right. Sticky on
                       lg+ so the day context stays visible while its rows
-                      scroll under it. */}
-                  <div className="sticky top-14 z-10 flex items-baseline justify-between gap-3 border-b border-border bg-[var(--sf-surface-elevated)] px-3 py-2 sm:px-4 lg:top-14">
+                      scroll under it (sticks to the PAGE, flush under the
+                      topbar - the panel must not be a scroll container). */}
+                  <div className={`sticky top-14 z-10 flex items-baseline justify-between gap-3 border-b border-border bg-[var(--sf-surface-elevated)] px-3 py-2 sm:px-4 ${gi === 0 ? "rounded-t-[12px]" : ""}`}>
                     <p className="caps truncate">{groupDate(section.date, locale)}</p>
                     <p
                       className={`numeric shrink-0 text-[11px] font-bold ${
