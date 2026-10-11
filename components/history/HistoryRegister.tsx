@@ -31,6 +31,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { RangeField } from "@/components/ui/CalendarModal";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { FloatingSelect, SelectRow } from "@/components/ui/FloatingSelect";
 import { PAYMENT_METHODS, type PaymentMethod } from "@/constants/app";
 import {
   formatMoney,
@@ -141,6 +142,7 @@ export function HistoryRegister({
     () => getCycleWindow(new Date(), profile?.cycle_start_day ?? 1, profile?.cycle_end_day ?? null),
     [profile?.cycle_start_day, profile?.cycle_end_day],
   );
+  const [sortOpen, setSortOpen] = useState(false);
 
   // Rail placement: sticky sidebar from lg up, slide-over below.
   const [compactViewport, setCompactViewport] = useState(false);
@@ -434,18 +436,24 @@ export function HistoryRegister({
               )}
             </div>
             <div className="flex items-center gap-2">
-              <select
-                aria-label="Sort entries"
-                value={sortKey}
-                onChange={(e) => setSortKey(e.target.value as SortKey)}
-                className="h-11 min-w-0 flex-1 rounded-lg border border-border bg-input px-2 text-[13px] font-semibold text-text-muted"
+              <FloatingSelect
+                className="relative min-w-0 flex-1"
+                label={SORTS.find((s) => s.key === sortKey)?.label ?? ""}
+                open={sortOpen}
+                onToggle={() => setSortOpen((v) => !v)}
               >
                 {SORTS.map((s) => (
-                  <option key={s.key} value={s.key}>
-                    {s.label}
-                  </option>
+                  <SelectRow
+                    key={s.key}
+                    selected={sortKey === s.key}
+                    label={s.label}
+                    onSelect={() => {
+                      setSortKey(s.key);
+                      setSortOpen(false);
+                    }}
+                  />
                 ))}
-              </select>
+              </FloatingSelect>
               <button
                 onClick={() => setFiltersOpen(true)}
                 className={`flex h-11 shrink-0 items-center gap-1.5 rounded-lg border px-3.5 text-sm font-semibold transition-colors ${
@@ -685,6 +693,7 @@ function FilterRail({
   compactSearch: boolean;
 }) {
   const { t } = useLanguage();
+  const [railSortOpen, setRailSortOpen] = useState(false);
   const presets: { key: DatePreset; label: string }[] = [
     { key: "all", label: t("periodAll") },
     { key: "today", label: t("histChipToday") },
@@ -721,18 +730,24 @@ function FilterRail({
               </button>
             )}
           </div>
-          <select
-            aria-label="Sort entries"
-            value={sortKey}
-            onChange={(e) => onSort(e.target.value)}
-            className="mt-2 h-10 w-full rounded-lg border border-border bg-input px-2 text-[13px] font-semibold text-text-muted"
+          <FloatingSelect
+            className="relative mt-2"
+            label={SORTS.find((s) => s.key === sortKey)?.label ?? ""}
+            open={railSortOpen}
+            onToggle={() => setRailSortOpen((v) => !v)}
           >
             {SORTS.map((s) => (
-              <option key={s.key} value={s.key}>
-                {s.label}
-              </option>
+              <SelectRow
+                key={s.key}
+                selected={sortKey === s.key}
+                label={s.label}
+                onSelect={() => {
+                  onSort(s.key);
+                  setRailSortOpen(false);
+                }}
+              />
             ))}
-          </select>
+          </FloatingSelect>
         </div>
       )}
 
