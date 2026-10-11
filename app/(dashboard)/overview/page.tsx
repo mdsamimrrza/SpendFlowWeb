@@ -387,6 +387,7 @@ export default function HomePage() {
             cycleLabel={cycleLabel}
             daily={dailyDays}
             formatValue={fmt}
+            locale={locale}
             labels={{
               budgetOnFile: t("monthlyBudget"),
               spent: t("spent"),

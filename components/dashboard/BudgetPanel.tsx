@@ -38,6 +38,8 @@ interface BudgetPanelProps {
   daily?: { iso: string; value: number }[];
   /** Formatter for the strip's tooltips. */
   formatValue?: (n: number) => string;
+  /** Locale for the weekday initials under the bars. */
+  locale?: string;
   /** Link href for the set-budget CTA. */
   budgetHref?: string;
   /** Optional ReactNode rendered as the set-budget action (e.g. a Next <Link>). */
@@ -60,6 +62,7 @@ export function BudgetPanel({
   labels,
   daily,
   formatValue,
+  locale = "en",
   budgetHref = "/profit-loss",
   action,
 }: BudgetPanelProps) {
@@ -173,7 +176,7 @@ export function BudgetPanel({
           signal: solid outflow-red bars, today in brand emerald. */}
       {daily && daily.length > 0 && (
         <div className="mt-auto border-t border-border pt-4">
-          <div className="flex h-16 items-end gap-1.5">
+          <div className="flex items-end gap-1.5">
             {daily.map((d) => {
               const max = Math.max(...daily.map((x) => x.value), 1);
               // Square-root scale: spend data is spiky (one salary-day burst,
@@ -184,21 +187,37 @@ export function BudgetPanel({
               const now = new Date();
               const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
               const isToday = d.iso === todayIso;
+              const weekday = new Intl.DateTimeFormat(locale, { weekday: "narrow" }).format(
+                new Date(`${d.iso}T00:00:00`),
+              );
               return (
                 <div
                   key={d.iso}
                   title={`${d.iso}${formatValue ? ` · ${formatValue(d.value)}` : ""}`}
-                  className={`min-w-[6px] flex-1 rounded-t-[3px] ${
-                    isToday
-                      ? d.value > 0
-                        ? "bg-primary"
-                        : "bg-primary-light"
-                      : d.value > 0
-                        ? "bg-danger"
-                        : "bg-surface-elevated"
-                  }`}
-                  style={{ height: `${d.value > 0 ? h : 5}%` }}
-                />
+                  className="flex min-w-0 flex-1 flex-col items-center gap-1"
+                >
+                  <div className="flex h-16 w-full items-end">
+                    <div
+                      className={`w-full rounded-t-[3px] ${
+                        isToday
+                          ? d.value > 0
+                            ? "bg-primary"
+                            : "bg-primary-light"
+                          : d.value > 0
+                            ? "bg-danger"
+                            : "bg-surface-elevated"
+                      }`}
+                      style={{ height: `${d.value > 0 ? h : 5}%` }}
+                    />
+                  </div>
+                  <span
+                    className={`text-[9px] leading-none ${
+                      isToday ? "font-bold text-primary" : "text-faint"
+                    }`}
+                  >
+                    {weekday}
+                  </span>
+                </div>
               );
             })}
           </div>
