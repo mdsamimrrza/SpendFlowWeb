@@ -211,11 +211,12 @@ export function BudgetPanel({
                     />
                   </div>
                   <span
-                    className={`text-[9px] leading-none ${
+                    className={`flex flex-col items-center gap-0.5 leading-none ${
                       isToday ? "font-bold text-primary" : "text-faint"
                     }`}
                   >
-                    {weekday}
+                    <span className="text-[9px]">{weekday}</span>
+                    <span className="numeric text-[8.5px] opacity-80">{Number(d.iso.slice(8, 10))}</span>
                   </span>
                 </div>
               );
