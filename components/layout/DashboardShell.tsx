@@ -146,7 +146,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col lg:flex"
         style={{
           background:
-            "color-mix(in srgb, var(--sf-primary) 8%, var(--sf-surface))",
+            "color-mix(in srgb, var(--sf-primary) 16%, var(--sf-surface))",
         }}
       >
         <div className="px-4 pb-1 pt-4">
