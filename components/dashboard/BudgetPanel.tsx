@@ -176,7 +176,11 @@ export function BudgetPanel({
           <div className="flex h-16 items-end gap-1.5">
             {daily.map((d) => {
               const max = Math.max(...daily.map((x) => x.value), 1);
-              const h = Math.max(6, Math.round((d.value / max) * 100));
+              // Square-root scale: spend data is spiky (one salary-day burst,
+              // many small days), so a linear scale flattens everything to
+              // the minimum. sqrt keeps the spike as the clear peak while
+              // normal days still show real shape.
+              const h = Math.round(Math.sqrt(d.value / max) * 100);
               const now = new Date();
               const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
               const isToday = d.iso === todayIso;
