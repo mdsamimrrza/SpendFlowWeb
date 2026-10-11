@@ -528,14 +528,27 @@ export function HistoryRegister({
             </div>
           ) : rows.length === 0 ? (
             <div className="panel mt-3">
-              <EmptyState title={t("noTransactions")} message={t("noTransactionsHint")} />
+              <EmptyState
+                title={t("noTransactions")}
+                message={t("noTransactionsHint")}
+                action={
+                  <button
+                    onClick={resetAll}
+                    className="flex h-10 items-center justify-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-strong"
+                  >
+                    <X size={14} aria-hidden /> {t("clear")}
+                  </button>
+                }
+              />
             </div>
           ) : (
             <div className="panel mt-3 overflow-hidden">
               {sections.map((section, gi) => (
                 <section key={section.date} className={gi > 0 ? "border-t border-border" : undefined}>
-                  {/* Day header: label left, signed day net right. */}
-                  <div className="flex items-baseline justify-between gap-3 border-b border-border/60 bg-surface-elevated/40 px-3 py-2 sm:px-4">
+                  {/* Day header: label left, signed day net right. Sticky on
+                      lg+ so the day context stays visible while its rows
+                      scroll under it. */}
+                  <div className="sticky top-14 z-10 flex items-baseline justify-between gap-3 border-b border-border bg-[var(--sf-surface-elevated)] px-3 py-2 sm:px-4 lg:top-14">
                     <p className="caps truncate">{groupDate(section.date, locale)}</p>
                     <p
                       className={`numeric shrink-0 text-[11px] font-bold ${
@@ -941,7 +954,7 @@ function RegisterRow({
       tabIndex={0}
       role="button"
       aria-label={`Open record for ${row.description || row.categories?.name || "transaction"}`}
-      className="group flex min-h-[56px] cursor-pointer items-center gap-3 border-b border-border/60 px-3 py-2.5 transition-colors last:border-b-0 hover:bg-surface-elevated/40 focus:bg-surface-elevated/60 focus:outline-none sm:px-4"
+      className="group flex min-h-[56px] cursor-pointer items-center gap-3 border-b border-border px-3 py-2.5 transition-colors last:border-b-0 hover:bg-surface-elevated focus:bg-surface-elevated focus:outline-none sm:px-4"
     >
       {/* Category icon tile. */}
       <span

@@ -120,7 +120,7 @@ export function RecentFeed({
                 <button
                   key={row.id}
                   onClick={() => onOpen(row)}
-                  className="flex min-h-14 w-full min-w-0 items-center gap-3 py-2 text-left transition-colors hover:bg-surface-elevated/50 focus-visible:outline-none focus-visible:bg-surface-elevated/70"
+                  className="flex min-h-14 w-full min-w-0 items-center gap-3 py-2 text-left transition-colors hover:bg-surface-elevated focus-visible:outline-none focus-visible:bg-surface-elevated"
                 >
                   {inner}
                 </button>
