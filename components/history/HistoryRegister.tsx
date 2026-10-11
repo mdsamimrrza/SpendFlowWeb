@@ -404,7 +404,7 @@ export function HistoryRegister({
         {/* ── LEFT FILTER RAIL (desktop): the filter UI itself ── */}
         <aside
           aria-label={t("histFilters")}
-          className="hidden lg:sticky lg:top-[72px] lg:max-h-[calc(100vh-96px)] lg:overflow-y-auto lg:block lg:pb-4"
+          className="hidden lg:sticky lg:top-[72px] lg:max-h-[calc(100vh-96px)] lg:overflow-y-auto lg:block lg:pb-4 lg:[scrollbar-width:none] lg:[&::-webkit-scrollbar]:hidden"
         >
           {rail}
         </aside>
@@ -782,6 +782,7 @@ function FilterRail({
       <RailGroup label={t("histTabCategories")}>
         {categories
           .filter((c) => flow === "all" || c.type === flow)
+          .filter((c) => categoryId === c.value || (categoryCounts.get(c.value) ?? 0) > 0)
           .map((c) => (
             <RailItem
               key={c.value}
