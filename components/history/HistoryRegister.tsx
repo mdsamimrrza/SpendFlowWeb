@@ -722,32 +722,47 @@ function FilterRail({
         </div>
       )}
 
-      {/* Date presets - vertical list, active highlighted. */}
+      {/* Date presets - compact pills. */}
       <RailGroup label={t("histFilters")}>
-        {presets.map((p) => (
-          <RailItem key={p.key} active={preset === p.key} onClick={() => applyPreset(p.key)}>
-            {p.label}
-          </RailItem>
-        ))}
+        <div className="flex flex-wrap gap-1.5">
+          {presets.map((p) => (
+            <button
+              key={p.key}
+              onClick={() => applyPreset(p.key)}
+              aria-pressed={preset === p.key}
+              className={`h-7 rounded-lg border px-2.5 text-[12px] font-medium transition-colors ${
+                preset === p.key
+                  ? "border-primary bg-[var(--sf-primary-light)] font-semibold text-primary-strong"
+                  : "border-border text-text-muted hover:border-faint hover:text-text"
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
         {preset === "custom" && (
-          <div className="pt-1">
+          <div className="pt-2">
             <RangeField from={from} to={to} boxClassName="h-10 justify-center" onChange={onRange} />
           </div>
         )}
       </RailGroup>
 
-      {/* Flow type. */}
+      {/* Flow type - segmented control. */}
       <RailGroup label={t("allFlow")}>
-        {flows.map((f) => (
-          <RailItem
-            key={f.key}
-            active={flow === f.key}
-            onClick={() => onFlow(f.key)}
-            tint={f.key === "income" ? "income" : f.key === "expense" ? "danger" : undefined}
-          >
-            {f.label}
-          </RailItem>
-        ))}
+        <div className="grid grid-cols-3 rounded-lg bg-surface-elevated p-0.5">
+          {flows.map((f) => (
+            <button
+              key={f.key}
+              onClick={() => onFlow(f.key)}
+              aria-pressed={flow === f.key}
+              className={`h-7 rounded-md text-[11.5px] font-semibold transition-colors ${
+                flow === f.key ? "bg-primary text-white shadow-soft" : "text-text-muted hover:text-text"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
       </RailGroup>
 
       {/* Categories with live counts from the filtered set. */}
@@ -759,6 +774,7 @@ function FilterRail({
               key={c.value}
               active={categoryId === c.value}
               onClick={() => onCategory(c.value)}
+              dot={c.type}
               count={categoryCounts.get(c.value) ?? 0}
             >
               {c.label}
@@ -777,13 +793,24 @@ function FilterRail({
         </RailGroup>
       )}
 
-      {/* Payment channels. */}
+      {/* Payment channels - pills. */}
       <RailGroup label={t("histTabChannels")}>
-        {PAYMENT_METHODS.map((m) => (
-          <RailItem key={m} active={method === m} onClick={() => onMethod(m)}>
-            {m}
-          </RailItem>
-        ))}
+        <div className="flex flex-wrap gap-1.5">
+          {PAYMENT_METHODS.map((m) => (
+            <button
+              key={m}
+              onClick={() => onMethod(m)}
+              aria-pressed={method === m}
+              className={`h-7 rounded-lg border px-2.5 text-[12px] font-medium transition-colors ${
+                method === m
+                  ? "border-primary bg-[var(--sf-primary-light)] font-semibold text-primary-strong"
+                  : "border-border text-text-muted hover:border-faint hover:text-text"
+              }`}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
       </RailGroup>
 
       {/* Amount bounds. */}
@@ -836,31 +863,35 @@ function RailItem({
   onClick,
   children,
   count,
-  tint,
+  dot,
 }: {
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
   count?: number;
-  tint?: "income" | "danger";
+  dot?: string;
 }) {
   return (
     <button
       onClick={onClick}
       aria-pressed={active}
-      className={`flex min-h-[36px] w-full items-center gap-2 rounded-lg px-2.5 text-left text-[13px] font-medium transition-colors ${
-        active
-          ? tint === "income"
-            ? "bg-income text-white"
-            : tint === "danger"
-              ? "bg-danger text-white"
-              : "bg-[var(--sf-primary-light)] text-primary-strong"
-          : "text-text-muted hover:bg-surface-elevated/60 hover:text-text"
+      className={`flex min-h-[34px] w-full items-center gap-2 rounded-lg px-2.5 text-left text-[13px] font-medium transition-colors ${
+        active ? "bg-[var(--sf-primary-light)] text-primary-strong" : "text-text-muted hover:bg-surface-elevated hover:text-text"
       }`}
     >
+      {dot && (
+        <span
+          aria-hidden
+          className={`h-2 w-2 shrink-0 rounded-full ${dot === "income" ? "bg-income" : "bg-danger"}`}
+        />
+      )}
       <span className="min-w-0 flex-1 truncate">{children}</span>
       {count != null && (
-        <span className={`numeric shrink-0 text-[11px] font-semibold ${active ? "text-primary-strong" : "text-faint"}`}>
+        <span
+          className={`numeric shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+            active ? "bg-surface text-primary-strong" : "bg-surface-elevated text-text-muted"
+          }`}
+        >
           {count}
         </span>
       )}
