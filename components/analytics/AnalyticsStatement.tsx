@@ -6,23 +6,12 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { createPortal } from "react-dom";
 import {
   Activity,
-  AlertTriangle,
-  ArrowDownLeft,
-  ArrowUpRight,
   Award,
   Calendar,
-  CheckCircle2,
-  Flame,
   PieChart,
-  PiggyBank,
-  Scale,
-  ShieldCheck,
   Sparkles,
   Target,
-  TrendingDown,
-  TrendingUp,
   X,
-  Zap,
 } from "lucide-react";
 import { useAuth } from "@/store/AuthContext";
 import { useLanguage } from "@/store/LanguageContext";
@@ -34,11 +23,9 @@ import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
 import type { TranslationKey } from "@/constants/i18n/dictionaries";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { FloatingSelect, SelectRow } from "@/components/ui/FloatingSelect";
-import { FitText } from "@/components/ui/FitText";
 import { PrivacyEyeButton } from "@/components/ui/PrivacyEyeButton";
-import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { ProgressRing } from "@/components/charts/ProgressRing";
-import { ShareDonut } from "@/components/charts/ShareDonut";
+import { ShareDonut, DONUT_RAMP } from "@/components/charts/ShareDonut";
 import { MonthlyBars } from "@/components/charts/MonthlyBars";
 import { TrendArea } from "@/components/charts/TrendArea";
 import { RankedBars } from "@/components/charts/RankedBars";
@@ -52,18 +39,19 @@ import {
 } from "@/utils/format";
 
 /**
- * Analytics - Reports view (2026-10-11 structural redesign, market pattern:
- * Monarch Money Reports / Copilot Money insights). Same data engine (rows,
- * useRowConverter, health-score formulas), new chart composition:
- *  · Header: kicker + title + period selector (This cycle / Last 30 / Last
- *    90 / This year - windows computed like FlowChartCard's).
- *  · KPI band: Net / Inflow / Outflow / Savings rate, live with the period,
- *    with the TriFlow insight as a compact strip underneath.
- *  · MonthlyBars (6-month income-vs-expense columns) + ShareDonut "where
- *    money goes" (center total, token-hue slices).
- *  · TrendArea "net over time" (cumulative area) + Financial Health ring.
- *  · RankedBars "top categories" + CalendarHeatmap "daily spending".
- * All figures flow through the privacy mask; all colors through --sf-* tokens.
+ * Analytics - Reports view (2026-10-11 editorial redesign). Same data engine
+ * (rows, useRowConverter, health-score formulas), report-grade composition:
+ *  · Integrated masthead: kicker + title + period selector on the left, one
+ *    summary band on the right (Net BIG, IN / OUT / savings rate inline
+ *    figures separated by hairlines, insight sentence as muted subtext).
+ *  · Asymmetric 12-col desktop grid, no repeated tile rows - section titles
+ *    sit OUTSIDE the charts as real typography:
+ *    [MonthlyBars 7 | ShareDonut 5] [TrendArea 7 | RankedBars 5]
+ *    [CalendarHeatmap 7 | Health 5].
+ *  · ShareDonut renders the curated single-hue emerald ramp (DONUT_RAMP);
+ *    stored category colors are ignored for chart framing.
+ * All figures flow through the privacy mask; all other colors through
+ * --sf-* tokens.
  */
 
 /* mobile VIBRANT_PALETTE (components/expense/Charts.tsx) - fixed DATA colors
@@ -88,7 +76,6 @@ const PERIODS: { key: PeriodKey; labelKey: TranslationKey }[] = [
 
 interface Insight {
   tone: "success" | "warning" | "info";
-  Icon: typeof ShieldCheck;
   title: string;
   desc: string;
 }
@@ -311,7 +298,6 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
         insights: [
           {
             tone: "info" as const,
-            Icon: ShieldCheck,
             title: t("anAwaitTitle"),
             desc: t("anAwaitDesc"),
           },
@@ -338,7 +324,6 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
         savingsBonus = 10;
         insights.push({
           tone: "success",
-          Icon: Sparkles,
           title: t("anInsSavingsTitle"),
           desc: tr(t("anInsSavingsDesc"), { r: String(computedSavingsRate) }),
         });
@@ -346,14 +331,12 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
         savingsBonus = 5;
         insights.push({
           tone: "info",
-          Icon: ShieldCheck,
           title: t("anInsPosTitle"),
           desc: tr(t("anInsPosDesc"), { amt: fmt(netSavings) }),
         });
       } else {
         insights.push({
           tone: "warning",
-          Icon: AlertTriangle,
           title: t("anInsDeficitTitle"),
           desc: tr(t("anInsDeficitDesc"), { amt: fmt(Math.abs(netSavings)) }),
         });
@@ -369,7 +352,6 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
         budgetPoints = 35;
         insights.push({
           tone: "success",
-          Icon: CheckCircle2,
           title: t("anInsOptimalTitle"),
           desc: tr(t("anInsOptimalDesc"), { amt: fmt(budget) }),
         });
@@ -378,7 +360,6 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
         budgetPoints = Math.max(10, 35 - excess * 0.6);
         insights.push({
           tone: "warning",
-          Icon: AlertTriangle,
           title: t("anInsElevatedTitle"),
           desc: tr(t("anInsElevatedDesc"), { x: String(excess) }),
         });
@@ -386,7 +367,6 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
         budgetPoints = 5;
         insights.push({
           tone: "warning",
-          Icon: Flame,
           title: t("anInsCeilingTitle"),
           desc: t("anInsCeilingDesc"),
         });
@@ -407,7 +387,6 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
         volatilityPoints = 25;
         insights.push({
           tone: "success",
-          Icon: Sparkles,
           title: t("anInsStableTitle"),
           desc: t("anInsStableDesc"),
         });
@@ -417,7 +396,6 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
         volatilityPoints = 10;
         insights.push({
           tone: "warning",
-          Icon: TrendingUp,
           title: t("anInsSpikeTitle"),
           desc: t("anInsSpikeDesc"),
         });
@@ -432,7 +410,6 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
         categoryPoints = 10;
         insights.push({
           tone: "warning",
-          Icon: AlertTriangle,
           title: t("anInsConcTitle"),
           desc: tr(t("anInsConcDesc"), { c: topCat.label, p: String(Math.round(topRatio * 100)) }),
         });
@@ -440,7 +417,6 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
         categoryPoints = 20;
         insights.push({
           tone: "success",
-          Icon: ShieldCheck,
           title: t("anInsDiversifiedTitle"),
           desc: t("anInsDiversifiedDesc"),
         });
@@ -453,7 +429,6 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
       weekendPoints = 10;
       insights.push({
         tone: "warning",
-        Icon: TrendingDown,
         title: t("anInsWeekendTitle"),
         desc: tr(t("anInsWeekendDesc"), { p: String(Math.round(weekendRatio * 100)) }),
       });
@@ -547,37 +522,34 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
     return m;
   }, [rows, convert]);
 
-  // Donut: top 5 slices + "Other" remainder. Category colors come from the
-  // stored data; the donut falls back to token hues when a category has none.
+  // Donut: top 5 slices + "Other" remainder. Slice framing is the curated
+  // single-hue ramp inside ShareDonut - stored category colors stay data.
   const donutSlices = useMemo(() => {
     const top = stats.categories.slice(0, 5).map((c) => ({
       label: c.label,
       value: c.value,
-      color: c.color ?? null,
     }));
     const rest = stats.categories.slice(5).reduce((s, c) => s + c.value, 0);
-    if (rest > 0) top.push({ label: t("analyticsOther"), value: rest, color: "var(--sf-faint)" });
+    if (rest > 0) top.push({ label: t("analyticsOther"), value: rest });
     return top;
   }, [stats.categories, t]);
 
+  // Ranked bars ride the same ramp (matching donut slice order) so the page
+  // keeps one palette; the 6th row lands on the "Other" zinc like the donut.
   const rankedRows = useMemo(
     () =>
-      stats.categories.slice(0, 6).map((c) => ({
+      stats.categories.slice(0, 6).map((c, i) => ({
         label: c.label,
         value: c.value,
-        color: c.color ?? null,
+        color: DONUT_RAMP[Math.min(i, DONUT_RAMP.length - 1)],
       })),
     [stats.categories],
   );
 
-  // KPI band + TriFlow insight strip figures.
-  const totalFlow = stats.income + stats.spent;
-  const incomePct = totalFlow > 0 ? Math.round((stats.income / totalFlow) * 100) : 50;
-  const outflowPct = 100 - incomePct;
+  // Masthead summary band figures + one-line insight.
   const savingsRate = stats.income > 0 ? Math.round((stats.net / stats.income) * 100) : null;
   const budgetSet = budget != null && budget > 0;
   const overBudget = budgetSet && stats.spent > (budget ?? 0);
-  const utilization = budgetSet ? Math.round((stats.spent / (budget ?? 0)) * 100) : 0;
   const healthy = stats.net >= 0;
   const triFlowInsight =
     overBudget && !healthy
@@ -613,215 +585,143 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
   return (
     <main className="mx-auto w-full max-w-[1200px] px-4 pb-28 pt-4 sm:px-6">
       <div className="space-y-3">
-        {/* ── 1. HEADER ── */}
-        <header className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[13px] font-medium text-faint">{t("anKicker")}</p>
-            <h1 className="mt-0.5 text-xl font-bold tracking-[-0.02em] text-text sm:text-2xl">
-              {t("anTitle")}
-            </h1>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <PrivacyEyeButton />
-            {/* Mobile shows the shell's global toggle (user request 2026-09-16). */}
-            <ThemeToggle className="hidden p-2 sm:grid" />
-          </div>
-        </header>
+        {/* ── 1. MASTHEAD: identity + period selector | summary band ── */}
+        <section className="panel">
+          <div className="flex flex-col gap-5 p-4 sm:p-6 lg:flex-row lg:items-end lg:justify-between lg:gap-10">
+            {/* Left: kicker + title + period selector */}
+            <div className="min-w-0">
+              <div>
+                <p className="text-[13px] font-medium text-faint">{t("anKicker")}</p>
+                <h1 className="mt-0.5 text-[22px] font-bold leading-tight tracking-[-0.02em] text-text sm:text-[26px]">
+                  {t("anTitle")}
+                </h1>
+              </div>
+              <div className="relative z-40 mt-4 max-w-[260px]">
+                {periodOpen && (
+                  <button
+                    type="button"
+                    aria-label={t("anCloseMenus")}
+                    tabIndex={-1}
+                    className="fixed inset-0 z-40 cursor-default"
+                    onClick={() => setPeriodOpen(false)}
+                  />
+                )}
+                <FloatingSelect
+                  className="relative z-50"
+                  icon={<Calendar size={14} className="shrink-0 text-primary" aria-hidden />}
+                  label={t(PERIODS.find((p) => p.key === period)?.labelKey ?? "anThisCycle")}
+                  open={periodOpen}
+                  onToggle={() => setPeriodOpen((v) => !v)}
+                >
+                  {PERIODS.map((opt) => (
+                    <SelectRow
+                      key={opt.key}
+                      selected={period === opt.key}
+                      label={t(opt.labelKey)}
+                      onSelect={() => {
+                        setPeriod(opt.key);
+                        setPeriodOpen(false);
+                      }}
+                    />
+                  ))}
+                </FloatingSelect>
+              </div>
+            </div>
 
-        {/* ── 2. PERIOD SELECTOR ── */}
-        <div className="relative z-40 max-w-[280px]">
-          {periodOpen && (
-            <button
-              type="button"
-              aria-label={t("anCloseMenus")}
-              tabIndex={-1}
-              className="fixed inset-0 z-40 cursor-default"
-              onClick={() => setPeriodOpen(false)}
-            />
-          )}
-          <FloatingSelect
-            className="relative z-50"
-            icon={<Calendar size={14} className="shrink-0 text-primary" aria-hidden />}
-            label={t(PERIODS.find((p) => p.key === period)?.labelKey ?? "anThisCycle")}
-            open={periodOpen}
-            onToggle={() => setPeriodOpen((v) => !v)}
-          >
-            {PERIODS.map((opt) => (
-              <SelectRow
-                key={opt.key}
-                selected={period === opt.key}
-                label={t(opt.labelKey)}
-                onSelect={() => {
-                  setPeriod(opt.key);
-                  setPeriodOpen(false);
-                }}
-              />
-            ))}
-          </FloatingSelect>
-        </div>
+            {/* Right (below on phones): one summary band - HistoryRegister pattern */}
+            <div className="lg:max-w-[560px] lg:shrink-0">
+              <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
+                <div className="min-w-0">
+                  <p className="caps-faint">{t("homeNetCashFlow")}</p>
+                  <p
+                    className={`figures-display mt-1 text-[32px] leading-none sm:text-[36px] ${
+                      stats.net < 0 ? "text-danger" : "text-income"
+                    }`}
+                  >
+                    <span className="mr-0.5 text-[0.5em] text-faint">{stats.net < 0 ? "−" : "+"}</span>
+                    {fmt(Math.abs(stats.net))}
+                  </p>
+                </div>
+                <div className="flex items-end pb-0.5">
+                  <div className="pr-5">
+                    <p className="caps-faint">IN</p>
+                    <p className="figures mt-1 text-sm text-income sm:text-[15px]">{fmt(stats.income)}</p>
+                  </div>
+                  <div className="border-l border-border pl-5">
+                    <p className="caps-faint">OUT</p>
+                    <p className="figures mt-1 text-sm text-danger sm:text-[15px]">{fmt(stats.spent)}</p>
+                  </div>
+                  <div className="border-l border-border pl-5">
+                    <p className="caps-faint">{t("homeSavingsRate")}</p>
+                    <p
+                      className={`figures mt-1 text-sm sm:text-[15px] ${
+                        savingsRate == null ? "text-faint" : savingsRate >= 20 ? "text-income" : "text-text"
+                      }`}
+                    >
+                      {savingsRate != null ? `${savingsRate}%` : "-"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              {/* One-line insight as muted subtext */}
+              <p className="mt-4 border-t border-border pt-3 text-[12px] leading-[18px] text-faint">
+                {triFlowInsight}
+                {!budgetSet && <span> · {t("triFlowNotSet")}</span>}
+              </p>
+            </div>
+          </div>
+        </section>
 
         {error ? <p className="border border-danger p-4 text-sm text-danger">{error}</p> : null}
 
         {!error && (
           <>
-            {/* ── 3. KPI BAND (MoneyPulseHero pattern, live with the period) ── */}
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <KpiCard label={t("homeNetCashFlow")} icon={<Scale size={14} aria-hidden />}>
-                <div className={`figures-display mt-2 ${stats.net < 0 ? "text-danger" : "text-text"}`}>
-                  <FitText basePx={30} minPx={12} title={t("homeNetCashFlow")}>
-                    <span className="mr-0.5 text-[0.55em] text-faint">{stats.net < 0 ? "−" : "+"}</span>
-                    {fmt(Math.abs(stats.net))}
-                  </FitText>
-                </div>
-                <p className="numeric mt-2.5 text-[11px] text-faint">
-                  {stats.entries} {t("homeEntriesWord")}
-                </p>
-              </KpiCard>
-
-              <KpiCard
-                label={t("homeInflow")}
-                icon={<ArrowDownLeft size={14} aria-hidden />}
-                iconTone="bg-income/10 text-income"
-              >
-                <div className="figures-display mt-2 text-income">
-                  <FitText basePx={30} minPx={12} title={t("homeInflow")}>
-                    {fmt(stats.income)}
-                  </FitText>
-                </div>
-                <div className="mt-auto pt-2.5">
-                  <div className="h-1 w-full overflow-hidden rounded-full bg-surface-elevated">
-                    <div className="h-full rounded-full bg-income transition-[width] duration-500" style={{ width: `${incomePct}%` }} />
-                  </div>
-                  <p className="numeric mt-1 text-[11px] text-faint">{incomePct}%</p>
-                </div>
-              </KpiCard>
-
-              <KpiCard
-                label={t("homeOutflow")}
-                icon={<ArrowUpRight size={14} aria-hidden />}
-                iconTone="bg-rust-tint text-danger"
-              >
-                <div className="figures-display mt-2 text-danger">
-                  <FitText basePx={30} minPx={12} title={t("homeOutflow")}>
-                    {fmt(stats.spent)}
-                  </FitText>
-                </div>
-                <div className="mt-auto pt-2.5">
-                  <div className="h-1 w-full overflow-hidden rounded-full bg-surface-elevated">
-                    <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${outflowPct}%`, backgroundColor: "var(--sf-expense-series)" }} />
-                  </div>
-                  <p className="numeric mt-1 text-[11px] text-faint">{outflowPct}%</p>
-                </div>
-              </KpiCard>
-
-              <KpiCard
-                label={t("homeSavingsRate")}
-                icon={<PiggyBank size={14} aria-hidden />}
-                iconTone="bg-income/10 text-income"
-              >
-                <div
-                  className={`figures-display mt-2 ${
-                    savingsRate == null ? "text-faint" : savingsRate >= 20 ? "text-income" : "text-text"
-                  }`}
-                >
-                  <FitText basePx={30} minPx={12} title={t("homeSavingsRate")}>
-                    {savingsRate != null ? `${savingsRate}%` : "-"}
-                  </FitText>
-                </div>
-                <p className="mt-auto pt-2.5 text-[11px] text-faint">{t("homeKeptOfIncome")}</p>
-              </KpiCard>
-            </div>
-
-            {/* ── 4. TriFlow insight as a compact strip ── */}
-            <div
-              className="flex items-center gap-2 rounded-xl border border-border p-3"
-              style={{
-                backgroundColor: overBudget
-                  ? "var(--sf-tile-expense-bg)"
-                  : stats.income > 0 && healthy
-                    ? "var(--sf-tile-income-bg)"
-                    : "var(--sf-surface)",
-              }}
-            >
-              {overBudget ? (
-                <TrendingUp size={16} className="shrink-0 text-danger" aria-hidden />
-              ) : stats.income > 0 && healthy ? (
-                <TrendingDown size={16} className="shrink-0 text-income" aria-hidden />
-              ) : (
-                <Zap size={16} className="shrink-0 text-primary" aria-hidden />
-              )}
-              <p
-                className="min-w-0 flex-1 text-[11.5px] leading-4"
-                style={{
-                  color: overBudget || (stats.income > 0 && !healthy) ? "var(--sf-danger)" : "var(--sf-text)",
-                }}
-              >
-                {triFlowInsight}
-              </p>
-              {!budgetSet && (
-                <span className="numeric shrink-0 text-[11px] font-bold text-faint">{t("triFlowNotSet")}</span>
-              )}
-            </div>
-
-            {/* ── 5. Row: monthly comparison + category-share donut ── */}
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-3 lg:items-start">
-              <section className="panel p-4 sm:p-5 lg:col-span-2">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-                  <p className="caps">{t("anMonthlyBars")}</p>
-                  <span className="numeric text-[11.5px] text-text-muted">
-                    <span className="font-semibold text-income">IN {fmt(monthlyMonths.reduce((s, m) => s + m.income, 0))}</span>
-                    <span className="mx-1.5 text-faint">·</span>
-                    <span className="font-semibold" style={{ color: "var(--sf-expense-series)" }}>
-                      OUT {fmt(monthlyMonths.reduce((s, m) => s + m.expense, 0))}
+            {/* ── 2. REPORT GRID: asymmetric 12-col, section titles outside
+                the charts as real typography; rows share equal heights ── */}
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
+              {/* Row 1: monthly comparison | category share */}
+              <section className="panel flex flex-col p-4 sm:p-5 lg:col-span-7">
+                <SectionHead
+                  title={t("anMonthlyBars")}
+                  sub={t("anMonthlyBarsSub")}
+                  aside={
+                    <span className="numeric hidden whitespace-nowrap pt-1 text-[11.5px] text-text-muted sm:block">
+                      <span className="font-semibold text-income">IN {fmt(monthlyMonths.reduce((s, m) => s + m.income, 0))}</span>
+                      <span className="mx-1.5 text-faint">·</span>
+                      <span className="font-semibold text-danger">OUT {fmt(monthlyMonths.reduce((s, m) => s + m.expense, 0))}</span>
                     </span>
-                  </span>
-                </div>
+                  }
+                />
                 <MonthlyBars months={monthlyMonths} formatted={fmt} compact={compactFmt} />
               </section>
 
-              <section className="panel p-4 sm:p-5">
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <p className="caps">{t("anWhereMoneyGoes")}</p>
-                  <p className="stamp">{t(PERIODS.find((p) => p.key === period)?.labelKey ?? "anThisCycle")}</p>
-                </div>
+              <section className="panel flex flex-col p-4 sm:p-5 lg:col-span-5">
+                <SectionHead title={t("anWhereMoneyGoes")} sub={t("anShareSub")} />
                 <ShareDonut slices={donutSlices} formatted={fmt} centerLabel={t("triFlowSpent")} />
               </section>
-            </div>
 
-            {/* ── 6. Row: net trend + financial health ── */}
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-3 lg:items-start">
-              <section className="panel p-4 sm:p-5 lg:col-span-2">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-                  <p className="caps">{t("anNetTrend")}</p>
-                  <span
-                    className={`figures text-sm font-bold ${stats.net >= 0 ? "text-income" : "text-danger"}`}
-                  >
-                    {stats.net >= 0 ? "+" : "−"}
-                    {fmt(Math.abs(stats.net))}
-                  </span>
-                </div>
+              {/* Row 2: net trend | top categories */}
+              <section className="panel flex flex-col p-4 sm:p-5 lg:col-span-7">
+                <SectionHead title={t("anNetTrend")} sub={t("anNetTrendSub")} />
                 <TrendArea points={trendPoints} formatted={fmt} locale={locale} />
               </section>
 
-              <HealthScoreCard health={health} t={t} entries={stats.entries} onOpen={() => setHealthModalOpen(true)} />
-            </div>
-
-            {/* ── 7. Row: top categories + daily-spending calendar ── */}
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-start">
-              <section className="panel p-4 sm:p-5">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-                  <p className="caps">{t("anTopCategories")}</p>
-                  <span className="stamp">
-                    {t("anTotalSpending")}: <span className="numeric font-bold text-text">{fmt(stats.spent)}</span>
-                  </span>
-                </div>
+              <section className="panel flex flex-col p-4 sm:p-5 lg:col-span-5">
+                <SectionHead
+                  title={t("anTopCategories")}
+                  sub={tr(t("anNCategories"), { n: String(rankedRows.length) })}
+                  aside={
+                    <span className="numeric whitespace-nowrap pt-1 text-[11.5px] text-text-muted">
+                      {t("anTotalSpending")} <span className="font-bold text-text">{fmt(stats.spent)}</span>
+                    </span>
+                  }
+                />
                 <RankedBars rows={rankedRows} formatted={fmt} />
               </section>
 
-              <section className="panel p-4 sm:p-5">
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <p className="caps">{t("anDailySpend")}</p>
-                </div>
+              {/* Row 3: daily calendar | financial health */}
+              <section className="panel flex flex-col p-4 sm:p-5 lg:col-span-7">
+                <SectionHead title={t("anDailySpend")} sub={t("anDailySpendSub")} />
                 <CalendarHeatmap
                   year={calMonth.year}
                   month={calMonth.month}
@@ -833,6 +733,8 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
                   totalLabel={t("anMonthTotal")}
                 />
               </section>
+
+              <HealthScoreCard health={health} t={t} entries={stats.entries} onOpen={() => setHealthModalOpen(true)} />
             </div>
           </>
         )}
@@ -917,25 +819,15 @@ function shiftDays(iso: string, days: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-/* ── KPI band card (MoneyPulseHero pattern) ── */
-function KpiCard({
-  label,
-  icon,
-  iconTone = "bg-surface-elevated text-text-muted",
-  children,
-}: {
-  label: string;
-  icon: ReactNode;
-  iconTone?: string;
-  children: ReactNode;
-}) {
+/* ── Section header: real typography OUTSIDE the chart panel ── */
+function SectionHead({ title, sub, aside }: { title: string; sub: string; aside?: ReactNode }) {
   return (
-    <div className="panel flex min-w-0 flex-col p-4 sm:p-5">
-      <div className="flex items-center justify-between gap-2">
-        <p className="caps truncate">{label}</p>
-        <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg ${iconTone}`}>{icon}</span>
+    <div className="mb-4 flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <h2 className="text-[15px] font-semibold leading-snug text-text">{title}</h2>
+        <p className="mt-0.5 text-[12px] leading-4 text-faint">{sub}</p>
       </div>
-      {children}
+      {aside}
     </div>
   );
 }
@@ -1022,7 +914,8 @@ function ModalHead({
   );
 }
 
-/* ── Financial Health Score card - mobile FinancialHealthScoreCard ── */
+/* ── Financial health: score ring + grade + one verdict + at most two
+   plain diagnostic rows (editorial collapse, 2026-10-11) ── */
 function HealthScoreCard({
   health,
   t,
@@ -1042,28 +935,16 @@ function HealthScoreCard({
   onOpen: () => void;
 }) {
   return (
-    <section className="panel space-y-3 p-4 sm:p-5">
-      {/* header */}
-      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
-        <button type="button" onClick={onOpen} className="flex min-w-0 items-center gap-1.5 text-left transition active:scale-[0.98]">
-          <Award size={18} className="shrink-0 text-primary" aria-hidden />
-          <span className="truncate text-[15px] font-semibold text-text">{t("anHealthTitle")}</span>
-        </button>
-        <button
-          type="button"
-          onClick={onOpen}
-          className="flex shrink-0 items-center gap-1 rounded-full px-2 py-[3px] transition active:scale-[0.97]"
-          style={{ backgroundColor: "var(--sf-track)" }}
-        >
-          <ShieldCheck size={12} aria-hidden style={{ color: health.color }} />
-          <span className="text-[11px] font-semibold" style={{ color: health.color }}>
-            {health.status}
-          </span>
-        </button>
-      </div>
+    <section className="panel flex flex-col p-4 sm:p-5 lg:col-span-5">
+      <SectionHead title={t("anHealthTitle")} sub={tr(t("anCalcAcross"), { n: String(entries) })} />
 
-      {/* radial dial + grade */}
-      <button type="button" onClick={onOpen} className="flex w-full items-center gap-[18px] text-left transition active:scale-[0.99]">
+      {/* score ring + grade - flex-grows so the row's height (set by the tall
+          calendar beside it) reads as deliberate whitespace around the dial */}
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex w-full flex-1 items-center gap-5 py-2 text-left transition active:scale-[0.99]"
+      >
         <ProgressRing
           pct={health.score / 100}
           size={96}
@@ -1077,68 +958,32 @@ function HealthScoreCard({
           </span>
           <span className="caps-faint !text-[9px]">{t("anScoreWord")}</span>
         </ProgressRing>
-        <span className="min-w-0 flex-1 space-y-1">
-          <span className="flex items-center gap-2">
-            <span
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[15px] font-bold text-white"
-              style={{ backgroundColor: health.color }}
-              aria-hidden
-            >
-              {health.grade}
-            </span>
-            <span className="min-w-0">
-              <span className="block text-[14.5px] font-semibold leading-snug text-text">{health.status}</span>
-              <span className="block text-[11px] leading-snug text-text-muted">{tr(t("anCalcAcross"), { n: String(entries) })}</span>
-            </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[30px] font-bold leading-none tracking-[-0.01em]" style={{ color: health.color }}>
+            {health.grade}
           </span>
-          {health.savingsRate !== null && (
-            <span className="flex items-center">
-              <span
-                className="inline-flex items-center gap-1 rounded-md px-[7px] py-[2px] text-[11px] font-extrabold"
-                style={{
-                  backgroundColor: health.savingsRate >= 20 ? "var(--sf-tint-emerald-15)" : "var(--sf-tint-amber-15)",
-                  color: health.savingsRate >= 20 ? "var(--sf-hue-emerald)" : "var(--sf-hue-amber)",
-                }}
-              >
-                <Sparkles size={11} aria-hidden />
-                {tr(t("anSavingsRatePill"), { r: String(health.savingsRate) })}
-              </span>
-            </span>
-          )}
-          <span className="block text-xs leading-4 text-text-muted">
-            {health.score >= 75 ? t("anVerdictTop") : t("anVerdictOpt")}
-          </span>
+          <span className="mt-1.5 block text-[13px] font-semibold text-text">{health.status}</span>
         </span>
       </button>
 
-      {/* actionable diagnostics */}
-      <div className="space-y-2.5 border-t border-border pt-3">
-        <p className="text-[11px] font-semibold text-text-muted">{t("anDiagnostics")}</p>
-        {health.insights.map((ins, i) => {
-          const isWarn = ins.tone === "warning";
-          return (
-            <button
-              key={i}
-              type="button"
-              onClick={onOpen}
-              className="flex w-full items-start gap-2.5 rounded-lg border border-border p-2.5 text-left transition active:scale-[0.99]"
-              style={{ backgroundColor: "var(--sf-surface-elevated)" }}
-            >
-              <span
-                className="mt-px flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-md"
-                style={{ backgroundColor: isWarn ? "var(--sf-tint-amber-15)" : "var(--sf-chip-tint)" }}
-                aria-hidden
-              >
-                <ins.Icon size={14} style={{ color: isWarn ? "var(--sf-hue-amber)" : "var(--sf-primary)" }} />
-              </span>
-              <span className="min-w-0 flex-1 space-y-0.5">
-                <span className="block text-[13px] font-bold text-text">{ins.title}</span>
-                <span className="block text-[11px] leading-[15px] text-text-muted">{ins.desc}</span>
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      {/* ONE verdict sentence */}
+      <p className="mt-3 text-[12.5px] leading-[18px] text-text-muted">
+        {health.score >= 75 ? t("anVerdictTop") : t("anVerdictOpt")}
+      </p>
+
+      {/* at most two diagnostics, plain two-line rows */}
+      {health.insights.length > 0 && (
+        <div className="mt-4 divide-y divide-border border-t border-border">
+          {health.insights.slice(0, 2).map((ins, i) => (
+            <div key={i} className="py-2.5">
+              <p className={`text-[13px] font-semibold leading-snug ${ins.tone === "warning" ? "text-danger" : "text-text"}`}>
+                {ins.title}
+              </p>
+              <p className="mt-0.5 text-[11.5px] leading-4 text-faint">{ins.desc}</p>
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

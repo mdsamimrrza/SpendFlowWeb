@@ -55,7 +55,7 @@ export function MonthlyBars({ months, formatted, compact }: MonthlyBarsProps) {
   const selMonth = sel != null ? months[sel] : null;
 
   return (
-    <div>
+    <div className="flex min-w-0 flex-1 flex-col">
       {/* HUD readout: pinned (tap) or default current-month figures */}
       <div className="mb-2 flex min-h-5 flex-wrap items-center gap-x-3 text-[11.5px] font-bold">
         {selMonth ? (
@@ -75,7 +75,9 @@ export function MonthlyBars({ months, formatted, compact }: MonthlyBarsProps) {
         )}
       </div>
 
-      <div className="relative" style={{ height: 170 }}>
+      {/* Chart area grows to fill the host card so paired rows never leave a
+          dead band under the columns (170px floor when unflexed). */}
+      <div className="relative min-h-[170px] flex-1">
         {/* Faint y-gridlines + compact labels */}
         {model.grid.map((v) => (
           <div

@@ -6,22 +6,20 @@ import { FitText } from "@/components/ui/FitText";
 export interface ShareDonutSlice {
   label: string;
   value: number;
-  /** Category color (the shared DB stores hexes as data - mobile writes them).
-   *  Falls back to the fixed token hue cycle when absent. */
-  color?: string | null;
 }
 
-/* Fixed accent hues (globals.css) - the token fallback cycle for slices
-   whose category carries no stored color. */
-const HUE_CYCLE = [
-  "var(--sf-hue-indigo)",
-  "var(--sf-hue-emerald)",
-  "var(--sf-hue-amber)",
-  "var(--sf-hue-violet)",
-  "var(--sf-hue-sky)",
-  "var(--sf-hue-orange)",
-  "var(--sf-hue-red)",
-];
+/* Deliberate single-hue ramp (design decision 2026-10-11): the ONLY raw hexes
+   allowed in this file. Stored category colors are data (mobile writes them)
+   but are ignored here so the analytics donut stays inside the Neo emerald
+   system; zinc closes the ramp for the "Other" remainder. */
+export const DONUT_RAMP = [
+  "#065f46",
+  "#059669",
+  "#10b981",
+  "#34d399",
+  "#6ee7b7",
+  "#a1a1aa", // "Other"
+] as const;
 
 interface ShareDonutProps {
   slices: ShareDonutSlice[];
@@ -34,8 +32,9 @@ interface ShareDonutProps {
 /**
  * Category-share donut (Monarch Reports pattern): SVG stroke arcs with 2px
  * gaps, center shows the total or the hovered/tapped slice's share, legend
- * rows below highlight their slice on hover/tap. Slices colored from the
- * passed category colors, falling back to the --sf-hue-* token cycle.
+ * rows below highlight their slice on hover/tap. Slices are colored from the
+ * curated single-hue DONUT_RAMP (deepest emerald -> mint -> zinc), not from
+ * stored category colors.
  */
 export function ShareDonut({ slices, formatted, centerLabel }: ShareDonutProps) {
   const [active, setActive] = useState<number | null>(null);
@@ -53,7 +52,7 @@ export function ShareDonut({ slices, formatted, centerLabel }: ShareDonutProps) 
       const len = share * 100;
       const arc = {
         ...s,
-        color: s.color || HUE_CYCLE[i % HUE_CYCLE.length],
+        color: DONUT_RAMP[Math.min(i, DONUT_RAMP.length - 1)],
         pct: Math.round(share * 100),
         dash: `${round2(Math.max(len - gap, 0.2))} ${round2(100 - Math.max(len - gap, 0.2))}`,
         offset: round2(-start - gap / 2),
