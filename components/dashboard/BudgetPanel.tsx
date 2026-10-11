@@ -38,8 +38,6 @@ interface BudgetPanelProps {
   daily?: { iso: string; value: number }[];
   /** Formatter for the strip's tooltips. */
   formatValue?: (n: number) => string;
-  /** Locale for the weekday initials under the bars. */
-  locale?: string;
   /** Link href for the set-budget CTA. */
   budgetHref?: string;
   /** Optional ReactNode rendered as the set-budget action (e.g. a Next <Link>). */
@@ -62,7 +60,6 @@ export function BudgetPanel({
   labels,
   daily,
   formatValue,
-  locale = "en",
   budgetHref = "/profit-loss",
   action,
 }: BudgetPanelProps) {
@@ -187,9 +184,6 @@ export function BudgetPanel({
               const now = new Date();
               const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
               const isToday = d.iso === todayIso;
-              const weekday = new Intl.DateTimeFormat(locale, { weekday: "narrow" }).format(
-                new Date(`${d.iso}T00:00:00`),
-              );
               return (
                 <div
                   key={d.iso}
@@ -211,12 +205,11 @@ export function BudgetPanel({
                     />
                   </div>
                   <span
-                    className={`flex flex-col items-center gap-0.5 leading-none ${
+                    className={`numeric text-[9px] leading-none ${
                       isToday ? "font-bold text-primary" : "text-faint"
                     }`}
                   >
-                    <span className="text-[9px]">{weekday}</span>
-                    <span className="numeric text-[8.5px] opacity-80">{Number(d.iso.slice(8, 10))}</span>
+                    {Number(d.iso.slice(8, 10))}
                   </span>
                 </div>
               );

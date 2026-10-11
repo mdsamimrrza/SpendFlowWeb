@@ -173,7 +173,6 @@ export default function PreviewDashPage() {
               cycleLabel="Sep 1 – Sep 30"
               daily={dailyDays}
               formatValue={fmt}
-              locale="en"
               labels={{
                 budgetOnFile: "Monthly budget",
                 spent: "spent",
