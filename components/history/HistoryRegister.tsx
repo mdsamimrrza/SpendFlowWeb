@@ -56,17 +56,22 @@ const SORTS: { key: SortKey; label: string; sort: ExpenseSort }[] = [
 ];
 
 /**
- * History - "market register" redesign (2026-10-11, Copilot / Monarch
- * transactions pattern). Same engine (deep links, 300 ms server-side search,
- * filters, paging, privacy mask, detail sheet), new structure:
- *  · Masthead - overline, title, entry count (theme + privacy live in the
- *    shell topbar on every screen).
- *  · One compact summary band - flow switcher left, Net / IN / OUT / Peak
- *    figures inline, 4 px income/expense split line under the row.
- *  · One toolbar row - search + sort + Filters button (count badge); presets,
- *    selects and min/max live in a desktop popover / the mobile sheet.
- *  · Flat desktop table - sticky header, per-row date column, no day bands.
- *  · One footer bar - totals + in/out/net left, pager right.
+ * History - transactions register, Monarch / Copilot Money pattern
+ * (2026-10-11 structural rebuild). Same engine (deep links, 300 ms
+ * server-side search, filters, paging, privacy mask, detail sheet), new
+ * structure:
+ *  · Masthead - overline + title (theme + privacy live in the shell topbar).
+ *  · Desktop lg+: sticky LEFT FILTER RAIL that IS the filter UI - search on
+ *    top, then sort, date presets, flow type, categories (with live counts
+ *    from the filtered set), accounts, channels and min/max as vertical
+ *    lists with inline active states. No filter button, no chips, no
+ *    popover.
+ *  · RIGHT MAIN COLUMN - slim summary header (entry count, Net figure,
+ *    IN / OUT inline, 4 px income/expense share line under the row, all
+ *    live with the filters), then transactions grouped BY DAY: day header
+ *    row with the day net on the right, register list rows under it.
+ *  · Mobile <lg: the rail becomes a slide-over behind a Filters button;
+ *    the list keeps the day grouping.
  * `inject` is the /preview-history design seam (static rows, no auth/network).
  */
 export function HistoryRegister({
@@ -137,7 +142,7 @@ export function HistoryRegister({
     [profile?.cycle_start_day, profile?.cycle_end_day],
   );
 
-  // Filters UI: popover panel under the button on desktop, sheet below lg.
+  // Rail placement: sticky sidebar from lg up, slide-over below.
   const [compactViewport, setCompactViewport] = useState(false);
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 1023px)");
@@ -237,20 +242,12 @@ export function HistoryRegister({
   const summary = useMemo(() => {
     let outflow = 0;
     let inflow = 0;
-    let peak = 0;
-    let peakLabel = "";
     for (const row of rows) {
       const v = convert(row);
       if (row.type === "income") inflow += v;
-      else {
-        outflow += v;
-        if (v > peak) {
-          peak = v;
-          peakLabel = row.description || row.categories?.name || "";
-        }
-      }
+      else outflow += v;
     }
-    return { outflow, inflow, peak, peakLabel, net: inflow - outflow };
+    return { outflow, inflow, net: inflow - outflow };
   }, [rows, convert]);
 
   // "At transaction-date rates" debugger counterpart of the filtered totals
@@ -266,7 +263,17 @@ export function HistoryRegister({
     return { income: inc, expense: exp };
   }, [rows, convertFrozen]);
 
-  // Mobile base: progressive paging. Desktop table: classic paging.
+  // Per-category counts inside the current filtered set (client-side, no
+  // extra query): the rail shows how many entries each category holds.
+  const categoryCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of rows) {
+      if (r.category_id) m.set(r.category_id, (m.get(r.category_id) ?? 0) + 1);
+    }
+    return m;
+  }, [rows]);
+
+  // Mobile base: progressive paging. Desktop: classic paging.
   const pageRows = useMemo(() => rows.slice(page * PAGE, page * PAGE + PAGE), [rows, page]);
 
   const groupRows = useCallback(
@@ -300,7 +307,6 @@ export function HistoryRegister({
   const filterCount = [preset !== "all", !!categoryId, !!method, !!accountId, !!min, !!max].filter(
     Boolean,
   ).length;
-  const isFiltered = !!(debounced || flow !== "all" || filterCount > 0 || sortKey !== "date_desc");
 
   const resetAll = useCallback(() => {
     setSearch("");
@@ -319,30 +325,40 @@ export function HistoryRegister({
     }
   }, []);
 
-  // Removable filter chips - one glance shows what the register is narrowed by.
-  const chips: { key: string; label: string; onRemove: () => void }[] = [];
-  if (preset !== "all")
-    chips.push({
-      key: "period",
-      label:
-        preset === "today" ? t("histChipToday") : preset === "week" ? t("histChipWeek") : preset === "cycle" ? t("histChipCycle") : `${from || "..."} - ${to || "..."}`,
-      onRemove: () => applyPreset("all"),
-    });
-  if (categoryId) {
-    const c = categories.find((x) => x.id === categoryId);
-    if (c) chips.push({ key: "cat", label: c.name, onRemove: () => setCategoryId("") });
-  }
-  if (method) chips.push({ key: "method", label: method, onRemove: () => setMethod("") });
-  if (accountId) {
-    const a = accounts.find((x) => x.id === accountId);
-    if (a) chips.push({ key: "acct", label: a.name, onRemove: () => setAccountId("") });
-  }
-  if (min) chips.push({ key: "min", label: `≥ ${min}`, onRemove: () => setMin("") });
-  if (max) chips.push({ key: "max", label: `≤ ${max}`, onRemove: () => setMax("") });
-  if (debounced) chips.push({ key: "q", label: `“${debounced}”`, onRemove: () => setSearch("") });
+  // Rail category / account lists. The hooks need auth; when they come back
+  // empty but rows are loaded, derive the options from the rows themselves
+  // (client-side, no extra queries) so the rail is never blank.
+  const railCategories = useMemo(() => {
+    if (categories.length > 0) {
+      return categories.map((c) => ({ value: c.id, label: c.name, type: c.type }));
+    }
+    const seen = new Map<string, { value: string; label: string; type: string }>();
+    for (const r of rows) {
+      if (r.categories && !seen.has(r.categories.id)) {
+        seen.set(r.categories.id, { value: r.categories.id, label: r.categories.name, type: r.categories.type });
+      }
+    }
+    return [...seen.values()];
+  }, [categories, rows]);
+  const railAccounts = useMemo(() => {
+    if (accounts.length > 0) {
+      return accounts.map((a) => ({ value: a.id, label: a.name }));
+    }
+    const seen = new Map<string, { value: string; label: string }>();
+    for (const r of rows) {
+      if (r.bank_accounts && !seen.has(r.bank_accounts.id)) {
+        seen.set(r.bank_accounts.id, { value: r.bank_accounts.id, label: r.bank_accounts.name });
+      }
+    }
+    return [...seen.values()];
+  }, [accounts, rows]);
 
-  const filterFields = (
-    <FilterFields
+  const rail = (
+    <FilterRail
+      search={search}
+      onSearch={setSearch}
+      sortKey={sortKey}
+      onSort={(v) => setSortKey(v as SortKey)}
       preset={preset}
       applyPreset={applyPreset}
       from={from}
@@ -351,222 +367,188 @@ export function HistoryRegister({
         setFrom(f);
         setTo(t2);
       }}
+      flow={flow}
+      onFlow={(f) => {
+        setFlow(f);
+        setPage(0);
+      }}
       categoryId={categoryId}
-      onCategory={setCategoryId}
-      method={method}
-      onMethod={setMethod}
+      onCategory={(v) => setCategoryId((cur) => (cur === v ? "" : v))}
+      categories={railCategories}
+      categoryCounts={categoryCounts}
       accountId={accountId}
-      onAccount={setAccountId}
+      onAccount={(v) => setAccountId((cur) => (cur === v ? "" : v))}
+      accounts={railAccounts}
+      method={method}
+      onMethod={(v) => setMethod((cur) => (cur === v ? "" : v))}
       min={min}
       onMin={setMin}
       max={max}
       onMax={setMax}
-      flow={flow}
-      categories={categories.map((c) => ({ value: c.id, label: c.name, type: c.type }))}
-      accounts={accounts.map((a) => ({ value: a.id, label: a.name }))}
-      resetAll={resetAll}
-      resultLabel={`Show ${totalCount} result${totalCount === 1 ? "" : "s"}`}
-      onDone={() => setFiltersOpen(false)}
+      onClear={resetAll}
+      compactSearch={compactViewport}
     />
   );
 
   return (
     <main className="mx-auto w-full max-w-[1200px]">
-      {/* ── Masthead: overline + title + entry count (shell topbar owns
-          theme + privacy on every screen) ── */}
+      {/* ── Masthead: overline + title (shell topbar owns theme + privacy) ── */}
       <header className="mb-4 sm:mb-5">
         <p className="text-[13px] font-medium text-faint">{t("histOverline")}</p>
-        <div className="mt-0.5 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-          <h1 className="text-xl font-bold tracking-[-0.02em] text-text sm:text-2xl">{t("history")}</h1>
-          <span className="numeric text-[12px] font-semibold text-faint">
-            {totalCount} {t("entriesLabel")}
-          </span>
-        </div>
+        <h1 className="mt-0.5 text-xl font-bold tracking-[-0.02em] text-text sm:text-2xl">
+          {t("history")}
+        </h1>
       </header>
 
-      {/* ── Compact summary band: switcher + inline figures + split line ── */}
-      <HistoryBand
-        inflow={summary.inflow}
-        outflow={summary.outflow}
-        net={summary.net}
-        peak={
-          summary.peak > 0 ? { label: summary.peakLabel, value: fmt(summary.peak) } : null
-        }
-        fmt={fmt}
-        flow={flow}
-        onFlow={(f) => {
-          setFlow(f);
-          setPage(0);
-        }}
-      />
-      <div className="mt-2 space-y-2 px-1">
-        <TodayRateLine
-          live={{ income: summary.inflow, expense: summary.outflow }}
-          frozen={historyFrozenTotals}
-          fmt={fmt}
-        />
-      </div>
+      <div className="lg:grid lg:grid-cols-[250px_minmax(0,1fr)] lg:items-start lg:gap-7">
+        {/* ── LEFT FILTER RAIL (desktop): the filter UI itself ── */}
+        <aside
+          aria-label={t("histFilters")}
+          className="hidden lg:sticky lg:top-[72px] lg:max-h-[calc(100vh-96px)] lg:overflow-y-auto lg:block lg:pb-4"
+        >
+          {rail}
+        </aside>
 
-      {/* ── Register panel: toolbar + chips + table + footer bar ── */}
-      <div className="panel mt-4" ref={panelRef}>
-        {/* Toolbar: search + sort + filters (popover on desktop, sheet on
-            phones). */}
-        <div className="flex flex-wrap items-center gap-2 p-3">
-          <div className="relative min-w-[140px] flex-1">
-            <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={t("search")}
-              aria-label={t("search")}
-              className="h-11 w-full rounded-lg border border-border bg-input pl-9 pr-8 text-sm text-text placeholder:text-faint transition-colors focus:border-primary focus:outline-none sm:h-10"
-            />
-            {search && (
-              <button
-                onClick={() => setSearch("")}
-                aria-label={t("clear")}
-                className="absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center text-faint transition-colors hover:text-text"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
-          <select
-            aria-label="Sort entries"
-            value={sortKey}
-            onChange={(e) => setSortKey(e.target.value as SortKey)}
-            className="h-11 rounded-lg border border-border bg-input px-2.5 text-[13px] font-semibold text-text-muted sm:h-10"
-          >
-            {SORTS.map((s) => (
-              <option key={s.key} value={s.key}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-          <div className="relative shrink-0">
-            <button
-              onClick={() => setFiltersOpen((v) => !v)}
-              aria-expanded={filtersOpen}
-              className={`flex h-11 items-center gap-1.5 rounded-lg border px-3.5 text-sm font-semibold transition-colors sm:h-10 ${
-                filtersOpen
-                  ? "border-primary bg-[var(--sf-primary-light)] text-primary-strong"
-                  : "border-border bg-surface text-text-muted hover:border-faint hover:text-text"
-              }`}
-            >
-              <SlidersHorizontal size={14} /> {t("histFilters")}
-              {filterCount > 0 && (
-                <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-white">
-                  {filterCount}
-                </span>
-              )}
-            </button>
-            {/* Desktop popover. */}
-            {filtersOpen && !compactViewport && (
-              <>
+        {/* ── RIGHT MAIN COLUMN ── */}
+        <div className="min-w-0" ref={panelRef}>
+          {/* Mobile toolbar: search row, then sort + Filters trigger for the
+              rail slide-over. Desktop owns these inside the rail. */}
+          <div className="mb-3 space-y-2 lg:hidden">
+            <div className="relative">
+              <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t("search")}
+                aria-label={t("search")}
+                className="h-11 w-full rounded-lg border border-border bg-input pl-9 pr-8 text-sm text-text placeholder:text-faint transition-colors focus:border-primary focus:outline-none"
+              />
+              {search && (
                 <button
-                  aria-label={t("close")}
-                  tabIndex={-1}
-                  onClick={() => setFiltersOpen(false)}
-                  className="fixed inset-0 z-30 cursor-default"
-                />
-                <div className="panel shadow-pop absolute right-0 top-[calc(100%+8px)] z-40 w-[min(620px,calc(100vw-2rem))] p-4 sm:p-5">
-                  {filterFields}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Removable active-filter chips - the row only exists while filters
-            are active. */}
-        {chips.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 border-t border-border bg-surface-elevated/30 px-3 py-2">
-            <span className="caps-faint mr-0.5">{t("histActiveFilters")}</span>
-            {chips.map((c) => (
-              <span
-                key={c.key}
-                className="flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface pl-2.5 pr-1 text-[11px] font-semibold text-text"
-              >
-                <span className="max-w-[160px] truncate">{c.label}</span>
-                <button
-                  onClick={c.onRemove}
-                  aria-label={`${t("clear")} ${c.label}`}
-                  className="grid h-5 w-5 place-items-center text-faint transition-colors hover:text-danger"
+                  onClick={() => setSearch("")}
+                  aria-label={t("clear")}
+                  className="absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center text-faint transition-colors hover:text-text"
                 >
-                  <X size={12} />
+                  <X size={14} />
                 </button>
-              </span>
-            ))}
-            {isFiltered && (
-              <button
-                onClick={resetAll}
-                className="ml-auto flex h-7 items-center gap-1 px-2 text-[11px] font-semibold text-rust transition-colors hover:opacity-80"
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <select
+                aria-label="Sort entries"
+                value={sortKey}
+                onChange={(e) => setSortKey(e.target.value as SortKey)}
+                className="h-11 min-w-0 flex-1 rounded-lg border border-border bg-input px-2 text-[13px] font-semibold text-text-muted"
               >
-                {t("clear")} <X size={12} />
+                {SORTS.map((s) => (
+                  <option key={s.key} value={s.key}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={() => setFiltersOpen(true)}
+                className={`flex h-11 shrink-0 items-center gap-1.5 rounded-lg border px-3.5 text-sm font-semibold transition-colors ${
+                  filterCount > 0
+                    ? "border-primary bg-[var(--sf-primary-light)] text-primary-strong"
+                    : "border-border bg-surface text-text-muted"
+                }`}
+              >
+                <SlidersHorizontal size={14} /> {t("histFilters")}
               </button>
-            )}
+            </div>
           </div>
-        )}
 
-        {loading && rows.length === 0 ? (
-          <div className="space-y-3 p-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="h-14 w-full lg:h-11" />
-            ))}
+          {/* ── Slim summary header: count + Net + IN / OUT + share line,
+              all live with the rail filters ── */}
+          <section className="panel overflow-hidden">
+            <div className="flex flex-wrap items-end gap-x-5 gap-y-2 px-4 py-3 sm:px-5">
+              <div className="min-w-0">
+                <p className="caps-faint">
+                  {totalCount} {t("entriesLabel")}
+                </p>
+                <p className="figures-display mt-0.5 truncate text-[24px] leading-8 sm:text-[28px] sm:leading-9">
+                  <span className={summary.net >= 0 ? "text-income" : "text-danger"}>
+                    <span className="mr-0.5 text-[0.6em] text-faint">
+                      {summary.net >= 0 ? "+" : "−"}
+                    </span>
+                    {fmt(Math.abs(summary.net)).replace(/^[^\d]*/, "")}
+                  </span>
+                  <span className="ml-1.5 align-middle text-[11px] font-medium tracking-normal text-faint">
+                    {t("cfNet")}
+                  </span>
+                </p>
+              </div>
+              <div className="ml-auto flex items-end gap-4 pb-0.5">
+                <div className="text-right">
+                  <p className="caps-faint">IN</p>
+                  <p className="figures mt-0.5 text-sm text-income sm:text-[15px]">
+                    {fmt(summary.inflow).replace(/^[^\d]*/, "")}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="caps-faint">OUT</p>
+                  <p className="figures mt-0.5 text-sm text-danger sm:text-[15px]">
+                    {fmt(summary.outflow).replace(/^[^\d]*/, "")}
+                  </p>
+                </div>
+              </div>
+            </div>
+            {/* Income / expense share - one 4 px line under the row. */}
+            <div className="flex h-1" style={{ background: "var(--sf-track)" }}>
+              <span
+                className="bg-income transition-[width] duration-500"
+                style={{ width: `${summary.inflow + summary.outflow > 0 ? Math.round((summary.inflow / (summary.inflow + summary.outflow)) * 100) : 50}%` }}
+              />
+              <span
+                className="bg-danger transition-[width] duration-500"
+                style={{ width: `${summary.inflow + summary.outflow > 0 ? 100 - Math.round((summary.inflow / (summary.inflow + summary.outflow)) * 100) : 50}%` }}
+              />
+            </div>
+          </section>
+
+          <div className="mt-2 px-1">
+            <TodayRateLine
+              live={{ income: summary.inflow, expense: summary.outflow }}
+              frozen={historyFrozenTotals}
+              fmt={fmt}
+            />
           </div>
-        ) : error ? (
-          <EmptyState title={t("error")} message={error} />
-        ) : rows.length === 0 ? (
-          <EmptyState title={t("noTransactions")} message={t("noTransactionsHint")} />
-        ) : (
-          <>
-            {/* ── MOBILE BASE: day cards on a journal rail ── */}
-            <div className="sf-stagger space-y-3 p-3 sm:p-4 lg:hidden">
-              {sections.map((section) => (
-                <DayCard
-                  key={section.date}
-                  date={section.date}
-                  total={section.total}
-                  locale={locale}
-                  fmt={fmt}
-                >
-                  {section.rows.map((row) => (
-                    <JournalRow
-                      key={row.id}
-                      row={row}
-                      amount={fmt(convert(row))}
-                      original={
-                        row.currency !== displayCurrency
-                          ? mask(formatMoney(row.amount, row.currency, locale))
-                          : null
-                      }
-                      locale={locale}
-                      onOpen={() => setSelected(row)}
-                    />
-                  ))}
-                </DayCard>
+
+          {/* ── Register: day groups + pager ── */}
+          {loading && rows.length === 0 ? (
+            <div className="panel mt-3 space-y-3 p-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <Skeleton key={i} className="h-14 w-full" />
               ))}
             </div>
-
-            {/* ── DESKTOP ENHANCEMENT: flat register table, sticky header.
-                No overflow wrapper at xl+ so the header sticks to the page;
-                below xl the min-width table scrolls horizontally. ── */}
-            <div className="hidden overflow-x-auto border-t border-border lg:block xl:overflow-x-visible">
-              <table className="w-full min-w-[880px] text-sm">
-                <thead>
-                  <tr className="text-left text-[11px] font-semibold text-faint">
-                    <th className="sticky top-14 z-10 border-b border-border bg-surface px-4 py-2.5">Date</th>
-                    <th className="sticky top-14 z-10 border-b border-border bg-surface px-3 py-2.5">Transaction</th>
-                    <th className="sticky top-14 z-10 border-b border-border bg-surface px-3 py-2.5">Category</th>
-                    <th className="sticky top-14 z-10 border-b border-border bg-surface px-3 py-2.5">Account</th>
-                    <th className="sticky top-14 z-10 border-b border-border bg-surface px-3 py-2.5">Method</th>
-                    <th className="sticky top-14 z-10 border-b border-border bg-surface px-4 py-2.5 text-right">Amount</th>
-                    <th className="sticky top-14 z-10 border-b border-border bg-surface" aria-label="Actions" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {pageRows.map((row) => (
-                    <HistoryRow
+          ) : error ? (
+            <div className="panel mt-3">
+              <EmptyState title={t("error")} message={error} />
+            </div>
+          ) : rows.length === 0 ? (
+            <div className="panel mt-3">
+              <EmptyState title={t("noTransactions")} message={t("noTransactionsHint")} />
+            </div>
+          ) : (
+            <div className="panel mt-3 overflow-hidden">
+              {sections.map((section, gi) => (
+                <section key={section.date} className={gi > 0 ? "border-t border-border" : undefined}>
+                  {/* Day header: label left, signed day net right. */}
+                  <div className="flex items-baseline justify-between gap-3 border-b border-border/60 bg-surface-elevated/40 px-3 py-2 sm:px-4">
+                    <p className="caps truncate">{groupDate(section.date, locale)}</p>
+                    <p
+                      className={`numeric shrink-0 text-[11px] font-bold ${
+                        section.total >= 0 ? "text-income" : "text-danger"
+                      }`}
+                    >
+                      {section.total >= 0 ? "+" : "−"}
+                      {fmt(Math.abs(section.total)).replace(/^[^\d]*/, "")}{" "}
+                      <span className="font-semibold text-faint">{t("histDayNet")}</span>
+                    </p>
+                  </div>
+                  {section.rows.map((row) => (
+                    <RegisterRow
                       key={row.id}
                       row={row}
                       amount={fmt(convert(row))}
@@ -580,35 +562,15 @@ export function HistoryRegister({
                       onOpen={() => setSelected(row)}
                     />
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </section>
+              ))}
 
-            {/* ── Footer bar: totals left, pager right ── */}
-            <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-border px-4 py-3 sm:px-5">
-              <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1">
-                <span className="caps-faint">
-                  Totals · {rows.length} {t("entriesLabel")}
-                </span>
-                <span className="numeric text-xs font-bold text-income">
-                  +{fmt(summary.inflow).replace(/^[^\d]*/, "")}
-                </span>
-                <span className="numeric text-xs font-bold text-danger">
-                  −{fmt(summary.outflow).replace(/^[^\d]*/, "")}
-                </span>
-                <span className="numeric text-xs font-extrabold">
-                  <span className="mr-1 font-semibold text-faint">{t("cfNet")}</span>
-                  <span className={summary.net >= 0 ? "text-income" : "text-danger"}>
-                    {summary.net >= 0 ? "+" : "−"}
-                    {fmt(Math.abs(summary.net)).replace(/^[^\d]*/, "")}
-                  </span>
-                </span>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
+              {/* Pager */}
+              <div className="flex items-center justify-between gap-2 border-t border-border px-4 py-3">
                 <button
                   onClick={() => goPage(Math.max(0, page - 1))}
                   disabled={page === 0}
-                  className="flex h-9 items-center gap-1 rounded-lg border border-border bg-surface px-3.5 text-[13px] font-semibold text-text-muted transition-colors hover:border-faint hover:text-text disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex h-10 items-center gap-1 rounded-lg border border-border bg-surface px-3.5 text-[13px] font-semibold text-text-muted transition-colors hover:border-faint hover:text-text disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <ChevronLeft size={14} /> {t("prev")}
                 </button>
@@ -618,24 +580,25 @@ export function HistoryRegister({
                 <button
                   onClick={() => goPage(Math.min(pageCount - 1, page + 1))}
                   disabled={page >= pageCount - 1}
-                  className="flex h-9 items-center gap-1 rounded-lg border border-border bg-surface px-3.5 text-[13px] font-semibold text-text-muted transition-colors hover:border-faint hover:text-text disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex h-10 items-center gap-1 rounded-lg border border-border bg-surface px-3.5 text-[13px] font-semibold text-text-muted transition-colors hover:border-faint hover:text-text disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {t("next")} <ChevronRight size={14} />
                 </button>
               </div>
             </div>
-          </>
-        )}
+          )}
+        </div>
       </div>
 
-      {/* Mobile filter sheet - same state as the desktop popover. */}
+      {/* Mobile slide-over: the same rail, minus the search/sort that the
+          toolbar already owns. */}
       <Modal
         open={filtersOpen && compactViewport}
         title="Filter register"
         onClose={() => setFiltersOpen(false)}
-        maxWidth="max-w-lg"
+        maxWidth="max-w-sm"
       >
-        <div className="p-5">{filterFields}</div>
+        <div className="p-4">{rail}</div>
       </Modal>
 
       <ExpenseDetailSheet
@@ -648,418 +611,267 @@ export function HistoryRegister({
   );
 }
 
-/* ── compact summary band: flow switcher + inline stat figures + split line ── */
-function HistoryBand({
-  inflow,
-  outflow,
-  net,
-  peak,
-  fmt,
-  flow,
-  onFlow,
-}: {
-  inflow: number;
-  outflow: number;
-  net: number;
-  peak: { label: string; value: string } | null;
-  fmt: (n: number) => string;
-  flow: FlowFilter;
-  onFlow: (f: FlowFilter) => void;
-}) {
-  const { t } = useLanguage();
-  const total = inflow + outflow;
-  const incomePct = total > 0 ? Math.round((inflow / total) * 100) : 50;
-  return (
-    <section className="panel overflow-hidden">
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-3 px-4 py-3 sm:px-5">
-        {/* Flow switcher - segmented, thumb-sized on phones. */}
-        <div className="flex rounded-lg border border-border bg-surface-elevated p-0.5" role="group" aria-label={t("allFlow")}>
-          {(["all", "expense", "income"] as FlowFilter[]).map((f) => (
-            <button
-              key={f}
-              onClick={() => onFlow(f)}
-              aria-pressed={flow === f}
-              className={`flex h-8 min-w-[56px] items-center justify-center rounded-md px-2.5 text-[12px] font-semibold transition active:scale-[0.97] ${
-                flow === f
-                  ? f === "income"
-                    ? "bg-income text-white"
-                    : f === "expense"
-                      ? "bg-danger text-white"
-                      : "bg-primary text-white"
-                  : "text-text-muted hover:text-text"
-              }`}
-            >
-              {f === "all" ? t("allFlow") : t(f)}
-            </button>
-          ))}
-        </div>
-
-        <span className="hidden h-9 w-px bg-border md:block" aria-hidden />
-        <BandStat
-          label={t("cfNet")}
-          display
-          value={
-            <span className={net >= 0 ? "text-income" : "text-danger"}>
-              <span className="mr-0.5 text-[0.6em] text-faint">{net >= 0 ? "+" : "−"}</span>
-              {fmt(Math.abs(net)).replace(/^[^\d]*/, "")}
-            </span>
-          }
-        />
-        <Hairline />
-        <BandStat
-          label="IN"
-          value={<span className="text-income">{fmt(inflow).replace(/^[^\d]*/, "")}</span>}
-        />
-        <Hairline />
-        <BandStat
-          label="OUT"
-          value={<span className="text-danger">{fmt(outflow).replace(/^[^\d]*/, "")}</span>}
-        />
-        <Hairline />
-        <BandStat
-          label={t("analyticsKpiPeakTitle")}
-          value={peak ? <span>{peak.value}</span> : <span className="text-faint">-</span>}
-          sub={peak ? peak.label : undefined}
-        />
-      </div>
-      {/* Income / expense share - one 4 px line under the whole row. */}
-      <div className="flex h-1" style={{ background: "var(--sf-track)" }}>
-        <span className="bg-income transition-[width] duration-500" style={{ width: `${incomePct}%` }} />
-        <span className="bg-danger transition-[width] duration-500" style={{ width: `${100 - incomePct}%` }} />
-      </div>
-    </section>
-  );
-}
-
-function Hairline() {
-  return <span className="hidden h-9 w-px bg-border md:block" aria-hidden />;
-}
-
-function BandStat({
-  label,
-  value,
-  sub,
-  display = false,
-}: {
-  label: string;
-  value: React.ReactNode;
-  sub?: string;
-  /** Net gets the Fraunces display figure; the rest stay compact. */
-  display?: boolean;
-}) {
-  return (
-    <div className="min-w-0">
-      <p className="caps-faint">{label}</p>
-      <div
-        className={`numeric mt-0.5 truncate ${
-          display ? "figures-display text-[22px] leading-7 sm:text-[26px] sm:leading-8" : "figures text-sm sm:text-[15px]"
-        }`}
-      >
-        {value}
-      </div>
-      {sub && <p className="mt-0.5 max-w-[140px] truncate text-[10.5px] text-faint">{sub}</p>}
-    </div>
-  );
-}
-
-/* ── shared filter body: presets + range + selects + min/max (popover and
-    mobile sheet render the same fields) ── */
-function FilterFields({
+/* ── LEFT FILTER RAIL: search, sort, presets, flow, categories (with
+    counts), accounts, channels, min/max. Rendered as the sticky desktop
+    sidebar and inside the mobile slide-over. ── */
+function FilterRail({
+  search,
+  onSearch,
+  sortKey,
+  onSort,
   preset,
   applyPreset,
   from,
   to,
   onRange,
+  flow,
+  onFlow,
   categoryId,
   onCategory,
-  method,
-  onMethod,
+  categories,
+  categoryCounts,
   accountId,
   onAccount,
+  accounts,
+  method,
+  onMethod,
   min,
   onMin,
   max,
   onMax,
-  flow,
-  categories,
-  accounts,
-  resetAll,
-  resultLabel,
-  onDone,
+  onClear,
+  compactSearch,
 }: {
+  search: string;
+  onSearch: (v: string) => void;
+  sortKey: SortKey;
+  onSort: (v: string) => void;
   preset: DatePreset;
   applyPreset: (p: DatePreset) => void;
   from: string;
   to: string;
   onRange: (from: string, to: string) => void;
+  flow: FlowFilter;
+  onFlow: (f: FlowFilter) => void;
   categoryId: string;
   onCategory: (v: string) => void;
-  method: string;
-  onMethod: (v: string) => void;
+  categories: { value: string; label: string; type: string }[];
+  categoryCounts: Map<string, number>;
   accountId: string;
   onAccount: (v: string) => void;
+  accounts: { value: string; label: string }[];
+  method: string;
+  onMethod: (v: string) => void;
   min: string;
   onMin: (v: string) => void;
   max: string;
   onMax: (v: string) => void;
-  flow: FlowFilter;
-  categories: { value: string; label: string; type: string }[];
-  accounts: { value: string; label: string }[];
-  resetAll: () => void;
-  resultLabel: string;
-  onDone: () => void;
+  onClear: () => void;
+  /** Mobile slide-over hides search + sort (toolbar owns them there). */
+  compactSearch: boolean;
 }) {
-  const presets: DatePreset[] = ["all", "today", "week", "cycle", "custom"];
+  const { t } = useLanguage();
+  const presets: { key: DatePreset; label: string }[] = [
+    { key: "all", label: t("periodAll") },
+    { key: "today", label: t("histChipToday") },
+    { key: "week", label: t("histChipWeek") },
+    { key: "cycle", label: t("histChipCycle") },
+    { key: "custom", label: t("filterCustom") },
+  ];
+  const flows: { key: FlowFilter; label: string }[] = [
+    { key: "all", label: t("allFlow") },
+    { key: "expense", label: t("expense") },
+    { key: "income", label: t("income") },
+  ];
   return (
-    <div className="space-y-4">
-      <div>
-        <p className="caps">Period</p>
-        <div className="mt-1.5 flex flex-wrap gap-2">
-          {presets.map((p) => (
-            <button
-              key={p}
-              onClick={() => applyPreset(p)}
-              className={`h-9 rounded-lg border px-3 text-[12.5px] font-semibold transition-colors ${
-                preset === p
-                  ? "border-primary bg-[var(--sf-primary-light)] text-primary-strong"
-                  : "border-border text-text-muted hover:text-text"
-              }`}
-            >
-              {p === "all" ? "All time" : p === "cycle" ? "This cycle" : p === "custom" ? "Custom" : p}
-            </button>
-          ))}
+    <div className="space-y-5">
+      {/* Search on top of the rail. */}
+      {!compactSearch && (
+        <div>
+          <div className="relative">
+            <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
+            <input
+              value={search}
+              onChange={(e) => onSearch(e.target.value)}
+              placeholder={t("search")}
+              aria-label={t("search")}
+              className="h-10 w-full rounded-lg border border-border bg-input pl-9 pr-8 text-sm text-text placeholder:text-faint transition-colors focus:border-primary focus:outline-none"
+            />
+            {search && (
+              <button
+                onClick={() => onSearch("")}
+                aria-label={t("clear")}
+                className="absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center text-faint transition-colors hover:text-text"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          <select
+            aria-label="Sort entries"
+            value={sortKey}
+            onChange={(e) => onSort(e.target.value)}
+            className="mt-2 h-10 w-full rounded-lg border border-border bg-input px-2 text-[13px] font-semibold text-text-muted"
+          >
+            {SORTS.map((s) => (
+              <option key={s.key} value={s.key}>
+                {s.label}
+              </option>
+            ))}
+          </select>
         </div>
+      )}
+
+      {/* Date presets - vertical list, active highlighted. */}
+      <RailGroup label={t("histFilters")}>
+        {presets.map((p) => (
+          <RailItem key={p.key} active={preset === p.key} onClick={() => applyPreset(p.key)}>
+            {p.label}
+          </RailItem>
+        ))}
         {preset === "custom" && (
-          <div className="mt-2">
+          <div className="pt-1">
             <RangeField from={from} to={to} boxClassName="h-10 justify-center" onChange={onRange} />
           </div>
         )}
-      </div>
-      <div>
-        <p className="caps">Narrow</p>
-        <div className="mt-1.5 space-y-2">
-          <select
-            aria-label="Filter by category"
-            value={categoryId}
-            onChange={(e) => onCategory(e.target.value)}
-            className="h-10 w-full rounded-lg border border-border bg-input px-2 text-sm text-text"
+      </RailGroup>
+
+      {/* Flow type. */}
+      <RailGroup label={t("allFlow")}>
+        {flows.map((f) => (
+          <RailItem
+            key={f.key}
+            active={flow === f.key}
+            onClick={() => onFlow(f.key)}
+            tint={f.key === "income" ? "income" : f.key === "expense" ? "danger" : undefined}
           >
-            <option value="">Any category</option>
-            {categories
-              .filter((c) => flow === "all" || c.type === flow)
-              .map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
-          </select>
-          <div className="grid grid-cols-2 gap-2">
-            <select
-              aria-label="Filter by payment method"
-              value={method}
-              onChange={(e) => onMethod(e.target.value)}
-              className="h-10 w-full rounded-lg border border-border bg-input px-2 text-sm text-text"
+            {f.label}
+          </RailItem>
+        ))}
+      </RailGroup>
+
+      {/* Categories with live counts from the filtered set. */}
+      <RailGroup label={t("histTabCategories")}>
+        {categories
+          .filter((c) => flow === "all" || c.type === flow)
+          .map((c) => (
+            <RailItem
+              key={c.value}
+              active={categoryId === c.value}
+              onClick={() => onCategory(c.value)}
+              count={categoryCounts.get(c.value) ?? 0}
             >
-              <option value="">Any channel</option>
-              {PAYMENT_METHODS.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-            <select
-              aria-label="Filter by account"
-              value={accountId}
-              onChange={(e) => onAccount(e.target.value)}
-              className="h-10 w-full rounded-lg border border-border bg-input px-2 text-sm text-text"
-            >
-              <option value="">Any account</option>
-              {accounts.map((a) => (
-                <option key={a.value} value={a.value}>
-                  {a.label}
-                </option>
-              ))}
-            </select>
-            <input
-              type="number"
-              inputMode="decimal"
-              min="0"
-              placeholder="Min amount"
-              aria-label="Minimum amount"
-              value={min}
-              onChange={(e) => onMin(e.target.value)}
-              className="h-10 w-full rounded-lg border border-border bg-input px-3 text-sm text-text placeholder:text-faint"
-            />
-            <input
-              type="number"
-              inputMode="decimal"
-              min="0"
-              placeholder="Max amount"
-              aria-label="Maximum amount"
-              value={max}
-              onChange={(e) => onMax(e.target.value)}
-              className="h-10 w-full rounded-lg border border-border bg-input px-3 text-sm text-text placeholder:text-faint"
-            />
-          </div>
+              {c.label}
+            </RailItem>
+          ))}
+      </RailGroup>
+
+      {/* Accounts. */}
+      {accounts.length > 0 && (
+        <RailGroup label={t("accounts")}>
+          {accounts.map((a) => (
+            <RailItem key={a.value} active={accountId === a.value} onClick={() => onAccount(a.value)}>
+              {a.label}
+            </RailItem>
+          ))}
+        </RailGroup>
+      )}
+
+      {/* Payment channels. */}
+      <RailGroup label={t("histTabChannels")}>
+        {PAYMENT_METHODS.map((m) => (
+          <RailItem key={m} active={method === m} onClick={() => onMethod(m)}>
+            {m}
+          </RailItem>
+        ))}
+      </RailGroup>
+
+      {/* Amount bounds. */}
+      <RailGroup label={t("amount")}>
+        <div className="grid grid-cols-2 gap-2">
+          <input
+            type="number"
+            inputMode="decimal"
+            min="0"
+            placeholder="Min"
+            aria-label="Minimum amount"
+            value={min}
+            onChange={(e) => onMin(e.target.value)}
+            className="h-10 w-full rounded-lg border border-border bg-input px-3 text-sm text-text placeholder:text-faint"
+          />
+          <input
+            type="number"
+            inputMode="decimal"
+            min="0"
+            placeholder="Max"
+            aria-label="Maximum amount"
+            value={max}
+            onChange={(e) => onMax(e.target.value)}
+            className="h-10 w-full rounded-lg border border-border bg-input px-3 text-sm text-text placeholder:text-faint"
+          />
         </div>
-      </div>
-      <div className="flex items-center justify-between gap-2 pt-1">
-        <button
-          onClick={resetAll}
-          className="h-10 rounded-lg px-3 text-[13px] font-semibold text-faint transition-colors hover:text-danger"
-        >
-          Clear all
-        </button>
-        <button
-          onClick={onDone}
-          className="h-10 min-w-[140px] flex-1 rounded-lg border border-primary bg-primary text-sm font-semibold text-white transition-colors hover:bg-primary-strong"
-        >
-          {resultLabel}
-        </button>
-      </div>
+      </RailGroup>
+
+      <button
+        onClick={onClear}
+        className="flex h-10 items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-semibold text-faint transition-colors hover:text-danger"
+      >
+        <X size={13} /> {t("clear")}
+      </button>
     </div>
   );
 }
 
-/* ── mobile day card: header rail + journal rows ── */
-function DayCard({
-  date,
-  total,
-  locale,
-  fmt,
+function RailGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="caps-faint mb-1.5">{label}</p>
+      <div className="space-y-0.5">{children}</div>
+    </div>
+  );
+}
+
+function RailItem({
+  active,
+  onClick,
   children,
+  count,
+  tint,
 }: {
-  date: string;
-  total: number;
-  locale: string;
-  fmt: (n: number) => string;
+  active: boolean;
+  onClick: () => void;
   children: React.ReactNode;
+  count?: number;
+  tint?: "income" | "danger";
 }) {
-  const { t } = useLanguage();
-  return (
-    <div className="panel overflow-hidden">
-      <div className="flex items-center gap-3 border-b border-border bg-surface-elevated/50 px-3 py-2.5">
-        <DayChip date={date} locale={locale} />
-        <div className="min-w-0 flex-1">
-          <p className="caps truncate">{groupDate(date, locale)}</p>
-          <p
-            className={`numeric mt-0.5 text-[11px] font-bold ${total >= 0 ? "text-income" : "text-danger"}`}
-          >
-            {total >= 0 ? "+" : "−"}
-            {fmt(Math.abs(total)).replace(/^[^\d]*/, "")}{" "}
-            <span className="font-semibold text-faint">{t("histDayNet")}</span>
-          </p>
-        </div>
-      </div>
-      {children}
-    </div>
-  );
-}
-
-/* ── day rail chip: big numeral + month overline ── */
-function DayChip({ date, locale }: { date: string; locale: string }) {
-  const d = new Date(`${date}T00:00:00`);
-  const day = new Intl.DateTimeFormat(locale, { day: "numeric" }).format(d);
-  const mon = new Intl.DateTimeFormat(locale, { month: "short" }).format(d);
-  return (
-    <span
-      className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-border bg-surface leading-none"
-      style={{ background: "var(--sf-select-tint)" }}
-      aria-hidden
-    >
-      <span className="figures text-base font-bold text-text">{day}</span>
-      <span className="text-[8px] font-semibold text-faint">{mon}</span>
-    </span>
-  );
-}
-
-/* ── mobile journal row: avatar, notes/receipt/recurring flags, locked
-   amount column (privacy reveal never shifts layout) ── */
-function JournalRow({
-  row,
-  amount,
-  original,
-  locale,
-  onOpen,
-}: {
-  row: ExpenseRow;
-  amount: string;
-  original: string | null;
-  locale: string;
-  onOpen: () => void;
-}) {
-  const isIncome = row.type === "income";
-  const catColor = row.categories?.color ?? "var(--sf-faint)";
-  const avatarStyle = isIncome
-    ? { borderColor: "var(--sf-income)", backgroundColor: "var(--sf-primary-light)", color: "var(--sf-income)" }
-    : { borderColor: catColor, backgroundColor: `${catColor}14`, color: catColor };
-  const CategoryGlyph = row.categories?.icon
-    ? categoryGlyph(row.categories.icon)
-    : isIncome
-      ? Plus
-      : Tag;
-  const time = row.time
-    ? new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" }).format(
-        new Date(`${row.date}T${row.time}`),
-      )
-    : null;
-  const meta = [row.categories?.name, row.payment_method, row.bank_accounts?.name, time]
-    .filter(Boolean)
-    .join(" · ");
   return (
     <button
-      onClick={onOpen}
-      className="flex w-full items-center gap-3 border-b border-border/60 px-3 py-3 text-left transition last:border-b-0 hover:bg-surface-elevated/40 active:bg-surface-elevated/70"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`flex min-h-[36px] w-full items-center gap-2 rounded-lg px-2.5 text-left text-[13px] font-medium transition-colors ${
+        active
+          ? tint === "income"
+            ? "bg-income text-white"
+            : tint === "danger"
+              ? "bg-danger text-white"
+              : "bg-[var(--sf-primary-light)] text-primary-strong"
+          : "text-text-muted hover:bg-surface-elevated/60 hover:text-text"
+      }`}
     >
-      <span
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border"
-        style={avatarStyle}
-        aria-hidden
-      >
-        <CategoryGlyph size={16} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-1.5">
-          <span className="truncate text-sm font-semibold text-text">
-            {row.description || row.categories?.name || "Transaction"}
-          </span>
-          {row.notes && <StickyNote size={11} className="shrink-0 text-faint" aria-label="Has notes" />}
-          {row.receipt_image_url && <ImageIcon size={11} className="shrink-0 text-faint" aria-label="Receipt attached" />}
-          {(row.is_recurring || row.recurring_rule_id) && (
-            <Repeat size={11} className="shrink-0 text-brass" aria-label="Recurring entry" />
-          )}
+      <span className="min-w-0 flex-1 truncate">{children}</span>
+      {count != null && (
+        <span className={`numeric shrink-0 text-[11px] font-semibold ${active ? "text-primary-strong" : "text-faint"}`}>
+          {count}
         </span>
-        <span className="mt-0.5 block truncate text-[11px] text-faint">{meta}</span>
-      </span>
-      <span className="shrink-0 text-right">
-        <span
-          className={`figures flex items-center justify-end gap-0.5 text-[15px] font-bold ${
-            isIncome ? "text-income" : "text-text"
-          }`}
-          style={{ minWidth: "104px" }}
-        >
-          {isIncome ? (
-            <ArrowUpRight size={12} className="text-income" />
-          ) : (
-            <ArrowDownLeft size={12} className="text-danger" />
-          )}
-          {original && <span className="mr-0.5 text-[10px] font-bold text-faint">{row.currency}</span>}
-          {isIncome ? "+" : "−"}
-          {amount.replace(/^[^\d]*/, "")}
-        </span>
-        <span className={`caps mt-0.5 !text-[9px] ${isIncome ? "!text-income" : "!text-faint"}`}>
-          {isIncome ? "Income" : "Expense"}
-        </span>
-        {original && <span className="numeric mt-0.5 block text-[10px] text-faint">{original}</span>}
-      </span>
-      <ChevronRight size={14} className="shrink-0 text-faint" aria-hidden />
+      )}
     </button>
   );
 }
 
-/* ── desktop flat table row: date stack, icon tile + name, chips, signed
-   amount (locked width so privacy reveal never shifts) ── */
-function HistoryRow({
+/* ── Register list row (list anatomy, not table columns): category tile |
+    name + markers over method-account | category right-aligned | signed
+    amount with arrow, locked width so privacy reveal never shifts. ── */
+function RegisterRow({
   row,
   amount,
   original,
@@ -1080,93 +892,93 @@ function HistoryRow({
     ? { backgroundColor: "var(--sf-primary-light)", color: "var(--sf-income)" }
     : { backgroundColor: `${catColor}14`, color: catColor };
   const CategoryGlyph = row.categories?.icon ? categoryGlyph(row.categories.icon) : isIncome ? Plus : Tag;
-  const d = new Date(`${row.date}T00:00:00`);
-  const day = new Intl.DateTimeFormat(locale, { day: "numeric" }).format(d);
-  const mon = new Intl.DateTimeFormat(locale, { month: "short" }).format(d);
+  const AccountGlyph = row.bank_accounts
+    ? accountGlyph(row.bank_accounts.icon, row.bank_accounts.account_type)
+    : null;
   const time = row.time
     ? new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" }).format(
         new Date(`${row.date}T${row.time}`),
       )
     : null;
+  const secondLine = [row.payment_method, row.bank_accounts?.name].filter(Boolean).join(" - ");
   return (
-    <tr
+    <div
       onClick={onOpen}
       onKeyDown={(e) => {
         if (e.key === "Enter") onOpen();
       }}
       tabIndex={0}
+      role="button"
       aria-label={`Open record for ${row.description || row.categories?.name || "transaction"}`}
-      className="group cursor-pointer border-b border-border/60 transition last:border-b-0 hover:bg-surface-elevated/40 focus:bg-surface-elevated/60 focus:outline-none"
+      className="group flex min-h-[56px] cursor-pointer items-center gap-3 border-b border-border/60 px-3 py-2.5 transition-colors last:border-b-0 hover:bg-surface-elevated/40 focus:bg-surface-elevated/60 focus:outline-none sm:px-4"
     >
-      <td className="px-4 py-2.5 align-middle">
-        <p className="whitespace-nowrap text-[13px] font-bold leading-tight text-text">
-          {day} <span className="text-[11px] font-semibold text-faint">{mon}</span>
-        </p>
-        <p className="numeric text-[11px] leading-tight text-faint">{time ?? "-"}</p>
-      </td>
-      <td className="px-3 py-2.5">
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border" style={tileStyle} aria-hidden>
-            <CategoryGlyph size={14} />
-          </span>
-          <span className="flex min-w-0 items-center gap-1.5">
-            <span className="max-w-[260px] truncate font-semibold text-text">
-              {row.description || row.categories?.name || "Transaction"}
-            </span>
-            <span className="flex shrink-0 items-center gap-1 text-faint">
-              {row.notes && <StickyNote size={11} aria-label="Has notes" />}
-              {row.receipt_image_url && <ImageIcon size={11} aria-label="Receipt attached" />}
-              {(row.is_recurring || row.recurring_rule_id) && <Repeat size={11} className="text-brass" aria-label="Recurring entry" />}
-            </span>
-          </span>
-        </div>
-      </td>
-      <td className="px-3 py-2.5">
-        <span className="inline-flex max-w-[150px] truncate rounded-lg border border-border bg-surface px-2 py-1 text-xs font-semibold text-text-muted">
-          {row.categories?.name ?? "-"}
-        </span>
-      </td>
-      <td className="px-3 py-2.5">
-        {row.bank_accounts ? (
-          <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-text-muted">
-            {(() => {
-              const AccountGlyph = accountGlyph(row.bank_accounts!.icon, row.bank_accounts!.account_type);
-              return <AccountGlyph size={13} aria-hidden />;
-            })()}
-            <span className="max-w-[130px] truncate">{row.bank_accounts.name}</span>
-          </span>
-        ) : (
-          <span className="text-faint">-</span>
-        )}
-      </td>
-      <td className="px-3 py-2.5">
-        <span className="rounded-md border border-border px-1.5 py-0.5 text-[10px] font-semibold text-text-muted">
-          {row.payment_method}
-        </span>
-      </td>
-      {/* Amount cell keeps a locked min-width so privacy reveal never shifts. */}
-      <td
-        className={`numeric px-4 py-2.5 text-right font-extrabold ${isIncome ? "text-income" : "text-danger"}`}
-        style={{ minWidth: "150px" }}
+      {/* Category icon tile. */}
+      <span
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] border border-border"
+        style={tileStyle}
+        aria-hidden
       >
-        <span className="inline-flex items-center gap-0.5">
-          {isIncome ? <ArrowUpRight size={13} /> : <ArrowDownLeft size={13} />}
+        <CategoryGlyph size={16} />
+      </span>
+
+      {/* Name + markers, method - account underneath. */}
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-1.5">
+          <span className="truncate text-[13.5px] font-medium text-text">
+            {row.description || row.categories?.name || "Transaction"}
+          </span>
+          {row.notes && <StickyNote size={11} className="shrink-0 text-faint" aria-label="Has notes" />}
+          {row.receipt_image_url && (
+            <ImageIcon size={11} className="shrink-0 text-faint" aria-label="Receipt attached" />
+          )}
+          {(row.is_recurring || row.recurring_rule_id) && (
+            <Repeat size={11} className="shrink-0 text-brass" aria-label="Recurring entry" />
+          )}
+        </span>
+        <span className="mt-0.5 flex items-center gap-1 text-[11px] text-faint">
+          {AccountGlyph && <AccountGlyph size={11} className="shrink-0" aria-hidden />}
+          <span className="truncate">
+            {secondLine}
+            {secondLine && time ? " · " : ""}
+            {time ?? ""}
+          </span>
+        </span>
+      </span>
+
+      {/* Category name, quiet, right-aligned before the amount. */}
+      <span className="hidden max-w-[110px] shrink-0 truncate text-right text-[12px] text-faint md:block">
+        {row.categories?.name ?? ""}
+      </span>
+
+      {/* Amount + hover edit. Locked min-width: privacy reveal never shifts. */}
+      <span className="flex shrink-0 items-center gap-0.5">
+        <span
+          className={`figures flex items-center justify-end gap-0.5 text-[14.5px] font-bold ${
+            isIncome ? "text-income" : "text-danger"
+          }`}
+          style={{ minWidth: "104px" }}
+        >
+          {isIncome ? <ArrowUpRight size={12} /> : <ArrowDownLeft size={12} />}
           {original && <span className="mr-0.5 text-[10px] font-bold text-faint">{row.currency}</span>}
           {isIncome ? "+" : "−"}
           {amount.replace(/^[^\d]*/, "")}
         </span>
-        {original && <span className="block text-[10px] font-normal text-faint">{original}</span>}
-      </td>
-      <td className="py-2.5 pr-4 text-right" onClick={(e) => e.stopPropagation()}>
+        <span
+          className="numeric hidden w-[72px] shrink-0 text-right text-[10px] text-faint lg:block"
+          style={{ minWidth: "72px" }}
+        >
+          {original ?? ""}
+        </span>
         <Link
           href={`/expense/${row.id}`}
+          onClick={(e) => e.stopPropagation()}
           aria-label={editLabel}
-          className="inline-flex rounded-md p-1.5 text-faint opacity-0 transition group-hover:opacity-100 hover:bg-primary-light hover:text-primary focus:opacity-100"
+          className="hidden rounded-md p-1.5 text-faint opacity-0 transition group-hover:opacity-100 hover:bg-[var(--sf-primary-light)] hover:text-primary focus:opacity-100 sm:block"
         >
           <Pencil size={14} />
         </Link>
-      </td>
-    </tr>
+      </span>
+    </div>
   );
 }
 
