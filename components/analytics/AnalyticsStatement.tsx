@@ -22,6 +22,7 @@ import { listExpenses, type ExpenseRow } from "@/services/expenses";
 import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
 import type { TranslationKey } from "@/constants/i18n/dictionaries";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { CalendarModal } from "@/components/ui/CalendarModal";
 import { FloatingSelect, SelectRow } from "@/components/ui/FloatingSelect";
 import { PrivacyEyeButton } from "@/components/ui/PrivacyEyeButton";
 import { ProgressRing } from "@/components/charts/ProgressRing";
@@ -65,13 +66,14 @@ export const VIBRANT_PALETTE = [
   "#06B6D4", // Cyan
 ] as const;
 
-type PeriodKey = "cycle" | "d30" | "d90" | "year";
+type PeriodKey = "cycle" | "d30" | "d90" | "year" | "month";
 
 const PERIODS: { key: PeriodKey; labelKey: TranslationKey }[] = [
   { key: "cycle", labelKey: "anThisCycle" },
   { key: "d30", labelKey: "anLast30" },
   { key: "d90", labelKey: "anLast90" },
   { key: "year", labelKey: "anThisYear" },
+  { key: "month", labelKey: "anCustomMonth" },
 ];
 
 interface Insight {
@@ -164,6 +166,11 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
   /* ── Screen state ── */
   const [period, setPeriod] = useState<PeriodKey>("cycle");
   const [periodOpen, setPeriodOpen] = useState(false);
+  const [monthPickerOpen, setMonthPickerOpen] = useState(false);
+  const [customMonth, setCustomMonth] = useState(() => {
+    const n = new Date();
+    return { year: n.getFullYear(), month: n.getMonth() };
+  });
   const [healthModalOpen, setHealthModalOpen] = useState(false);
   const [calMonth, setCalMonth] = useState(() => {
     const n = new Date();
@@ -184,8 +191,13 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
         return { from: shiftDays(todayS, -89), to: todayS };
       case "year":
         return { from: `${now.getFullYear()}-01-01`, to: `${now.getFullYear()}-12-31` };
+      case "month": {
+        const last = new Date(customMonth.year, customMonth.month + 1, 0);
+        const mm = String(customMonth.month + 1).padStart(2, "0");
+        return { from: `${customMonth.year}-${mm}-01`, to: toISODate(last) };
+      }
     }
-  }, [period, cycleFrom, cycleTo]);
+  }, [period, cycleFrom, cycleTo, customMonth]);
 
   // Inclusive day counts for the selected window; the visible end clamps to
   // today so future windows never render an empty projected tail.
@@ -293,7 +305,7 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
         score: 75,
         grade: "B+",
         status: t("anStatusNeutral"),
-        color: "var(--sf-hue-sky)",
+        color: "var(--sf-brass)",
         savingsRate: null as number | null,
         insights: [
           {
@@ -450,7 +462,7 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
     } else if (totalScore >= 75) {
       grade = "A";
       status = t("anStatusStrong");
-      color = "var(--sf-hue-sky)";
+      color = "var(--sf-brass)";
     } else if (totalScore >= 60) {
       grade = "B";
       status = t("anStatusModerate");
@@ -609,7 +621,13 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
                 <FloatingSelect
                   className="relative z-50"
                   icon={<Calendar size={14} className="shrink-0 text-primary" aria-hidden />}
-                  label={t(PERIODS.find((p) => p.key === period)?.labelKey ?? "anThisCycle")}
+                  label={
+                    period === "month"
+                      ? new Intl.DateTimeFormat(locale, { month: "short", year: "numeric" }).format(
+                          new Date(customMonth.year, customMonth.month, 1),
+                        )
+                      : t(PERIODS.find((p) => p.key === period)?.labelKey ?? "anThisCycle")
+                  }
                   open={periodOpen}
                   onToggle={() => setPeriodOpen((v) => !v)}
                 >
@@ -617,9 +635,19 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
                     <SelectRow
                       key={opt.key}
                       selected={period === opt.key}
-                      label={t(opt.labelKey)}
+                      label={
+                        opt.key === "month" && period === "month"
+                          ? new Intl.DateTimeFormat(locale, { month: "short", year: "numeric" }).format(
+                              new Date(customMonth.year, customMonth.month, 1),
+                            )
+                          : t(opt.labelKey)
+                      }
                       onSelect={() => {
-                        setPeriod(opt.key);
+                        if (opt.key === "month") {
+                          setMonthPickerOpen(true);
+                        } else {
+                          setPeriod(opt.key);
+                        }
                         setPeriodOpen(false);
                       }}
                     />
@@ -739,6 +767,20 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
           </>
         )}
       </div>
+
+      {/* ── CUSTOM MONTH PICKER (period selector) ── */}
+      <CalendarModal
+        open={monthPickerOpen}
+        onClose={() => setMonthPickerOpen(false)}
+        mode="single"
+        initial={{ from: `${customMonth.year}-${String(customMonth.month + 1).padStart(2, "0")}-15` }}
+        onApply={(r) => {
+          const d = new Date(`${r.from}T00:00:00`);
+          setCustomMonth({ year: d.getFullYear(), month: d.getMonth() });
+          setPeriod("month");
+          setMonthPickerOpen(false);
+        }}
+      />
 
       {/* ── HEALTH SCORE CALCULATION EXPLAINER MODAL ── */}
       <CenterModal open={healthModalOpen} onClose={() => setHealthModalOpen(false)} maxWidth={440}>
