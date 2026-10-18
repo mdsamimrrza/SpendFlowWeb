@@ -288,14 +288,25 @@ export function RecurringRegister({
    *  Mobile amortises each cadence to a 30-day month here (a 28-day ₹350 plan
    *  reads as ₹375); dropped per user - the figure is the plain sum of what
    *  the plans actually charge, so the caption says "Total", not "Monthly". */
-  const planTotal = useMemo(() => {
+  const planTotal = useMemo((): { value: number; currency: CurrencyCode } => {
+    // Plain sum of the active plans priced through the same live per-date
+    // converter as every row and the sheet (docs/FEATURE-PARITY.md
+    // 2026-09-15 – stored snapshots are never used for display; the old
+    // snapshot leg also silently zeroed a plan with a null snapshot).
+    // convert() already answers in the display currency, so no second leg.
+    // While rates are unresolved a mixed-currency set keeps the honest USD
+    // label rather than the display symbol over raw amounts.
     let total = 0;
-    for (const rule of rules) {
+    let hasForeign = false;
+    for (const [i, rule] of rules.entries()) {
       if (!rule.is_active) continue;
-      total += toDisplay(Number(rule.amount) || 0, rule.currency).value;
+      const row = planRows[i];
+      if (row.currency !== preferredCurrency) hasForeign = true;
+      total += convert(row);
     }
-    return total;
-  }, [rules, toDisplay]);
+    if (!ready && hasForeign) return { value: total, currency: "USD" };
+    return { value: total, currency: preferredCurrency as CurrencyCode };
+  }, [rules, planRows, ready, convert, preferredCurrency]);
 
   const activeRules = rules.filter((r) => r.is_active);
   const activeCount = activeRules.length;
@@ -572,7 +583,7 @@ export function RecurringRegister({
         <button
           type="button"
           onClick={() => openCreateModal()}
-          className="hidden h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-strong active:scale-[0.98] lg:inline-flex"
+          className="hidden h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-ink transition-colors hover:bg-primary-strong active:scale-[0.98] lg:inline-flex"
         >
           <Plus size={16} aria-hidden />
           {t("recurring_add_new")}
@@ -590,7 +601,7 @@ export function RecurringRegister({
             </span>
             <p className="caps pr-12">{t("recTotalRecurring")}</p>
             <p className="figures-display mt-1 py-0.5 pr-12 text-[30px] leading-9 text-text">
-              {money(planTotal)}
+              {money(planTotal.value, planTotal.currency)}
             </p>
             <p className="mt-1 text-[12.5px] text-text-muted">
               {(activeCount === 1 ? t("recAcrossOne") : t("recAcrossMany")).replace(
@@ -710,7 +721,7 @@ export function RecurringRegister({
                           <span className="block truncate text-[15px] font-semibold tracking-[-0.01em] text-text">
                             {rule.description || rule.categories?.name || t("recSubscription")}
                           </span>
-                          <span className="block truncate text-xs text-text-muted">{subtitleFor(rule)}</span>
+                          <span className="block text-xs leading-4 text-text-muted line-clamp-2">{subtitleFor(rule)}</span>
                         </span>
                       </span>
 
@@ -833,7 +844,7 @@ export function RecurringRegister({
         type="button"
         onClick={() => openCreateModal()}
         aria-label={t("recurring_add_new")}
-        className="fixed right-5 z-40 grid h-14 w-14 place-items-center rounded-lg bg-primary text-white shadow-soft transition active:scale-[0.94] hover:bg-primary-strong bottom-[calc(5.75rem+env(safe-area-inset-bottom))] md:bottom-6 md:right-6 lg:hidden"
+        className="fixed right-5 z-40 grid h-14 w-14 place-items-center rounded-lg bg-primary text-primary-ink shadow-soft transition active:scale-[0.94] hover:bg-primary-strong bottom-[calc(5.75rem+env(safe-area-inset-bottom))] md:bottom-6 md:right-6 lg:hidden"
       >
         <Plus size={26} strokeWidth={2.5} aria-hidden />
       </button>
@@ -1082,7 +1093,7 @@ function DetailSheet({
         <button
           type="button"
           onClick={onEdit}
-          className="flex h-11 flex-[1.3] items-center justify-center gap-1.5 rounded-lg bg-primary text-sm font-semibold text-white transition hover:bg-primary-strong active:scale-[0.98]"
+          className="flex h-11 flex-[1.3] items-center justify-center gap-1.5 rounded-lg bg-primary text-sm font-semibold text-primary-ink transition hover:bg-primary-strong active:scale-[0.98]"
         >
           <Pencil size={15} aria-hidden />
           {t("recEdit")}
