@@ -2,7 +2,7 @@
  * Cross-currency statement reconciliation check (all 12 supported currencies).
  *
  * Verifies the display-layer money model end to end against the REAL shipped
- * code (utils/format.ts compiled on each run — no re-implementation):
+ * code (utils/format.ts compiled on each run – no re-implementation):
  *   1. Per-row FX conversion is quantized to the display currency's minor
  *      units (hooks/useRates convert parity, simulated here with the same
  *      quantizeMoney), so aggregates are sums of on-screen values.
@@ -25,7 +25,7 @@ const require = createRequire(import.meta.url);
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const tmp = path.join(root, ".verify-currency-tmp");
 fs.rmSync(tmp, { recursive: true, force: true });
-// Cleanup on every exit path — the dir contains .ts that tsc --noEmit would pick up.
+// Cleanup on every exit path – the dir contains .ts that tsc --noEmit would pick up.
 process.on("exit", () => fs.rmSync(tmp, { recursive: true, force: true }));
 fs.mkdirSync(tmp);
 
@@ -58,7 +58,7 @@ function parseMoney(s) {
   return n;
 }
 
-/** Deterministic raw FX-converted floats — long mantissas like real conversion output. */
+/** Deterministic raw FX-converted floats – long mantissas like real conversion output. */
 function rawRows(seed) {
   const out = [];
   let x = seed;
@@ -73,7 +73,7 @@ let failures = 0;
 function check(label, currency, cond, detail) {
   if (!cond) {
     failures += 1;
-    console.error(`FAIL [${currency}] ${label}${detail ? ` — ${detail}` : ""}`);
+    console.error(`FAIL [${currency}] ${label}${detail ? ` – ${detail}` : ""}`);
   }
 }
 

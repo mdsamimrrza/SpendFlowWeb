@@ -94,7 +94,7 @@ export function BullionStatement({ inject }: BullionPageProps) {
 
   // Mobile parity (app/bullion.tsx): Nepal is always the fixed primary
   // market (FENEGOSIDA official fix). The secondary market follows the
-  // profile currency from Settings — change it there and this board follows.
+  // profile currency from Settings – change it there and this board follows.
   // NPR users would get Nepal twice, so they fall back to India (IBJA).
   const secondaryCurrency = useMemo(() => {
     const preferred = (profile?.preferred_currency || "INR").toUpperCase();
@@ -204,7 +204,7 @@ export function BullionStatement({ inject }: BullionPageProps) {
         silver_10g: { label: silverLabel, unit: gram10Label, metal: "silver" as const, ...zero },
       };
     }
-    // Day-over-day change per benchmark — each card uses its OWN real series
+    // Day-over-day change per benchmark – each card uses its OWN real series
     // (mobile nepalChange/buildBullionMarketHistoryAll parity), never a
     // scaling of the tola delta.
     const delta = (key: BenchmarkKey) => {
@@ -330,7 +330,7 @@ export function BullionStatement({ inject }: BullionPageProps) {
                 setSelectedIndex(null);
               }}
               className={`flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-md py-2 text-[13px] font-semibold transition-colors ${
-                market === m.id ? "bg-primary text-white" : "text-text-muted hover:text-text"
+                market === m.id ? "bg-primary text-primary-ink" : "text-text-muted hover:text-text"
               }`}
             >
               <CurrencyFlag currency={m.currency} size={14} />
@@ -406,7 +406,7 @@ export function BullionStatement({ inject }: BullionPageProps) {
                           b.change >= 0 ? "text-income" : "text-danger"
                         }`}
                       >
-                        {b.change >= 0 ? `+${b.change}` : b.change} ({b.pct.toFixed(2)}%)
+                        {b.change >= 0 ? `+${b.change.toLocaleString(locale)}` : b.change.toLocaleString(locale)} ({b.pct.toFixed(2)}%)
                       </span>
                     )}
                   </span>
@@ -443,7 +443,7 @@ export function BullionStatement({ inject }: BullionPageProps) {
                         }}
                         className={`rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
                           active
-                            ? "border-primary bg-primary text-white"
+                            ? "border-primary bg-primary text-primary-ink"
                             : "border-border bg-surface-elevated text-text-muted hover:text-text"
                         }`}
                       >
@@ -526,7 +526,7 @@ export function BullionStatement({ inject }: BullionPageProps) {
                     onClick={() => setCalcMetal(m.key)}
                     className={`min-w-0 flex-1 truncate rounded-lg border py-2 text-center text-xs font-semibold transition-colors ${
                       active
-                        ? "border-primary bg-primary text-white"
+                        ? "border-primary bg-primary text-primary-ink"
                         : "border-border bg-surface-elevated text-text hover:border-faint"
                     }`}
                   >
@@ -554,7 +554,7 @@ export function BullionStatement({ inject }: BullionPageProps) {
                 {t("bullion_est_value").replace("{weight}", String(weightNum))}
               </p>
               <p className="figures-display text-3xl tracking-[-0.02em] text-primary-strong">
-                {board ? masked(calculatedValue) : "—"}
+                {board ? masked(calculatedValue) : "–"}
               </p>
             </div>
           </section>
@@ -589,7 +589,7 @@ export function BullionStatement({ inject }: BullionPageProps) {
 }
 
 /**
- * Mobile's SVG spline chart — Catmull-Rom curve, dashed gridlines, y/x axis
+ * Mobile's SVG spline chart – Catmull-Rom curve, dashed gridlines, y/x axis
  * labels, gradient area fill, per-point touch rects and a floating tooltip.
  */
 function TrendSvg({

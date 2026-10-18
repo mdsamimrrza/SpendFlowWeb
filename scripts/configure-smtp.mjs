@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 // ─────────────────────────────────────────────────────────────────────────────
-// configure-smtp.mjs — apply custom SMTP to the shared Supabase project.
+// configure-smtp.mjs – apply custom SMTP to the shared Supabase project.
 //
 // All auth emails (signup confirm, password reset, security OTP via the
 // send-security-otp edge function → GoTrue /auth/v1/otp) are sent by the
 // Supabase Auth server. Enabling SMTP here makes ALL of them go out from the
-// custom mailbox — for both the web and mobile clients, instantly, no deploys.
+// custom mailbox – for both the web and mobile clients, instantly, no deploys.
 //
 // Credentials are read from the repo's local .env (gitignored):
 //   EMAIL_SERVER_HOST / EMAIL_SERVER_PORT / EMAIL_SERVER_USER /
@@ -175,7 +175,7 @@ async function main() {
   console.log(JSON.stringify(summarize(updated ?? await mgmt(token, 'GET', '/config/auth')), null, 2));
 
   const ok = updated && updated.smtp_host === smtpConfig.smtp_host;
-  console.log(ok ? '\n✓ SMTP configured — all auth emails now send via this mailbox.' : '\n✗ Read-back mismatch; inspect the state above.');
+  console.log(ok ? '\n✓ SMTP configured – all auth emails now send via this mailbox.' : '\n✗ Read-back mismatch; inspect the state above.');
   if (ok) {
     console.log('Next: verify delivery with a real email:');
     console.log(`  node scripts/configure-smtp.mjs --test you@example.com`);

@@ -1,16 +1,17 @@
 "use client";
 
-import { DashboardShell } from "@/components/layout/DashboardShell";
+import { AppShell } from "@/components/shell/AppShell";
 import { AnalyticsStatement } from "@/components/analytics/AnalyticsStatement";
 import type { ComponentProps } from "react";
 
 /**
- * Static design preview of the signed-in Analytics statement (mock data, no
+ * Static design preview of the signed-in Analytics page (mock data, no
  * auth, no network) - renders the real AnalyticsStatement with injected rows
- * so the reports composition (KPI band, monthly bars, share donut, net
- * trend, health ring, ranked categories, daily calendar) can be screenshotted
- * without an account. Mock coverage spans the last 6 calendar months so the
- * month-over-month comparison and the calendar heatmap are populated.
+ * so the comparison-ledger composition (cash-flow hero with delta chips and
+ * the daily outflow bars, category movement chart, monthly bars, largest
+ * expenses, health band) can be screenshotted without an account. Mock
+ * coverage spans the last 6 calendar months so the month-over-month
+ * comparisons and the daily bars are populated.
  */
 const CATS = {
   food: { id: "c1", name: "Food & Dining", icon: "🍔", color: "#EF6C00", type: "expense" },
@@ -99,8 +100,16 @@ MONTHS.forEach((m, mi) => {
   }
 });
 
+// The current month stops at real "today" so the calendar never shades
+// future days as spend.
+const todayIso = (() => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+})();
+const visibleRows = rows.filter((r) => r.date <= todayIso || !r.date.startsWith("2026-10"));
+
 const inject: NonNullable<ComponentProps<typeof AnalyticsStatement>["inject"]> = {
-  rows: rows as NonNullable<ComponentProps<typeof AnalyticsStatement>["inject"]>["rows"],
+  rows: visibleRows as NonNullable<ComponentProps<typeof AnalyticsStatement>["inject"]>["rows"],
   profile: {
     display_name: "Sam",
     email: "sam@spendflow.app",
@@ -113,8 +122,8 @@ const inject: NonNullable<ComponentProps<typeof AnalyticsStatement>["inject"]> =
 
 export default function PreviewAnalyticsPage() {
   return (
-    <DashboardShell>
+    <AppShell>
       <AnalyticsStatement inject={inject} />
-    </DashboardShell>
+    </AppShell>
   );
 }

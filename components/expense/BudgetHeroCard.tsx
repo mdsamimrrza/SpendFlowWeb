@@ -12,7 +12,7 @@ interface BudgetHeroCardProps {
 
 /**
  * Budget hero (mobile BudgetLimitHeroCard, condensed): gauge bar, spent /
- * remaining, today's spend. Budget is display-converted only — never rewritten
+ * remaining, today's spend. Budget is display-converted only – never rewritten
  * (docs/SYNC-STRATEGY.md §6).
  */
 export function BudgetHeroCard({ budget, spent, todayTotal, formatted, cycleLabel }: BudgetHeroCardProps) {

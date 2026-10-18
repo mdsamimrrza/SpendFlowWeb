@@ -10,14 +10,14 @@ export interface RailPreview {
   category: { name: string | null; icon: LucideIcon | null; color: string | null };
   /** Signed + currency-formatted entry amount, masked. `null` → placeholder. */
   signedAmount: string | null;
-  /** FX line — null when entry currency equals the display currency. */
+  /** FX line – null when entry currency equals the display currency. */
   fx: { text: string; pending: boolean } | null;
   account: { name: string; type: string; icon: LucideIcon | null } | null;
   paymentMethod: string | null;
   recurrence: string | null;
   description: string;
   dateLabel: string;
-  /** Masked note text — empty string when none. */
+  /** Masked note text – empty string when none. */
   notes: string;
   hasReceipt: boolean;
   /** Budget impact bar; null when no budget is configured. */
@@ -26,7 +26,7 @@ export interface RailPreview {
     added: string | null;
     limit: string;
     pct: number;
-    /** Budget minus spend including this entry, masked — null when budget absent. */
+    /** Budget minus spend including this entry, masked – null when budget absent. */
     remaining: string;
   } | null;
   /** Balance-after-save impact line; null when no account linked. */
@@ -36,8 +36,8 @@ export interface RailPreview {
 
 /**
  * Live record preview, rendered from form state. Two variants:
- * `full` — the exact 1:1 record sheet, used on mobile where Save pops it as
- * the review step (no rail on the phone); `compact` — the desktop rail, which
+ * `full` – the exact 1:1 record sheet, used on mobile where Save pops it as
+ * the review step (no rail on the phone); `compact` – the desktop rail, which
  * carries only what the form itself doesn't already show (amount + FX
  * snapshot, budget impact, balance-after-save, ref) so the field list is
  * never read twice side-by-side.
@@ -144,7 +144,7 @@ export function RecordPreviewRail({
 
         <div className="border-t border-border px-4">
           <RailRow label={t("description")}>
-            {preview.description || <span className="text-faint">—</span>}
+            {preview.description || <span className="text-faint">–</span>}
           </RailRow>
           <RailRow label={t("date")}>{preview.dateLabel}</RailRow>
           <RailRow label={isIncome ? t("receivedInto") : t("paidFrom")}>
@@ -160,7 +160,7 @@ export function RecordPreviewRail({
           </RailRow>
           <RailRow label={t("paymentChannel")}>
             <span className="inline-flex flex-wrap items-center gap-1.5">
-              {preview.paymentMethod ?? "—"}
+              {preview.paymentMethod ?? "–"}
               {preview.recurrence ? (
                 <span className="border border-border px-1.5 py-px text-[10px] font-bold uppercase tracking-[0.06em] text-text-muted">
                   {preview.recurrence}
@@ -169,7 +169,7 @@ export function RecordPreviewRail({
             </span>
           </RailRow>
           <RailRow label={t("notes")}>
-            {preview.notes ? <span className="text-text">{preview.notes}</span> : <span className="text-faint">—</span>}
+            {preview.notes ? <span className="text-text">{preview.notes}</span> : <span className="text-faint">–</span>}
           </RailRow>
           <RailRow label={t("receipt")}>
             {preview.hasReceipt ? (
@@ -218,7 +218,7 @@ export function RecordPreviewRail({
   );
 }
 
-/** Budget bar + balance-after-save — shared by both variants. */
+/** Budget bar + balance-after-save – shared by both variants. */
 function ImpactLines({
   preview,
   accent,

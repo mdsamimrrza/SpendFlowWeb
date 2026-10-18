@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
  * Scroll-reveal wrapper: fades + rises its children the first time they
  * enter the viewport (IntersectionObserver, one-shot). Honors
  * prefers-reduced-motion via the .sf-reveal CSS (no transform/transition),
- * and SSR-safe (starts hidden only after mount is irrelevant — the class
+ * and SSR-safe (starts hidden only after mount is irrelevant – the class
  * handles it; content is visible when JS never runs because the observer
  * fires immediately on hydration).
  */
@@ -16,7 +16,7 @@ export function Reveal({
   className = "",
 }: {
   children: React.ReactNode;
-  /** Stagger in ms — keep under ~400 so late items don't feel laggy. */
+  /** Stagger in ms – keep under ~400 so late items don't feel laggy. */
   delay?: number;
   className?: string;
 }) {

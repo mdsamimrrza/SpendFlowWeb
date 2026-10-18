@@ -23,20 +23,20 @@ interface CategoryManageModalProps {
   onClose: () => void;
   /** Edit when set, create when null (APK `categoryToEdit`). */
   category?: Category | null;
-  /** APK `defaultType` — the entry form's current flow type. */
+  /** APK `defaultType` – the entry form's current flow type. */
   defaultType?: "expense" | "income";
   userId: string | undefined;
-  /** APK `onSuccess` — receives the created/updated row to auto-select. */
+  /** APK `onSuccess` – receives the created/updated row to auto-select. */
   onSaved: (category?: Category) => void;
 }
 
 /**
  * Port of the APK's components/category/CategoryManageModal: the in-form
- * category editor — type toggle, name + live preview tile, the curated
+ * category editor – type toggle, name + live preview tile, the curated
  * Lucide icon strip, optional monthly target (expense only), create/save
  * and (edit only) delete with reassignment. No color picker: edits preserve
  * the stored color; on create, picking an icon auto-seeds an icon-matched
- * color (web-only divergence — see `categoryColorForIcon`).
+ * color (web-only divergence – see `categoryColorForIcon`).
  */
 export function CategoryManageModal({
   open,
@@ -221,7 +221,7 @@ export function CategoryManageModal({
                     className={`flex h-9 items-center justify-center gap-1.5 text-xs font-bold uppercase tracking-[0.04em] transition ${
                       type === tp
                         ? tp === "income"
-                          ? "bg-primary text-white"
+                          ? "bg-primary text-primary-ink"
                           : "bg-danger text-white"
                         : "text-text-muted"
                     }`}
@@ -257,12 +257,12 @@ export function CategoryManageModal({
                 </div>
               </div>
 
-              {/* Icon strip — the mobile SELECTABLE_ICONS, same order. Picking
+              {/* Icon strip – the mobile SELECTABLE_ICONS, same order. Picking
                   an icon also seeds its color (web-only, see categoryIcons). */}
               <div>
                 <p className="caps mb-1">{t("selectIcon")}</p>
                 {/* Mobile-first: below sm the strip is one scrollable line
-                    (APK parity — no vertical growth on small screens); on
+                    (APK parity – no vertical growth on small screens); on
                     tablet+ it spreads over two wrapped lines. */}
                 <div className="flex gap-1.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:overflow-visible sm:pb-0">
                   {iconChoices.map((item) => {
@@ -280,7 +280,7 @@ export function CategoryManageModal({
                         title={item.label}
                         className={`relative flex h-9 w-9 shrink-0 items-center justify-center border-2 transition active:scale-[0.95] sm:h-10 sm:w-10 ${
                           selected
-                            ? "border-primary bg-primary text-white"
+                            ? "border-primary bg-primary text-primary-ink"
                             : "border-border bg-surface-elevated text-text hover:border-text-muted"
                         }`}
                       >
@@ -291,7 +291,7 @@ export function CategoryManageModal({
                 </div>
               </div>
 
-              {/* Monthly target — expense categories only (APK parity) */}
+              {/* Monthly target – expense categories only (APK parity) */}
               {type === "expense" && (
                 <Input
                   label={t("catMonthlyBudget")}

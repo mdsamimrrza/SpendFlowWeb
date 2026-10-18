@@ -106,7 +106,7 @@ export default function CategoriesPage() {
         </div>
         <button
           onClick={openNew}
-          className="flex h-10 shrink-0 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-strong active:scale-[0.98]"
+          className="flex h-10 shrink-0 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-ink transition-colors hover:bg-primary-strong active:scale-[0.98]"
         >
           <Plus size={16} aria-hidden />
           {t("catNew")}
@@ -127,7 +127,7 @@ export default function CategoriesPage() {
           </div>
           <button
             onClick={() => setStudioOpen(true)}
-            className="flex h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-3.5 text-sm font-semibold text-white transition-colors hover:bg-primary-strong active:scale-[0.98]"
+            className="flex h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-3.5 text-sm font-semibold text-primary-ink transition-colors hover:bg-primary-strong active:scale-[0.98]"
           >
             <Target size={15} aria-hidden />
             {t("catSetBudgets")}
@@ -160,7 +160,7 @@ export default function CategoriesPage() {
               aria-selected={activeTab === "expense"}
               onClick={() => setActiveTab("expense")}
               className={`flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-md transition-colors ${
-                activeTab === "expense" ? "bg-primary text-white" : "text-text-muted hover:text-text"
+                activeTab === "expense" ? "bg-primary text-primary-ink" : "text-text-muted hover:text-text"
               }`}
             >
               <ArrowDownRight size={15} aria-hidden />
@@ -173,7 +173,7 @@ export default function CategoriesPage() {
               aria-selected={activeTab === "income"}
               onClick={() => setActiveTab("income")}
               className={`flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-md transition-colors ${
-                activeTab === "income" ? "bg-primary text-white" : "text-text-muted hover:text-text"
+                activeTab === "income" ? "bg-primary text-primary-ink" : "text-text-muted hover:text-text"
               }`}
             >
               <ArrowUpRight size={15} aria-hidden />

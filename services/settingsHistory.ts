@@ -1,5 +1,5 @@
 /**
- * Settings-history reads — the append-only `user_settings_history` trail
+ * Settings-history reads – the append-only `user_settings_history` trail
  * (mobile services/settingsHistory.ts counterpart). Writes stay with the
  * pages that make budget/cycle changes; this service only reads.
  */
@@ -36,7 +36,7 @@ export async function listSettingsHistory(
 
 /**
  * Budget that was in force for a calendar month (YYYY-MM): the newest history
- * row effective on/before month end. Null = no budget on record then — we
+ * row effective on/before month end. Null = no budget on record then – we
  * never back-fill a figure the user hadn't set yet.
  */
 export function budgetInForceForMonth(

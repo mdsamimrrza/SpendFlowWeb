@@ -22,7 +22,7 @@ interface ExpenseDetailSheetProps {
 
 /**
  * The web-only drill-in: the full record with everything the APK's detail
- * modal hides — exact FX math (rate snapshot + USD base), time, linked
+ * modal hides – exact FX math (rate snapshot + USD base), time, linked
  * account, recurring provenance, created/updated stamps. Ledger hairline
  * rows; privacy mask flows through the masked `amount` prop and `mask()`.
  */
@@ -30,7 +30,7 @@ export function ExpenseDetailSheet({ row, amount, displayCurrency, onClose }: Ex
   const { t, locale } = useLanguage();
   const { mask } = usePrivacy();
   // Private bucket: resolve the stored path to a 1 h signed URL on display
-  // (never persisted — mobile useReceiptUrl parity, docs/SECURITY.md).
+  // (never persisted – mobile useReceiptUrl parity, docs/SECURITY.md).
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
   // Audit P2-2: "open" links use a forced-download signed URL so a stored
   // object can never render top-level on the storage origin.
@@ -88,7 +88,7 @@ export function ExpenseDetailSheet({ row, amount, displayCurrency, onClose }: Ex
           <Link
             href={`/expense/${row.id}`}
             onClick={onClose}
-            className="inline-flex h-9 items-center gap-2 border border-primary bg-primary px-4 text-xs font-bold uppercase tracking-[0.08em] text-white transition-colors hover:bg-primary-strong"
+            className="inline-flex h-9 items-center gap-2 border border-primary bg-primary px-4 text-xs font-bold uppercase tracking-[0.08em] text-primary-ink transition-colors hover:bg-primary-strong"
           >
             <Pencil size={13} /> Edit entry
           </Link>
@@ -104,7 +104,7 @@ export function ExpenseDetailSheet({ row, amount, displayCurrency, onClose }: Ex
               style={{ color: row.categories?.color ?? "var(--sf-faint)" }}
               aria-hidden
             />
-            {row.categories?.name ?? "—"}
+            {row.categories?.name ?? "–"}
           </span>
           <span
             className={`inline-flex items-center gap-1 border px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] ${
@@ -143,7 +143,7 @@ export function ExpenseDetailSheet({ row, amount, displayCurrency, onClose }: Ex
 
       {/* Field register */}
       <div className="border-t border-border px-5">
-        <Field label="Description">{row.description || "—"}</Field>
+        <Field label="Description">{row.description || "–"}</Field>
         <Field label="Date">
           {new Intl.DateTimeFormat(locale, { dateStyle: "full" }).format(new Date(`${row.date}T00:00:00`))}
           {timeLabel ? ` · ${timeLabel}` : ""}
@@ -178,7 +178,7 @@ export function ExpenseDetailSheet({ row, amount, displayCurrency, onClose }: Ex
             <span className="text-faint">One-off entry</span>
           )}
         </Field>
-        <Field label="Notes">{row.notes || <span className="text-faint">—</span>}</Field>
+        <Field label="Notes">{row.notes || <span className="text-faint">–</span>}</Field>
         <Field label="Receipt">
           {row.receipt_image_url ? (
             receiptUrl && !receiptFailed ? (

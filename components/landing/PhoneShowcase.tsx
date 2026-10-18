@@ -2,13 +2,13 @@
 
 /**
  * Faithful CSS/Tailwind recreation of the SpendFlow mobile app for the
- * landing page — built against the exact screen specs extracted from the
+ * landing page – built against the exact screen specs extracted from the
  * Expo codebase (constants/theme.ts tokens, app/(tabs)/*, ExpenseForm,
  * BudgetLimitHeroCard, BillsDueStrip, ExpenseItem, settings menu order,
  * bullion 2×2 grid, accounts rows).
  *
  * Tab bar is the real one: Home · History · Analytics · Recurring · Settings
- * (no center button — the + is a floating FAB over Home/Recurring, exactly
+ * (no center button – the + is a floating FAB over Home/Recurring, exactly
  * like the app). The quick-nav pills above it reach the app's modal routes
  * (Add expense, Bullion, Vault/Accounts) which don't live in the tab bar.
  * Every amount flows through the site's currency cycler (m()) so the phone
@@ -19,6 +19,7 @@ import {
   AlertCircle,
   ArrowLeft,
   ArrowLeftRight,
+  ArrowRight,
   BarChart3,
   Bell,
   Calendar,
@@ -197,7 +198,7 @@ export function PhoneShowcase({ clock, currency, m, screen, onScreen }: Showcase
               onClick={() => onScreen(key)}
               className={
                 screen === key
-                  ? "bg-primary px-1.5 py-0.5 text-white"
+                  ? "bg-primary px-1.5 py-0.5 text-primary-ink"
                   : "border border-border bg-surface px-1.5 py-0.5 text-text-muted hover:text-text"
               }
             >
@@ -221,7 +222,7 @@ export function PhoneShowcase({ clock, currency, m, screen, onScreen }: Showcase
               type="button"
               aria-label="Add expense"
               onClick={() => onScreen("add")}
-              className="absolute bottom-2.5 right-2.5 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-primary text-white shadow-pop transition-transform hover:scale-105"
+              className="absolute bottom-2.5 right-2.5 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-ink shadow-pop transition-transform hover:scale-105"
             >
               <Plus size={20} strokeWidth={2.6} />
             </button>
@@ -257,7 +258,7 @@ export function PhoneShowcase({ clock, currency, m, screen, onScreen }: Showcase
   );
 }
 
-/* ── HOME — greeting bar, BudgetLimitHeroCard, BillsDueStrip, trend, recent ── */
+/* ── HOME – greeting bar, BudgetLimitHeroCard, BillsDueStrip, trend, recent ── */
 
 function HomeScreen({ m, flag, sym }: { m: (n: number) => string; flag: string; sym: string }) {
   return (
@@ -293,8 +294,8 @@ function HomeScreen({ m, flag, sym }: { m: (n: number) => string; flag: string; 
         <div className="mt-1 flex items-center gap-1.5">
           <span className="figures text-[17px] text-text">− {m(12750)}</span>
           <Eye size={12} className="text-text-muted" />
-          <span className="ml-auto rounded-full bg-rust-tint px-1.5 py-0.5 text-[7px] font-extrabold text-danger">
-            ▲ 6% vs last mon
+          <span className="ml-auto inline-flex items-center gap-0.5 rounded-full bg-rust-tint px-1.5 py-0.5 text-[7px] font-extrabold text-danger">
+            <TrendingUp size={7} /> 6% vs last mon
           </span>
         </div>
         <span className="block text-[7px] text-faint">Wed 16 Sep • {flag} Nepalese Rupee</span>
@@ -348,7 +349,7 @@ function HomeScreen({ m, flag, sym }: { m: (n: number) => string; flag: string; 
             <TrendingUp size={9} className="text-primary" /> Cash Flow <ChevronDown size={8} className="text-text-muted" />
           </span>
           <span className="flex items-center gap-0.5 rounded-full border border-border bg-surface-elevated px-1 py-0.5 text-[6.5px] font-bold text-text-muted">
-            1D 7D <span className="rounded-full bg-primary px-1 text-white">1M</span> 6M 1Y
+            1D 7D <span className="rounded-full bg-primary px-1 text-primary-ink">1M</span> 6M 1Y
           </span>
         </div>
         <div className="mt-1.5 flex items-center gap-2 text-[8.5px] font-extrabold">
@@ -387,7 +388,7 @@ function HomeScreen({ m, flag, sym }: { m: (n: number) => string; flag: string; 
   );
 }
 
-/* ── HISTORY — Vault & Flow card, toolbar, date groups, pagination ── */
+/* ── HISTORY – Vault & Flow card, toolbar, date groups, pagination ── */
 
 function HistoryScreen({ m }: { m: (n: number) => string }) {
   return (
@@ -486,7 +487,7 @@ function HistoryScreen({ m }: { m: (n: number) => string }) {
   );
 }
 
-/* ── ADD EXPENSE — real ExpenseForm order (no fake keypad; system keyboard) ── */
+/* ── ADD EXPENSE – real ExpenseForm order (no fake keypad; system keyboard) ── */
 
 function AddScreen({ m, sym, currency }: { m: (n: number) => string; sym: string; currency: string }) {
   return (
@@ -587,7 +588,7 @@ function AddScreen({ m, sym, currency }: { m: (n: number) => string; sym: string
           {[["💵", "Cash", true], ["💳", "Card", false], ["📱", "UPI", false], ["🪙", "Other", false]].map(([e, n, sel]) => (
             <span key={n as string} className={`relative rounded-[8px] border-[1.5px] py-1.5 ${sel ? "border-primary bg-primary-light text-primary" : "border-border text-text-muted"}`}>
               <span className="block text-[11px]">{e}</span>{n}
-              {sel ? <span className="absolute -right-1 -top-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[6px] text-white">✓</span> : null}
+              {sel ? <span className="absolute -right-1 -top-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[6px] text-primary-ink">✓</span> : null}
             </span>
           ))}
         </div>
@@ -599,13 +600,13 @@ function AddScreen({ m, sym, currency }: { m: (n: number) => string; sym: string
           <Cap className="!text-[6px]">Total</Cap>
           <span className="numeric text-[12px] font-black text-primary">− {sym} 1,250</span>
         </span>
-        <span className="rounded-[9px] bg-primary px-3.5 py-2 text-[8px] font-extrabold text-white">Save Expense</span>
+        <span className="rounded-[9px] bg-primary px-3.5 py-2 text-[8px] font-extrabold text-primary-ink">Save Expense</span>
       </div>
     </div>
   );
 }
 
-/* ── ANALYTICS — dual selectors, tri-flow, KPIs, health dial ── */
+/* ── ANALYTICS – dual selectors, tri-flow, KPIs, health dial ── */
 
 function AnalyticsScreen({ m }: { m: (n: number) => string }) {
   return (
@@ -695,7 +696,7 @@ function AnalyticsScreen({ m }: { m: (n: number) => string }) {
   );
 }
 
-/* ── RECURRING — hero total + rule rows with status pills ── */
+/* ── RECURRING – hero total + rule rows with status pills ── */
 
 function RecurringScreen({ m }: { m: (n: number) => string }) {
   return (
@@ -752,7 +753,7 @@ function RecurringScreen({ m }: { m: (n: number) => string }) {
   );
 }
 
-/* ── SETTINGS — profile card + the real 10-row menu, exact tints ── */
+/* ── SETTINGS – profile card + the real 10-row menu, exact tints ── */
 
 function SettingsScreen({ flag, detail }: { flag: string; detail?: string }) {
   const rows: { icon: React.ReactNode; tint: string; label: string; right?: React.ReactNode }[] = [
@@ -804,7 +805,7 @@ function SettingsScreen({ flag, detail }: { flag: string; detail?: string }) {
   );
 }
 
-/* ── BULLION — market switcher, 2×2 benchmark grid, trend, calculator ── */
+/* ── BULLION – market switcher, 2×2 benchmark grid, trend, calculator ── */
 
 function BullionScreen({ m }: { m: (n: number) => string }) {
   return (
@@ -816,7 +817,7 @@ function BullionScreen({ m }: { m: (n: number) => string }) {
       </div>
 
       <div className="flex rounded-[9px] border border-border bg-surface p-0.5 text-[7.5px] font-extrabold">
-        <span className="flex-1 rounded-[7px] bg-primary py-1 text-center text-white">🇳🇵 Nepal (NPR)</span>
+        <span className="flex-1 rounded-[7px] bg-primary py-1 text-center text-primary-ink">🇳🇵 Nepal (NPR)</span>
         <span className="flex-1 py-1 text-center text-text-muted">🇮🇳 India (INR)</span>
       </div>
       <div className="flex justify-center"><span className="flex items-center gap-1 rounded-full border border-border bg-surface-elevated px-2 py-0.5 text-[6.5px] font-semibold text-text-muted"><Clock size={8} /> FENEGOSIDA Fix · 10:30 AM NPT</span></div>
@@ -862,7 +863,7 @@ function BullionScreen({ m }: { m: (n: number) => string }) {
       <div className="rounded-[12px] border border-border bg-surface p-2.5">
         <span className="flex items-center gap-1 text-[8.5px] font-extrabold text-text"><Gauge size={10} className="text-primary" /> Instant Metal Valuation</span>
         <div className="mt-1.5 flex gap-1 text-[6.5px] font-bold">
-          <span className="rounded-[7px] bg-primary px-2 py-1 text-white">🥇 Gold 24K</span>
+          <span className="rounded-[7px] bg-primary px-2 py-1 text-primary-ink">🥇 Gold 24K</span>
           <span className="rounded-[7px] border border-border bg-surface-elevated px-2 py-1 text-text-muted">👑 Gold 22K</span>
           <span className="rounded-[7px] border border-border bg-surface-elevated px-2 py-1 text-text-muted">🥈 Silver 999</span>
         </div>
@@ -879,7 +880,7 @@ function BullionScreen({ m }: { m: (n: number) => string }) {
   );
 }
 
-/* ── VAULT / ACCOUNTS — total balance, quick actions, real row anatomy ── */
+/* ── VAULT / ACCOUNTS – total balance, quick actions, real row anatomy ── */
 
 function VaultScreen({ m }: { m: (n: number) => string }) {
   return (
@@ -933,7 +934,7 @@ function VaultScreen({ m }: { m: (n: number) => string }) {
       <div className="flex items-center gap-2 rounded-[11px] border border-border bg-surface px-2.5 py-2">
         <IconTile emoji={<ArrowLeftRight size={11} className="text-primary" />} tint="#059669" size={22} />
         <span className="min-w-0 flex-1">
-          <span className="block text-[8px] font-extrabold text-text">🇳🇵 Nabil Bank → eSewa</span>
+          <span className="block text-[8px] font-extrabold text-text">Nabil Bank <ArrowRight size={7} className="inline" /> eSewa</span>
           <span className="block text-[6.5px] text-text-muted">{m(5000)} · rate 1.0000 · 15 Sep</span>
         </span>
         <span className="text-[7px] font-bold text-primary">Recent transfer</span>

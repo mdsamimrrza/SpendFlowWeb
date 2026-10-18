@@ -1,13 +1,13 @@
 "use client";
 
-import { DashboardShell } from "@/components/layout/DashboardShell";
+import { AppShell } from "@/components/shell/AppShell";
 import { AccountsStatement, type AccountsInject } from "@/components/accounts/AccountsStatement";
 import type { AccountCycleStat, BankAccountRow } from "@/services/bankAccounts";
 import type { TransferRow } from "@/services/transfers";
 
 /**
  * Static design preview of the Accounts register (mock data, no auth, no
- * network) — hero distribution bar, per-account share ticks, cycle activity
+ * network) – hero distribution bar, per-account share ticks, cycle activity
  * chips and the recent-movements rail, screenshottable without an account.
  */
 const base = {
@@ -154,8 +154,8 @@ const inject: AccountsInject = {
 
 export default function PreviewAccountsPage() {
   return (
-    <DashboardShell>
+    <AppShell>
       <AccountsStatement inject={inject} />
-    </DashboardShell>
+    </AppShell>
   );
 }

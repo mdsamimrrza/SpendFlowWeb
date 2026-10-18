@@ -1,4 +1,4 @@
-/** Default category seeds — mirror mobile constants/categories.ts (9 expense + 6 income). */
+/** Default category seeds – mirror mobile constants/categories.ts (9 expense + 6 income). */
 export interface DefaultCategory {
   name: string;
   icon: string;

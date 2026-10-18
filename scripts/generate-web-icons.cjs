@@ -3,7 +3,7 @@
 //
 // Two renderings:
 //  - FULL artwork (dashed ring + dots + medallion) for the large PWA icons.
-//  - EMBLEM crop (center ~55% — just the double-ring "S" medallion, enlarged
+//  - EMBLEM crop (center ~55% – just the double-ring "S" medallion, enlarged
 //    to fill the canvas) for favicons/tab icons/header marks, where the full
 //    artwork's thin ring vanishes at 16-40 px.
 //
@@ -24,7 +24,7 @@ const SRC = path.resolve(
   "../../SpendFlow/assets"
 );
 const ROOT = path.resolve(__dirname, "..");
-const NAVY = { r: 11, g: 15, b: 25 }; // #0b0f19 — favicon.png background
+const NAVY = { r: 11, g: 15, b: 25 }; // #0b0f19 – favicon.png background
 
 async function png(srcBuf, size, out) {
   await sharp(srcBuf).resize(size, size, { fit: "contain" }).png().toFile(out);
@@ -47,7 +47,7 @@ async function emblem(srcBuf, size, out) {
     .toFile(out);
 }
 
-// Same emblem crop but with rounded corners + transparent surround —
+// Same emblem crop but with rounded corners + transparent surround –
 // browsers render favicons verbatim, so a full-bleed square tile looks hard
 // against the tab shape. Alpha is zeroed outside the rounded rect directly
 // in the pixel data (deterministic across sharp/libvips versions).
@@ -89,7 +89,7 @@ async function roundedEmblem(srcBuf, size, out, radiusFrac = 0.24) {
   const iconsDir = path.join(ROOT, "public", "icons");
   fs.mkdirSync(iconsDir, { recursive: true });
 
-  // Default tab icon + legacy .ico — rounded emblem (browsers show favicons
+  // Default tab icon + legacy .ico – rounded emblem (browsers show favicons
   // verbatim, so the tile gets its own rounded corners). Light/parchment is
   // the default for browsers without media-query icon support.
   await roundedEmblem(cream, 64, path.join(appDir, "icon.png"));
@@ -103,7 +103,7 @@ async function roundedEmblem(srcBuf, size, out, radiusFrac = 0.24) {
   await roundedEmblem(cream, 64, path.join(iconsDir, "tab-light.png"));
   await roundedEmblem(navy, 64, path.join(iconsDir, "tab-dark.png"));
 
-  // Header brand marks — high-res emblems for the 40px header tile.
+  // Header brand marks – high-res emblems for the 40px header tile.
   await emblem(cream, 128, path.join(iconsDir, "brand-light.png"));
   await emblem(navy, 128, path.join(iconsDir, "brand-dark.png"));
 

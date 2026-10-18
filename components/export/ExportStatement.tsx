@@ -423,7 +423,7 @@ export function ExportStatement({ inject }: ExportPageProps) {
                 onClick={() => setPeriod(p.value)}
                 aria-pressed={active}
                 className={`h-9 min-h-[36px] shrink-0 whitespace-nowrap rounded-md px-3 text-[13px] font-semibold transition active:scale-[0.97] ${
-                  active ? "flex-1 bg-primary text-white" : "flex-1 text-text-muted hover:text-text"
+                  active ? "flex-1 bg-primary text-primary-ink" : "flex-1 text-text-muted hover:text-text"
                 }`}
               >
                 {t(p.labelKey)}

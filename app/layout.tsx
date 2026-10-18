@@ -1,23 +1,29 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Inter } from "next/font/google";
+import { DM_Sans, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/store/Providers";
 import { ThemeFavicon } from "@/components/ui/ThemeFavicon";
 
-/* Inter for UI, Fraunces (the banknote serif) for money figures. */
-const inter = Inter({
+/* DM Sans – the V5 "Sage Ledger" voice: one soft geometric sans carries the
+   UI. Money figures speak Geist Mono (2026-10-15 user direction) - the same
+   sharp numeric voice as the Master Admin project - applied through the
+   `numeric` utility. */
+const dmSans = DM_Sans({
   subsets: ["latin"],
-  variable: "--font-inter",
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-sans",
   display: "swap",
 });
-const fraunces = Fraunces({
+
+const geistMono = Geist_Mono({
   subsets: ["latin"],
-  variable: "--font-fraunces",
+  weight: ["400", "500", "600"],
+  variable: "--font-money",
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "SpendFlow — Your personal ledger",
+  title: "SpendFlow – Your personal ledger",
   description:
     "Track expenses, income, budgets and transfers. Companion web app to the SpendFlow mobile app.",
   icons: {
@@ -42,19 +48,15 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F2EFE2" },
-    { media: "(prefers-color-scheme: dark)", color: "#0A100C" },
+    { media: "(prefers-color-scheme: light)", color: "#F1EEE5" },
+    { media: "(prefers-color-scheme: dark)", color: "#161A12" },
   ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     // suppressHydrationWarning: ThemeContext toggles the `dark` class pre-hydration.
-    <html
-      lang="en"
-      suppressHydrationWarning
-      className={`${inter.variable} ${fraunces.variable}`}
-    >
+    <html lang="en" suppressHydrationWarning className={`${dmSans.variable} ${geistMono.variable}`}>
       <body className="min-h-screen bg-background text-text antialiased">
         <Providers>
           <ThemeFavicon />

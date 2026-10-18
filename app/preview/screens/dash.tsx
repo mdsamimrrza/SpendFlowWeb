@@ -1,97 +1,100 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { Coffee, Plus, Sparkles, TrendingUp, Wallet, ArrowDown } from "lucide-react";
-import { MoneyPulseHero } from "@/components/dashboard/MoneyPulseHero";
-import { BudgetPanel } from "@/components/dashboard/BudgetPanel";
-import { SpendingMix } from "@/components/dashboard/SpendingMix";
-import { RecentFeed } from "@/components/dashboard/RecentFeed";
-import { FlowChartCard } from "@/components/charts/FlowChartCard";
-import { CalendarHeatmap } from "@/components/charts/CalendarHeatmap";
-import { Panel, SectionTitle } from "@/components/ui/Card";
-import { FitText } from "@/components/ui/FitText";
-import { CurrencyFlag } from "@/components/ui/CurrencyFlag";
-import { DashboardShell } from "@/components/layout/DashboardShell";
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  CalendarDays,
+  PiggyBank,
+  Wallet,
+} from "lucide-react";
+import { AppShell } from "@/components/shell/AppShell";
+import { AccountsStrip } from "@/components/dash/AccountsStrip";
+import { Upcoming } from "@/components/dash/Upcoming";
+import { BillsDue } from "@/components/dash/BillsDue";
+import { Feed } from "@/components/dash/Feed";
+import { MixCard } from "@/components/dash/MixCard";
+import {
+  cardPillClass,
+  DashCard,
+  DeltaChip,
+  RangeChip,
+  StatCard,
+} from "@/components/dash/primitives";
+import { BalanceCard } from "@/components/dash/BalanceCard";
+import { CashFlowCard } from "@/components/dash/CashFlowCard";
+import { HeatGrid } from "@/components/graphs/HeatGrid";
+import { TodayRateLine } from "@/components/ui/TodayRateLine";
+import type { FlowPoint } from "@/components/graphs/FlowChart";
 import type { ExpenseRow } from "@/services/expenses";
+import type { RecurringRuleRow } from "@/services/recurring";
+import type { BankAccountRow } from "@/services/bankAccounts";
 
 /**
- * Static design preview of the redesigned home dashboard (mock data, no auth,
- * no network) - composes the real DashboardShell + the overview tiers
- * (pastel MoneyPulseHero KPI band, flow chart + budget pacing, daily rhythm
- * heat grid, recent rows) plus the xl-only right widget rail (calendar,
- * budget progress, spending mix) so the layout can be screenshotted without
- * an account.
+ * Static design preview of the de-boxed "Sage Ledger" home dashboard (mock
+ * data, no auth, no network) – hero safe-to-spend number, ruled sections
+ * instead of cards, cash-flow chart with the 1D/1W/1M/Cycle/1Y/Custom
+ * filters. Composes the real AppShell + overview components with injected
+ * data so the layout can be screenshotted without an account.
  */
-const fmt = (n: number) => `NPR ${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(n)}`;
+const fmt = (n: number) =>
+  `NPR ${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(n)}`;
+const axisFmt = (n: number) =>
+  new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(n);
 
-const pace = {
-  daysTotal: 30,
-  daysElapsed: 14,
-  spentPct: 0.63,
-  expectedPct: 0.467,
-  projected: 121500,
-  onPace: false,
-};
-
-/* Deterministic pseudo-random generator so shots stay stable. */
-function mulberry32(seed: number) {
-  return () => {
-    seed |= 0;
-    seed = (seed + 0x6d2b79f5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-const rnd = mulberry32(42);
-
-const CATS = [
-  { name: "Food & Dining", icon: "🍔", color: "#EF6C00" },
-  { name: "Groceries", icon: "🛒", color: "#2E7D32" },
-  { name: "Transport", icon: "🚌", color: "#0277BD" },
-  { name: "Shopping", icon: "🛍️", color: "#BA68C8" },
-  { name: "Bills & Utilities", icon: "🧾", color: "#FBC02D" },
-];
-const METHODS = ["Cash", "Card", "eSewa", "Khalti", "Bank Transfer"];
-
+const now_ = new Date();
+const cycleLabel = "Oct 1 – Oct 31";
 function iso(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-/* ~34 entries across the last 14 days + a salary on day 14 back. */
+const pace = {
+  daysTotal: 30,
+  daysElapsed: 14,
+  spentPct: 0.061,
+};
+
+/* ── Deterministic mocks ── */
+const CATS = [
+  { name: "Food & Dining", color: "#EF6C00" },
+  { name: "Groceries", color: "#2E7D32" },
+  { name: "Transport", color: "#0277BD" },
+  { name: "Shopping", color: "#BA68C8" },
+  { name: "Bills & Utilities", color: "#FBC02D" },
+];
+const METHODS = ["Cash", "Card", "eSewa", "Khalti", "Bank Transfer"];
+
+/* Two entries a day across the last 14 days + a salary a week back. */
 const mockRows: ExpenseRow[] = (() => {
   const out: ExpenseRow[] = [];
-  const today = new Date();
   let n = 0;
   out.push({
     id: "s1",
     type: "income",
-    amount: 95000,
+    amount: 617000,
     currency: "NPR",
-    date: iso(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 13)),
+    date: iso(new Date(now_.getFullYear(), now_.getMonth(), now_.getDate() - 7)),
     time: "10:00",
     payment_method: "Bank Transfer",
-    description: "September salary",
-    categories: { id: "cs", name: "Salary", icon: "💼", color: "#2E7D32", type: "expense" },
+    description: "Monthly salary",
+    categories: { id: "cs", name: "Salary", icon: "briefcase", color: "#2E7D32", type: "expense" },
     bank_accounts: { id: "b1", name: "Nabil Bank", icon: "bank", account_type: "bank" },
   } as unknown as ExpenseRow);
   for (let back = 13; back >= 0; back--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - back);
-    const count = 1 + Math.floor(rnd() * 3);
-    for (let i = 0; i < count; i++) {
-      const cat = CATS[Math.floor(rnd() * CATS.length)];
+    const d = new Date(now_);
+    d.setDate(now_.getDate() - back);
+    for (let i = 0; i < 2; i++) {
+      const cat = CATS[(back + i) % CATS.length];
       out.push({
         id: `r${n++}`,
         type: "expense",
-        amount: Math.round(200 + rnd() * 4200),
+        amount: Math.round(200 + ((back * 7 + i * 13) % 29) * 120),
         currency: "NPR",
         date: iso(d),
-        time: `${String(8 + Math.floor(rnd() * 12)).padStart(2, "0")}:${String(Math.floor(rnd() * 6) * 10).padStart(2, "0")}`,
-        payment_method: METHODS[Math.floor(rnd() * METHODS.length)],
+        time: `${String(8 + ((back + i) % 12)).padStart(2, "0")}:${String(i * 30).padStart(2, "0")}`,
+        payment_method: METHODS[(back + i) % METHODS.length],
         description: `${cat.name} run`,
-        categories: { id: `c${cat.name}`, ...cat, type: "expense" },
+        categories: { id: `c${cat.name}`, name: cat.name, color: cat.color, type: "expense" },
       } as unknown as ExpenseRow);
     }
   }
@@ -103,27 +106,132 @@ for (const r of mockRows) {
   if (r.type !== "expense") continue;
   byDay.set(r.date, (byDay.get(r.date) ?? 0) + r.amount);
 }
-const byCat = new Map<string, { value: number; color: string; icon: string }>();
+const byCat = new Map<string, { value: number; color: string }>();
 for (const r of mockRows) {
   if (r.type !== "expense" || !r.categories) continue;
-  const s = byCat.get(r.categories.name) ?? { value: 0, color: r.categories.color, icon: r.categories.icon };
+  const s = byCat.get(r.categories.name) ?? { value: 0, color: r.categories.color };
   s.value += r.amount;
   byCat.set(r.categories.name, s);
 }
 const slices = Array.from(byCat.entries())
-  .map(([label, s]) => ({ label, value: s.value, color: s.color, icon: s.icon }))
+  .map(([label, s]) => ({ label, value: s.value, color: s.color }))
   .sort((a, b) => b.value - a.value);
 const spent = mockRows.reduce((s, r) => s + (r.type === "income" ? 0 : r.amount), 0);
 const income = mockRows.reduce((s, r) => s + (r.type === "income" ? r.amount : 0), 0);
+const spendByDay: Record<string, number> = {};
+for (const [k, v] of byDay) spendByDay[k] = v;
 
-const dailyDays: { iso: string; value: number }[] = [];
-for (let back = 13; back >= 0; back--) {
-  const d = new Date(today0());
-  d.setDate(d.getDate() - back);
-  dailyDays.push({ iso: iso(d), value: byDay.get(iso(d)) ?? 0 });
+/* Overdue bill + upcoming payments (relative to today). */
+function relDate(days: number) {
+  const d = new Date(now_);
+  d.setDate(now_.getDate() + days);
+  return iso(d);
 }
-function today0() {
-  return new Date();
+const mockDue = [
+  {
+    id: "due1",
+    is_active: true,
+    next_due_date: relDate(-2),
+    amount: 15000,
+    currency: "NPR",
+    description: "Internet bill",
+    categories: { name: "Bills & Utilities", color: "#FBC02D" },
+  },
+] as unknown as RecurringRuleRow[];
+const mockUpcoming = [
+  { id: "u1", is_active: true, next_due_date: relDate(4), amount: 120000, currency: "NPR", description: "Room rent", categories: { name: "Rent", color: "#5E7E5B" } },
+  { id: "u2", is_active: true, next_due_date: relDate(8), amount: 499, currency: "NPR", description: "Netflix", categories: { name: "Subscriptions", color: "#B3593E" } },
+  { id: "u3", is_active: true, next_due_date: relDate(15), amount: 25000, currency: "NPR", description: "Gym membership", categories: { name: "Health", color: "#5B7D9C" } },
+] as unknown as RecurringRuleRow[];
+
+const mockAccounts = [
+  { id: "a1", name: "Nabil Bank", account_type: "bank", currency: "NPR", current_balance: 186400, initial_balance: 186400, color: "#10B981", account_number_last4: "4821", is_default: true },
+  { id: "a2", name: "eSewa", account_type: "wallet", currency: "NPR", current_balance: 12480, initial_balance: 12480, color: "#38BDF8", account_number_last4: null, is_default: false },
+  { id: "a3", name: "Cash wallet", account_type: "cash", currency: "NPR", current_balance: 16000, initial_balance: 16000, color: "#F59E0B", account_number_last4: null, is_default: false },
+  { id: "a4", name: "Khalti", account_type: "wallet", currency: "NPR", current_balance: 8200, initial_balance: 8200, color: "#8B5CF6", account_number_last4: null, is_default: false },
+  { id: "a5", name: "Wise USD", account_type: "bank", currency: "USD", current_balance: 420, initial_balance: 420, color: "#22D3EE", account_number_last4: "7734", is_default: false },
+  { id: "a6", name: "Michai savings", account_type: "savings", currency: "NPR", current_balance: 25000, initial_balance: 25000, color: "#A3E635", account_number_last4: null, is_default: false },
+] as unknown as BankAccountRow[];
+const mockBalances = new Map(
+  mockAccounts.map((a) => [a.id, (a as unknown as { current_balance: number }).current_balance]),
+);
+const mockTotal = 248500;
+
+/* ── Cash-flow chart mocks: 1D / 1W / 1M / Cycle / 1Y / Custom ── */
+const cycleFlow: FlowPoint[] = (() => {
+  const incBy = new Map<string, number>();
+  const expBy = new Map<string, number>();
+  for (const r of mockRows) {
+    if (r.type === "income") incBy.set(r.date, (incBy.get(r.date) ?? 0) + r.amount);
+    else expBy.set(r.date, (expBy.get(r.date) ?? 0) + r.amount);
+  }
+  const out: FlowPoint[] = [];
+  for (let d = new Date(now_.getFullYear(), now_.getMonth(), 1); iso(d) <= iso(now_); d.setDate(d.getDate() + 1)) {
+    const key = iso(d);
+    out.push({ label: String(d.getDate()), income: incBy.get(key) ?? 0, expense: expBy.get(key) ?? 0 });
+  }
+  return out;
+})();
+
+/* 1D – today by hour (deterministic mock: morning tea, lunch, taxi). */
+const hourFlow: FlowPoint[] = (() => {
+  const spendAt: Record<number, number> = { 7: 180, 9: 420, 10: 1250, 12: 860, 15: 260 };
+  const lastH = Math.max(1, now_.getHours());
+  const out: FlowPoint[] = [];
+  for (let h = 0; h <= lastH; h++) {
+    const hourLabel = new Intl.DateTimeFormat("en", { hour: "numeric", hour12: true })
+      .format(new Date(now_.getFullYear(), now_.getMonth(), now_.getDate(), h))
+      .replace(/\s/g, "")
+      .toLowerCase();
+    out.push({ label: hourLabel, income: h === 9 ? 5000 : 0, expense: spendAt[h] ?? 0 });
+  }
+  return out;
+})();
+
+/* 1W / 1M / custom – synthetic daily buckets. */
+const dailyFlow = (days: number, labels: (d: Date, i: number) => string): FlowPoint[] => {
+  const out: FlowPoint[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(now_.getFullYear(), now_.getMonth(), now_.getDate() - i);
+    out.push({
+      label: labels(d, days - 1 - i),
+      income: i === 3 ? 48500 : i === 10 ? 6200 : 0,
+      expense: Math.round(400 + 320 * Math.abs(Math.sin(i * 2.7)) + (i % 7 === 5 ? 1900 : 0)),
+    });
+  }
+  return out;
+};
+const weekFlow = dailyFlow(7, (d) => new Intl.DateTimeFormat("en", { weekday: "short" }).format(d));
+const monthBackFlow = dailyFlow(
+  Math.round((now_.getTime() - new Date(now_.getFullYear(), now_.getMonth() - 1, 1).getTime()) / 86400000) + 1,
+  (d, i) =>
+    d.getDate() === 1 || i === 0 ? `${d.getDate()} ${d.toLocaleString("en", { month: "short" })}` : String(d.getDate()),
+);
+const customFlow = dailyFlow(14, (d, i) =>
+  d.getDate() === 1 || i === 0 ? `${d.getDate()} ${d.toLocaleString("en", { month: "short" })}` : String(d.getDate()),
+);
+
+/* 1-year buckets: current month real, older months synthetic. */
+function monthFlow(months: number): FlowPoint[] {
+  const out: FlowPoint[] = [];
+  for (let back = months - 1; back >= 0; back--) {
+    const d = new Date(now_.getFullYear(), now_.getMonth() - back, 1);
+    const label = d.toLocaleString("en", { month: "short" });
+    if (back === 0) {
+      out.push({
+        label,
+        income: cycleFlow.reduce((s, p) => s + p.income, 0),
+        expense: cycleFlow.reduce((s, p) => s + p.expense, 0),
+      });
+    } else {
+      out.push({
+        label,
+        income: Math.round(44000 + ((back * 37) % 9) * 900),
+        expense: Math.round(29000 + ((back * 53) % 7) * 800),
+      });
+    }
+  }
+  return out;
 }
 
 export default function PreviewDashPage() {
@@ -132,162 +240,224 @@ export default function PreviewDashPage() {
     const n = new Date();
     return { y: n.getFullYear(), m: n.getMonth() };
   });
+  const [range, setRange] = useState<"1d" | "1w" | "1m" | "cycle" | "1y" | "custom">("cycle");
   const canNextMonth =
     calYm.y * 12 + calYm.m < new Date().getFullYear() * 12 + new Date().getMonth();
-  const spendByDay: Record<string, number> = {};
-  for (const [k, v] of byDay) spendByDay[k] = v;
 
-  const mixAction = (
-    <Link href="/analytics" className="caps !text-primary hover:underline">
-      Analytics <ArrowDown size={11} className="inline -translate-y-px" />
-    </Link>
-  );
-  const mixBody = (
-    <div className="flex min-h-0 flex-1 flex-col p-4 sm:p-5">
-      <SpendingMix slices={slices} formatValue={fmt} otherLabel="Other" cycleTotalLabel="Cycle outflow" />
-    </div>
-  );
+  const points =
+    range === "1d"
+      ? hourFlow
+      : range === "1w"
+        ? weekFlow
+        : range === "1m"
+          ? monthBackFlow
+          : range === "custom"
+            ? customFlow
+            : range === "cycle"
+              ? cycleFlow
+              : monthFlow(12);
+  const flowIn = points.reduce((s, p) => s + p.income, 0);
+  const flowOut = points.reduce((s, p) => s + p.expense, 0);
+  const activeBuckets = points.filter((p) => p.income > 0 || p.expense > 0).length;
+  const fmtDay = (d: Date) =>
+    new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(d);
+  const flowWindow =
+    range === "1d"
+      ? fmtDay(now_)
+      : range === "cycle"
+        ? cycleLabel
+        : range === "1y"
+          ? `${points[0]?.label} – ${points[points.length - 1]?.label}`
+          : range === "custom"
+            ? "Feb 1 – Feb 14"
+            : range === "1m"
+              ? `${fmtDay(new Date(now_.getFullYear(), now_.getMonth() - 1, 1))} – ${fmtDay(now_)}`
+              : `${fmtDay(new Date(now_.getFullYear(), now_.getMonth(), now_.getDate() - 6))} – ${fmtDay(now_)}`;
+  const flowDelta = {
+    text: range === "1d" ? "-12%" : "+114%",
+    positive: range !== "1d",
+    label:
+      range === "1d"
+        ? "vs yesterday"
+        : range === "1w"
+          ? "vs prev week"
+          : range === "1m"
+            ? "vs prev month"
+            : range === "cycle"
+              ? "vs prev cycle"
+              : range === "custom"
+                ? "vs prev period"
+                : "vs prev year",
+  };
+  const flowInsight =
+    range === "1d"
+      ? `Avg ${fmt(flowOut / Math.max(1, now_.getHours() + 1))} an hour`
+      : `Avg ${fmt(flowOut / points.length)} a day · ${activeBuckets} active days`;
+  const todayTotal = byDay.get(iso(new Date())) ?? 850;
+  const budget = 900000;
+  const net = income - spent;
+  const netText = `${net >= 0 ? "+" : "-"}${fmt(Math.abs(net))}`;
 
   return (
-    <DashboardShell>
-      <main className="mx-auto w-full max-w-[1200px]">
-        <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
+    <AppShell>
+      <div className="mx-auto w-full max-w-[1100px]">
+        <header className="rise flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[13px] font-medium text-faint">
+            <p className="text-[12.5px] font-medium text-faint">
               {new Intl.DateTimeFormat("en", { weekday: "long", month: "long", day: "numeric" }).format(new Date())}
             </p>
-            <h1 className="mt-0.5 truncate text-2xl font-extrabold tracking-tight text-text sm:text-[28px]">
+            <h1 className="mt-0.5 truncate text-[22px] font-bold tracking-tight text-text sm:text-2xl">
               Good morning, Sam
             </h1>
           </div>
-          <div className="flex shrink-0 items-center gap-2.5">
-            <span className="hidden h-10 items-center gap-2 rounded-lg border border-border bg-surface px-3.5 sm:flex">
-              <CurrencyFlag currency="NPR" size={16} />
-              <span className="whitespace-nowrap text-[12.5px] font-medium text-text-muted">Sep 1 – Sep 30</span>
-            </span>
-          </div>
         </header>
 
-        <div className="mt-1">
-          <MoneyPulseHero
-            net={income - spent}
-            income={income}
-            expense={spent}
-            todayTotal={byDay.get(iso(new Date())) ?? 850}
-            budget={90000}
-            pace={pace}
-            formatted={fmt}
-            cycleLabel="Sep 1 – Sep 30"
-            delta={{ text: "+12,400", positive: true }}
-            entries={mockRows.length}
+        {/* Hero – the cycle statement card */}
+        <div className="rise mt-6" style={{ animationDelay: "40ms" }}>
+          <BalanceCard
+            cycleLabel={cycleLabel}
+            net={netText}
+            netDelta={
+              <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold text-white">
+                +12,400
+                <span className="font-medium text-white/70">vs prev cycle</span>
+              </span>
+            }
+            income={fmt(income).replace(/^[^\d]*/, "")}
+            expense={fmt(spent).replace(/^[^\d]*/, "")}
+            safe={fmt(Math.max(0, budget - spent)).replace(/^[^\d]*/, "")}
+            safeCaption={`${Math.round(pace.spentPct * 100)}% of ${fmt(budget)}`}
+            budget={{
+              amount: fmt(budget),
+              pct: pace.spentPct,
+              left: fmt(Math.max(0, budget - spent)),
+            }}
           />
         </div>
 
-        <div className="mt-4 grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
-          <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-3">
-            <div className="min-w-0 rounded-2xl [&>.panel]:rounded-2xl lg:col-span-2 xl:col-span-3">
-              <FlowChartCard label="Cash flow" rows={mockRows} />
-            </div>
-            <Panel className="min-w-0 !rounded-2xl xl:hidden">
-              <BudgetPanel
-                budget={90000}
-                spent={spent}
-                income={income}
-                pace={pace}
-                formatted={fmt}
-                cycleLabel="Sep 1 – Sep 30"
-                daily={dailyDays}
-                formatValue={fmt}
-                labels={{
-                  budgetOnFile: "Monthly budget",
-                  spent: "spent",
-                  remaining: "Remaining",
-                  overBy: "Over by",
-                  projectedClose: "Projected close",
-                  dailyAllowance: "Avg per day",
-                  dailySpendLabel: "Daily spending",
-                  savingsRate: "Savings rate",
-                  noBudgetTitle: "No budget yet",
-                  noBudgetBody: "File a monthly budget to see pacing here.",
-                  setBudget: "Set budget",
-                  day: "Day",
-                  of: "of",
-                }}
-              />
-            </Panel>
-            <Panel label="Spending mix" action={mixAction} className="min-w-0 !rounded-2xl xl:hidden">
-              {mixBody}
-            </Panel>
-
-            <section className="min-w-0 lg:col-span-3">
-              <SectionTitle action={<Link href="/history" className="caps !text-primary hover:underline">View All</Link>}>
-                Recent Activity
-              </SectionTitle>
-              <RecentFeed
-                rows={mockRows}
-                amountFor={(r) => fmt(r.amount)}
-                displayCurrency="NPR"
-                locale="en"
-                max={8}
-                labels={{ today: "Today", yesterday: "Yesterday" }}
-              />
-            </section>
-          </div>
-
-          <aside className="hidden min-w-0 flex-col gap-4 xl:flex">
-            <Panel label="Spending calendar" className="!rounded-2xl">
-              <div className="p-4 sm:p-5">
-                <CalendarHeatmap
-                  year={calYm.y}
-                  month={calYm.m}
-                  spend={spendByDay}
-                  formatted={fmt}
-                  onPrevMonth={() =>
-                    setCalYm(({ y, m }) => (m === 0 ? { y: y - 1, m: 11 } : { y, m: m - 1 }))
-                  }
-                  onNextMonth={() =>
-                    setCalYm(({ y, m }) => (m === 11 ? { y: y + 1, m: 0 } : { y, m: m + 1 }))
-                  }
-                  canNextMonth={canNextMonth}
-                  totalLabel="Month total"
-                />
-              </div>
-            </Panel>
-
-            <Panel className="!rounded-2xl">
-              <BudgetPanel
-                budget={90000}
-                spent={spent}
-                income={income}
-                pace={pace}
-                formatted={fmt}
-                cycleLabel="Sep 1 – Sep 30"
-                daily={dailyDays}
-                formatValue={fmt}
-                labels={{
-                  budgetOnFile: "Monthly budget",
-                  spent: "spent",
-                  remaining: "Remaining",
-                  overBy: "Over by",
-                  projectedClose: "Projected close",
-                  dailyAllowance: "Avg per day",
-                  dailySpendLabel: "Daily spending",
-                  savingsRate: "Savings rate",
-                  noBudgetTitle: "No budget yet",
-                  noBudgetBody: "File a monthly budget to see pacing here.",
-                  setBudget: "Set budget",
-                  day: "Day",
-                  of: "of",
-                }}
-              />
-            </Panel>
-
-            <Panel label="Spending mix" action={mixAction} className="!rounded-2xl">
-              {mixBody}
-            </Panel>
-          </aside>
+        <div className="mt-4">
+          <TodayRateLine
+            live={{ income, expense: spent }}
+            frozen={{ income: income - 1200, expense: spent + 800 }}
+            fmt={fmt}
+          />
         </div>
-      </main>
-    </DashboardShell>
+
+        <div className="mt-4">
+          <BillsDue injected={{ rules: mockDue, overdueDays: [2] }} />
+        </div>
+
+        {/* Cash flow + spending calendar */}
+        <div className="mt-4 grid gap-3 sm:gap-4 lg:grid-cols-3">
+          <DashCard
+            title="Cash flow"
+            className="flex flex-col lg:col-span-2"
+            bodyClassName="flex min-h-0 flex-1 flex-col"
+            action={
+              <div role="group" aria-label="Cash flow" className="flex items-center rounded-full border border-border bg-surface p-0.5">
+                <RangeChip active={range === "1d"} label="1D" onClick={() => setRange("1d")} />
+                <RangeChip active={range === "1w"} label="1W" onClick={() => setRange("1w")} />
+                <RangeChip active={range === "1m"} label="1M" onClick={() => setRange("1m")} />
+                <RangeChip active={range === "cycle"} label="Cycle" onClick={() => setRange("cycle")} />
+                <RangeChip active={range === "1y"} label="1Y" onClick={() => setRange("1y")} />
+                <button
+                  type="button"
+                  aria-pressed={range === "custom"}
+                  aria-label="Custom range"
+                  onClick={() => setRange("custom")}
+                  className={`flex h-7 items-center rounded-full px-2 transition-colors ${
+                    range === "custom"
+                      ? "bg-[var(--sf-primary-light)] text-primary-strong"
+                      : "text-text-muted hover:text-text"
+                  }`}
+                >
+                  <CalendarDays size={13} aria-hidden />
+                </button>
+              </div>
+            }
+          >
+            <CashFlowCard
+              key={range}
+              design="ratio"
+              points={points}
+              totals={{ income: flowIn, expense: flowOut }}
+              delta={flowDelta}
+              windowLabel={flowWindow}
+              insight={flowInsight}
+              format={fmt}
+              tickFormat={axisFmt}
+              labels={{ income: "Income", expense: "Expense", empty: "No entries in this range yet" }}
+            />
+          </DashCard>
+
+          <DashCard title="Spending calendar">
+            <HeatGrid
+              year={calYm.y}
+              month={calYm.m}
+              spend={spendByDay}
+              formatted={fmt}
+              locale="en"
+              onPrevMonth={() =>
+                setCalYm(({ y, m }) => (m === 0 ? { y: y - 1, m: 11 } : { y, m: m - 1 }))
+              }
+              onNextMonth={() =>
+                setCalYm(({ y, m }) => (m === 11 ? { y: y + 1, m: 0 } : { y, m: m + 1 }))
+              }
+              canNextMonth={canNextMonth}
+              onDayTap={() => {}}
+              totalLabel="Month total"
+            />
+          </DashCard>
+        </div>
+
+        {/* Recent | Upcoming / Accounts | Mix (mix under upcoming) - the 2x2 block */}
+        <div className="mt-4 grid gap-3 sm:gap-4 lg:grid-cols-2">
+          <DashCard
+            title="Recent activity"
+            className="lg:col-start-1 lg:row-start-1 lg:row-span-3"
+            action={<span className={cardPillClass}>View all</span>}
+          >
+            <Feed
+              rows={mockRows}
+              amountFor={(r) => fmt(r.amount)}
+              dayNetFor={(grp) => {
+                const net = grp.reduce((s, r) => s + (r.type === "income" ? r.amount : -r.amount), 0);
+                return {
+                  text: `${net >= 0 ? "+" : "−"}${fmt(Math.abs(net)).replace(/^[^\d]*/, "")}`,
+                  positive: net >= 0,
+                };
+              }}
+              locale="en"
+              onOpen={() => {}}
+              max={6}
+              labels={{ today: "Today", yesterday: "Yesterday" }}
+            />
+          </DashCard>
+
+          <DashCard
+            title="Upcoming"
+            className="self-start lg:col-start-2 lg:row-start-1"
+            action={<span className={cardPillClass}>View all</span>}
+          >
+            <Upcoming injected={{ rules: mockUpcoming }} />
+          </DashCard>
+
+          <DashCard
+            title="Spending mix"
+            className="self-start lg:col-start-2 lg:row-start-3"
+            bodyClassName="flex h-full flex-col justify-center"
+            action={<span className={cardPillClass}>Analytics</span>}
+          >
+            <MixCard slices={slices} format={fmt} otherLabel="Other" />
+          </DashCard>
+
+          <div className="self-start lg:col-start-2 lg:row-start-2">
+            <AccountsStrip
+              injected={{ accounts: mockAccounts, balances: mockBalances, total: mockTotal }}
+            />
+          </div>
+        </div>
+      </div>
+    </AppShell>
   );
 }

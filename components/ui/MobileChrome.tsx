@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Mobile-chrome primitives — exact ports of the shared RN components the
+ * Mobile-chrome primitives – exact ports of the shared RN components the
  * pushed mobile screens use (components/ui/ConfirmDialog.tsx, EmptyState.tsx)
  * and the per-screen header bar pattern (app/bin.tsx, app/categories.tsx,
  * app/accounts.tsx, app/bullion.tsx, app/export.tsx, app/profit-loss.tsx).
@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation";
 import { AlertTriangle, ArrowLeft, X, type LucideIcon } from "lucide-react";
 
 /**
- * Sub-page context strip — the web counterpart of the APK's pushed-screen
+ * Sub-page context strip – the web counterpart of the APK's pushed-screen
  * header, deliberately demoted so it never competes with the app header above
  * it: a 44px quiet row on the page background, a 28px back chip, the screen
  * name in small caps with its caption inline, and the screen's own action on
@@ -175,7 +175,7 @@ export function MobileEmptyState({
       {actionLabel && onAction ? (
         <button
           onClick={onAction}
-          className="mt-1 h-11 rounded-[10px] bg-primary px-6 text-[13px] font-bold text-white transition active:scale-[0.96]"
+          className="mt-1 h-11 rounded-[10px] bg-primary px-6 text-[13px] font-bold text-primary-ink transition active:scale-[0.96]"
         >
           {actionLabel}
         </button>
@@ -204,7 +204,7 @@ export function MobileButton({
 }) {
   const tone =
     variant === "primary"
-      ? "bg-primary text-white"
+      ? "bg-primary text-primary-ink"
       : variant === "destructive"
         ? "bg-danger text-white"
         : variant === "secondary"

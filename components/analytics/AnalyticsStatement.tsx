@@ -3,14 +3,21 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import {
   Activity,
+  ArrowDownLeft,
+  ArrowUpRight,
   Award,
   Calendar,
+  ChevronRight,
+  Inbox,
   PieChart,
   Sparkles,
   Target,
+  Wallet,
   X,
 } from "lucide-react";
 import { useAuth } from "@/store/AuthContext";
@@ -18,21 +25,22 @@ import { useLanguage } from "@/store/LanguageContext";
 import { usePrivacy } from "@/store/PrivacyContext";
 import { useRowConverter, useBudget } from "@/hooks/useRates";
 import { subscribeToExpenseChanges } from "@/hooks/useExpenses";
-import { listExpenses, type ExpenseRow } from "@/services/expenses";
+import { listExpenses } from "@/services/expenses";
 import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
 import type { TranslationKey } from "@/constants/i18n/dictionaries";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { CalendarModal } from "@/components/ui/CalendarModal";
 import { FloatingSelect, SelectRow } from "@/components/ui/FloatingSelect";
-import { PrivacyEyeButton } from "@/components/ui/PrivacyEyeButton";
+import { categoryGlyph } from "@/components/ui/Glyph";
 import { ProgressRing } from "@/components/charts/ProgressRing";
-import { ShareDonut, DONUT_RAMP } from "@/components/charts/ShareDonut";
 import { MonthlyBars } from "@/components/charts/MonthlyBars";
-import { TrendArea } from "@/components/charts/TrendArea";
-import { RankedBars } from "@/components/charts/RankedBars";
-import { CalendarHeatmap } from "@/components/charts/CalendarHeatmap";
+import { ShareDonut } from "@/components/charts/ShareDonut";
+import { HeatGrid } from "@/components/graphs/HeatGrid";
+import { FlowChart, type FlowPoint } from "@/components/graphs/FlowChart";
+import { DashCard, DeltaChip, StatCard } from "@/components/dash/primitives";
 import {
   formatMoney,
+  formatShortDate,
   getCycleWindow,
   cycleDaysElapsed,
   cycleDaysTotal,
@@ -40,19 +48,21 @@ import {
 } from "@/utils/format";
 
 /**
- * Analytics - Reports view (2026-10-11 editorial redesign). Same data engine
- * (rows, useRowConverter, health-score formulas), report-grade composition:
- *  · Integrated masthead: kicker + title + period selector on the left, one
- *    summary band on the right (Net BIG, IN / OUT / savings rate inline
- *    figures separated by hairlines, insight sentence as muted subtext).
- *  · Asymmetric 12-col desktop grid, no repeated tile rows - section titles
- *    sit OUTSIDE the charts as real typography:
- *    [MonthlyBars 7 | ShareDonut 5] [TrendArea 7 | RankedBars 5]
- *    [CalendarHeatmap 7 | Health 5].
- *  · ShareDonut renders the curated single-hue emerald ramp (DONUT_RAMP);
- *    stored category colors are ignored for chart framing.
- * All figures flow through the privacy mask; all other colors through
- * --sf-* tokens.
+ * Analytics – v3 (2026-10-13). Two invented compositions were rejected by
+ * the user ("except one part" = the Income-vs-expense bar card; then "more
+ * crap"), so this version composes the page ENTIRELY from components the
+ * user already iterated to acceptance on the overview dashboard, plus that
+ * bar card:
+ *  · StatCard KPI row (icon chip + figure + delta chip vs the preceding
+ *    like-for-like window in the caption).
+ *  · FlowChart cash-flow card (the overview's approved smoothed lines +
+ *    crosshair) following the selected period window.
+ *  · ShareDonut "Where money goes" (curated pastel ramp, interactive
+ *    legend) – no stored rainbow colors, no list rows.
+ *  · MonthlyBars Income-vs-expense (the liked anchor, wide slot).
+ *  · Largest-expense drill-ins + HeatGrid spending calendar (styled
+ *    tooltips) + the mobile-parity health band.
+ * All figures flow through the privacy mask; colors through --sf-* tokens.
  */
 
 /* mobile VIBRANT_PALETTE (components/expense/Charts.tsx) - fixed DATA colors
@@ -109,6 +119,7 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
   const authBudget = useBudget();
   const budget = inject ? (inject.budget ?? null) : authBudget;
   const supabase = getSupabaseBrowserClient();
+  const router = useRouter();
 
   const [loading, setLoading] = useState(!inject);
   const [error, setError] = useState<string | null>(null);
@@ -151,10 +162,17 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
     (n: number) => mask(formatMoney(n, displayCurrency, locale)),
     [mask, displayCurrency, locale],
   );
-  const compactFmt = useMemo(() => {
-    const f = new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 });
-    return (n: number) => f.format(n);
-  }, [locale]);
+  const tickFmt = useMemo(
+    () =>
+      (n: number) =>
+        new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 }).format(n),
+    [locale],
+  );
+  // Full grouped numerals for the cash-flow chart axis (no "40K" shorthand).
+  const axisFmt = useMemo(
+    () => (n: number) => new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(n),
+    [locale],
+  );
 
   const cycle = useMemo(
     () => getCycleWindow(new Date(), profile?.cycle_start_day ?? 1, profile?.cycle_end_day ?? null),
@@ -167,17 +185,28 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
   const [period, setPeriod] = useState<PeriodKey>("cycle");
   const [periodOpen, setPeriodOpen] = useState(false);
   const [monthPickerOpen, setMonthPickerOpen] = useState(false);
-  const [customMonth, setCustomMonth] = useState(() => {
+  // Custom analysis window (start-to-end) picked on the calendar - defaults
+  // to the current month so far.
+  const [customRange, setCustomRange] = useState(() => {
     const n = new Date();
-    return { year: n.getFullYear(), month: n.getMonth() };
+    const mm = String(n.getMonth() + 1).padStart(2, "0");
+    return {
+      from: `${n.getFullYear()}-${mm}-01`,
+      to: toISODate(n),
+    };
   });
+  const customRangeLabel =
+    customRange.from === customRange.to
+      ? formatShortDate(customRange.from, locale)
+      : `${formatShortDate(customRange.from, locale)} - ${formatShortDate(customRange.to, locale)}`;
   const [healthModalOpen, setHealthModalOpen] = useState(false);
+  // Spending calendar navigation: never past the current month.
   const [calMonth, setCalMonth] = useState(() => {
     const n = new Date();
     return { year: n.getFullYear(), month: n.getMonth() };
   });
 
-  // Period windows computed like FlowChartCard: cycle via getCycleWindow,
+  // Period windows computed like the flow cards: cycle via getCycleWindow,
   // trailing day spans, calendar year.
   const periodWindow = useMemo(() => {
     const now = new Date();
@@ -191,13 +220,10 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
         return { from: shiftDays(todayS, -89), to: todayS };
       case "year":
         return { from: `${now.getFullYear()}-01-01`, to: `${now.getFullYear()}-12-31` };
-      case "month": {
-        const last = new Date(customMonth.year, customMonth.month + 1, 0);
-        const mm = String(customMonth.month + 1).padStart(2, "0");
-        return { from: `${customMonth.year}-${mm}-01`, to: toISODate(last) };
-      }
+      case "month":
+        return { from: customRange.from, to: customRange.to };
     }
-  }, [period, cycleFrom, cycleTo, customMonth]);
+  }, [period, cycleFrom, cycleTo, customRange]);
 
   // Inclusive day counts for the selected window; the visible end clamps to
   // today so future windows never render an empty projected tail.
@@ -212,14 +238,9 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
       };
     }
     const end = periodWindow.to < todayS ? periodWindow.to : todayS;
-    const daysIn = (a: string, b: string) =>
-      Math.max(
-        1,
-        Math.round((new Date(`${b}T00:00:00`).getTime() - new Date(`${a}T00:00:00`).getTime()) / 86_400_000) + 1,
-      );
     return {
-      total: daysIn(periodWindow.from, end),
-      elapsed: daysIn(periodWindow.from, end),
+      total: daysBetween(periodWindow.from, end),
+      elapsed: daysBetween(periodWindow.from, end),
       from: periodWindow.from,
       to: end,
     };
@@ -232,18 +253,16 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
   );
 
   // Window aggregate builder - called for the selected period (KPIs, donut,
-  // ranked bars, health inputs) and for the cycle (budget adherence).
+  // largest entries, health inputs), the preceding comparison window (deltas)
+  // and the cycle (budget adherence).
   const buildStats = useCallback(
-    (fromISO: string, toISO: string, total: number, elapsed: number) => {
+    (fromISO: string, toISO: string) => {
       let spent = 0;
       let income = 0;
       let expenseCount = 0;
       let entries = 0;
       let weekendSpend = 0;
-      const byCategory = new Map<
-        string,
-        { label: string; value: number; id: string | null; count: number; color?: string | null; icon?: string | null }
-      >();
+      const byCategory = new Map<string, { label: string; value: number; count: number; color?: string | null }>();
 
       for (const row of rows) {
         if (row.date < fromISO || row.date > toISO) continue;
@@ -261,10 +280,8 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
         const slice = byCategory.get(name) ?? {
           label: name,
           value: 0,
-          id: row.category_id,
           count: 0,
           color: row.categories?.color,
-          icon: row.categories?.icon,
         };
         slice.value += v;
         slice.count += 1;
@@ -278,22 +295,27 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
         expenseCount,
         entries,
         weekendSpend,
-        daysElapsed: elapsed,
-        daysTotal: total,
         categories: Array.from(byCategory.values()).sort((a, b) => b.value - a.value),
       };
     },
     [rows, convert],
   );
 
-  const stats = useMemo(
-    () => buildStats(periodDays.from, periodDays.to, periodDays.total, periodDays.elapsed),
-    [buildStats, periodDays],
+  const stats = useMemo(() => buildStats(periodDays.from, periodDays.to), [buildStats, periodDays]);
+
+  // The previous like-for-like window: the equal-length span immediately
+  // before this one (Copilot's month-to-date comparison - cycle 1-20 vs the
+  // preceding cycle's last 20 days, trailing 30 vs the 30 before it).
+  const prevWindow = useMemo(() => {
+    const len = Math.max(1, daysBetween(periodDays.from, periodDays.to));
+    return { from: shiftDays(periodDays.from, -len), to: shiftDays(periodDays.from, -1), len };
+  }, [periodDays.from, periodDays.to]);
+  const prevStats = useMemo(
+    () => buildStats(prevWindow.from, prevWindow.to),
+    [buildStats, prevWindow],
   );
-  const cycleStats = useMemo(
-    () => buildStats(cycleFrom, cycleTo, cycleDaysTotal(cycle), cycleDaysElapsed(cycle, new Date())),
-    [buildStats, cycle, cycleFrom, cycleTo],
-  );
+
+  const cycleStats = useMemo(() => buildStats(cycleFrom, cycleTo), [buildStats, cycleFrom, cycleTo]);
 
   /* ── Financial Health Score - mobile FinancialHealthScoreCard, 1:1 ── */
   const health = useMemo(() => {
@@ -359,7 +381,7 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
     // cycle window regardless of the period dropdown (mobile parity).
     if (budget != null && budget > 0) {
       const budgetUsedRatio = cycleStats.spent / budget;
-      const expectedRatio = cycleStats.daysElapsed / cycleStats.daysTotal;
+      const expectedRatio = cycleDaysElapsed(cycle, new Date()) / cycleDaysTotal(cycle);
       if (budgetUsedRatio <= expectedRatio) {
         budgetPoints = 35;
         insights.push({
@@ -481,50 +503,104 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
       savingsRate: computedSavingsRate,
       insights: insights.slice(0, 3),
     };
-  }, [stats, cycleStats, budget, periodRows, convert, fmt, t]);
+  }, [stats, cycleStats, cycle, budget, periodRows, convert, fmt, t]);
 
   /* ── Chart series (all derived from the same rows/convert aggregates) ── */
 
   // Last 6 calendar months incl. the current one (independent of the period
   // dropdown - a month-over-month comparison needs its own fixed window).
+  // Income vs expense: bucket by salary-cycle windows, not calendar months -
+  // a custom 29th-to-26th cycle splits across two calendar months, so a
+  // calendar bar mixes two of the user's months. The timeline starts at the
+  // FIRST entry's cycle and empty windows are skipped entirely (a Feb 2025
+  // first entry followed by a Mar 2026 second shows two bars, not fourteen
+  // blanks). With the default day-1 cycle the windows are calendar months.
   const monthlyMonths = useMemo(() => {
-    const now = new Date();
-    const labelFmt = new Intl.DateTimeFormat(locale, { month: "short" });
-    const agg = new Map<string, { income: number; expense: number }>();
-    for (const row of rows) {
-      const key = row.date.slice(0, 7);
-      const slot = agg.get(key) ?? { income: 0, expense: 0 };
-      if (row.type === "income") slot.income += convert(row);
-      else slot.expense += convert(row);
-      agg.set(key, slot);
-    }
-    return Array.from({ length: 6 }, (_, i) => {
-      const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      const slot = agg.get(key) ?? { income: 0, expense: 0 };
-      return { label: labelFmt.format(d), income: slot.income, expense: slot.expense, isCurrent: i === 5 };
-    });
-  }, [rows, convert, locale]);
+    const startDay = profile?.cycle_start_day ?? 1;
+    const endDay = profile?.cycle_end_day ?? null;
 
-  // Cumulative net per day across the selected window (ends today - future
-  // days carry no entries, so the line would just flatline into them).
-  const trendPoints = useMemo(() => {
-    const agg = new Map<string, number>();
+    // Walk back from the current cycle to the one containing the first entry.
+    const firstDate = rows.length
+      ? rows.reduce<string>((min, r) => (r.date < min ? r.date : min), rows[0].date)
+      : null;
+    const firstCycleStart = firstDate
+      ? getCycleWindow(new Date(`${firstDate}T00:00:00`), startDay, endDay).start
+      : null;
+    const wins: { from: string; to: string }[] = [];
+    let ref = new Date();
+    for (let i = 0; i < 500; i++) {
+      const w = getCycleWindow(ref, startDay, endDay);
+      wins.push({ from: toISODate(w.start), to: toISODate(w.end) });
+      if (firstCycleStart === null || w.start <= firstCycleStart) break;
+      ref = new Date(w.start.getFullYear(), w.start.getMonth(), w.start.getDate() - 1);
+    }
+
+    // Aggregate, then keep only windows where money actually moved.
+    // wins were collected newest-first walking back; flip to oldest-first.
+    wins.reverse();
+    const buckets = wins
+      .map((w) => {
+        let income = 0;
+        let expense = 0;
+        for (const row of rows) {
+          if (row.date < w.from || row.date > w.to) continue;
+          if (row.type === "income") income += convert(row);
+          else expense += convert(row);
+        }
+        return { ...w, income, expense };
+      })
+      .filter((b) => b.income > 0 || b.expense > 0);
+
+    if (buckets.length === 0) {
+      // No entries at all: keep the familiar trailing-6 skeleton (zeros).
+      const labelFmt = new Intl.DateTimeFormat(locale, { month: "short" });
+      const now = new Date();
+      return Array.from({ length: 6 }, (_, i) => {
+        const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+        return { label: labelFmt.format(d), income: 0, expense: 0, isCurrent: i === 5 };
+      });
+    }
+
+    // Short month labels; if a gap makes two labels collide (Feb 2025 vs
+    // Feb 2026), every bar switches to "Feb '25" style to stay unambiguous.
+    const labelFmt = new Intl.DateTimeFormat(locale, { month: "short" });
+    const labelYearFmt = new Intl.DateTimeFormat(locale, { month: "short", year: "2-digit" });
+    const labels = buckets.map((b) => labelFmt.format(new Date(`${b.from}T00:00:00`)));
+    const needsYear = new Set(labels).size !== labels.length;
+    const rangeFmt = (iso: string) => formatShortDate(iso, locale);
+    return buckets.map((b, i) => ({
+      label: needsYear
+        ? labelYearFmt.format(new Date(`${b.from}T00:00:00`))
+        : labels[i],
+      sub: `${rangeFmt(b.from)} - ${rangeFmt(b.to)}`,
+      income: b.income,
+      expense: b.expense,
+      isCurrent: i === buckets.length - 1,
+    }));
+  }, [rows, convert, locale, profile?.cycle_start_day, profile?.cycle_end_day]);
+
+  // Daily income/expense flow across the selected window (the FlowChart
+  // buckets - clamped to today so the lines never flatline into the future).
+  const flowPoints = useMemo<FlowPoint[]>(() => {
+    const byDay = new Map<string, { income: number; expense: number }>();
     for (const row of rows) {
       if (row.date < periodDays.from || row.date > periodDays.to) continue;
-      const signed = row.type === "income" ? convert(row) : -convert(row);
-      agg.set(row.date, (agg.get(row.date) ?? 0) + signed);
+      const bucket = byDay.get(row.date) ?? { income: 0, expense: 0 };
+      const v = convert(row);
+      if (row.type === "income") bucket.income += v;
+      else bucket.expense += v;
+      byDay.set(row.date, bucket);
     }
-    const out: { date: string; net: number }[] = [];
-    let run = 0;
+    const dayFmt = new Intl.DateTimeFormat(locale, { day: "numeric" });
+    const out: FlowPoint[] = [];
     for (let d = periodDays.from, i = 0; d <= periodDays.to && i < 500; d = shiftDays(d, 1), i++) {
-      run += agg.get(d) ?? 0;
-      out.push({ date: d, net: run });
+      const b = byDay.get(d) ?? { income: 0, expense: 0 };
+      out.push({ label: dayFmt.format(new Date(`${d}T00:00:00`)), ...b });
     }
     return out;
-  }, [rows, periodDays.from, periodDays.to, convert]);
+  }, [rows, periodDays.from, periodDays.to, convert, locale]);
 
-  // Daily expense map for the calendar heatmap (all months, navigation is local).
+  // Daily expense map for the HeatGrid calendar (all months, nav is local).
   const daySpend = useMemo(() => {
     const m: Record<string, number> = {};
     for (const row of rows) {
@@ -534,8 +610,8 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
     return m;
   }, [rows, convert]);
 
-  // Donut: top 5 slices + "Other" remainder. Slice framing is the curated
-  // single-hue ramp inside ShareDonut - stored category colors stay data.
+  // Donut: top 5 slices + "Other" remainder - the curated ShareDonut ramp
+  // frames the chart; stored category colors stay data.
   const donutSlices = useMemo(() => {
     const top = stats.categories.slice(0, 5).map((c) => ({
       label: c.label,
@@ -546,23 +622,23 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
     return top;
   }, [stats.categories, t]);
 
-  // Ranked bars ride the same ramp (matching donut slice order) so the page
-  // keeps one palette; the 6th row lands on the "Other" zinc like the donut.
-  const rankedRows = useMemo(
+  // Largest single outflows of the selected window (drill-in to the entry).
+  const largest = useMemo(
     () =>
-      stats.categories.slice(0, 6).map((c, i) => ({
-        label: c.label,
-        value: c.value,
-        color: DONUT_RAMP[Math.min(i, DONUT_RAMP.length - 1)],
-      })),
-    [stats.categories],
+      rows
+        .filter((r) => r.date >= periodDays.from && r.date <= periodDays.to && r.type !== "income")
+        .map((r) => ({ row: r, value: convert(r) }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5),
+    [rows, periodDays.from, periodDays.to, convert],
   );
 
-  // Masthead summary band figures + one-line insight.
+  // Masthead figures + one-line insight.
   const savingsRate = stats.income > 0 ? Math.round((stats.net / stats.income) * 100) : null;
   const budgetSet = budget != null && budget > 0;
   const overBudget = budgetSet && stats.spent > (budget ?? 0);
   const healthy = stats.net >= 0;
+  const avgPerDay = stats.spent / Math.max(1, periodDays.elapsed);
   const triFlowInsight =
     overBudget && !healthy
       ? tr(t("triFlowInsightCritical"), { a: fmt(stats.spent - (budget ?? 0)), b: fmt(Math.abs(stats.net)) })
@@ -573,6 +649,32 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
           : stats.income > 0 && healthy
             ? tr(t("triFlowInsightHealthy"), { a: fmt(stats.net), r: String(savingsRate) })
             : tr(t("triFlowInsightTracking"), { a: fmt(stats.spent), n: String(stats.expenseCount) });
+
+  // KPI delta chip vs the previous window. Direction-of-goodness depends on
+  // the metric: more spending is bad, more income / net is good. No prior
+  // data or an exact tie renders as a quiet neutral pill.
+  const kpiDelta = (pct: number | null, abs: number, goodWhenUp: boolean) => {
+    if (pct == null || pct === 0) {
+      return (
+        <span
+          className="numeric inline-flex h-6 items-center rounded-full px-2 text-[11px] font-semibold text-faint"
+          style={{ backgroundColor: "var(--sf-track)" }}
+        >
+          {pct == null ? t("anNoPrev") : "0%"}
+        </span>
+      );
+    }
+    return (
+      <span title={`${abs >= 0 ? "+" : "−"}${fmt(Math.abs(abs))} · ${t("anVsPrev")}`}>
+        <DeltaChip text={`${Math.abs(pct)}%`} positive={(abs > 0) === goodWhenUp} />
+      </span>
+    );
+  };
+  const deltas = {
+    income: pctDelta(stats.income, prevStats.income),
+    spent: pctDelta(stats.spent, prevStats.spent),
+    net: pctDelta(stats.net, prevStats.net),
+  };
 
   // Calendar navigation: never past the current month.
   const nowCal = new Date();
@@ -587,196 +689,254 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
     return (
       <main className="mx-auto w-full max-w-[1200px] px-4 py-6 sm:px-6">
         <Skeleton className="mb-6 h-9 w-56" />
-        <Skeleton className="h-40 w-full" />
-        <Skeleton className="mt-4 h-28 w-full" />
-        <Skeleton className="mt-4 h-64 w-full" />
+        <Skeleton className="h-36 w-full" />
+        <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-12">
+          <Skeleton className="h-72 w-full lg:col-span-7" />
+          <Skeleton className="h-72 w-full lg:col-span-5" />
+          <Skeleton className="h-56 w-full lg:col-span-12" />
+        </div>
       </main>
     );
   }
 
   return (
     <main className="mx-auto w-full max-w-[1200px] px-4 pb-28 pt-4 sm:px-6">
-      <div className="space-y-3">
-        {/* ── 1. MASTHEAD: identity + period selector | summary band ── */}
-        <section className="panel">
-          <div className="flex flex-col gap-5 p-4 sm:p-6 lg:flex-row lg:items-end lg:justify-between lg:gap-10">
-            {/* Left: kicker + title + period selector */}
-            <div className="min-w-0">
-              <div>
-                <p className="text-[13px] font-medium text-faint">{t("anKicker")}</p>
-                <h1 className="mt-0.5 text-[22px] font-bold leading-tight tracking-[-0.02em] text-text sm:text-[26px]">
-                  {t("anTitle")}
-                </h1>
-              </div>
-              <div className="relative z-40 mt-4 max-w-[260px]">
-                {periodOpen && (
-                  <button
-                    type="button"
-                    aria-label={t("anCloseMenus")}
-                    tabIndex={-1}
-                    className="fixed inset-0 z-40 cursor-default"
-                    onClick={() => setPeriodOpen(false)}
-                  />
-                )}
-                <FloatingSelect
-                  className="relative z-50"
-                  icon={<Calendar size={14} className="shrink-0 text-primary" aria-hidden />}
-                  label={
-                    period === "month"
-                      ? new Intl.DateTimeFormat(locale, { month: "short", year: "numeric" }).format(
-                          new Date(customMonth.year, customMonth.month, 1),
-                        )
-                      : t(PERIODS.find((p) => p.key === period)?.labelKey ?? "anThisCycle")
+      {/* ── 1. MASTHEAD (unboxed): identity left, period selector right ── */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
+        <div className="min-w-0">
+          <p className="caps-faint">{t("anKicker")}</p>
+          <h1 className="mt-0.5 text-[22px] font-bold leading-tight tracking-[-0.02em] text-text sm:text-[26px]">
+            {t("anTitle")}
+          </h1>
+        </div>
+        <div className="relative z-40 sm:w-[240px] sm:shrink-0">
+          {periodOpen && (
+            <button
+              type="button"
+              aria-label={t("anCloseMenus")}
+              tabIndex={-1}
+              className="fixed inset-0 z-40 cursor-default"
+              onClick={() => setPeriodOpen(false)}
+            />
+          )}
+          <FloatingSelect
+            className="relative z-50"
+            icon={<Calendar size={14} className="shrink-0 text-primary" aria-hidden />}
+            label={period === "month" ? customRangeLabel : t(PERIODS.find((p) => p.key === period)?.labelKey ?? "anThisCycle")}
+            open={periodOpen}
+            onToggle={() => setPeriodOpen((v) => !v)}
+          >
+            {PERIODS.map((opt) => (
+              <SelectRow
+                key={opt.key}
+                selected={period === opt.key}
+                label={opt.key === "month" && period === "month" ? customRangeLabel : t(opt.labelKey)}
+                onSelect={() => {
+                  if (opt.key === "month") {
+                    setMonthPickerOpen(true);
+                  } else {
+                    setPeriod(opt.key);
                   }
-                  open={periodOpen}
-                  onToggle={() => setPeriodOpen((v) => !v)}
-                >
-                  {PERIODS.map((opt) => (
-                    <SelectRow
-                      key={opt.key}
-                      selected={period === opt.key}
-                      label={
-                        opt.key === "month" && period === "month"
-                          ? new Intl.DateTimeFormat(locale, { month: "short", year: "numeric" }).format(
-                              new Date(customMonth.year, customMonth.month, 1),
-                            )
-                          : t(opt.labelKey)
-                      }
-                      onSelect={() => {
-                        if (opt.key === "month") {
-                          setMonthPickerOpen(true);
-                        } else {
-                          setPeriod(opt.key);
-                        }
-                        setPeriodOpen(false);
-                      }}
-                    />
-                  ))}
-                </FloatingSelect>
-              </div>
-            </div>
-
-            {/* Right (below on phones): one summary band - HistoryRegister pattern */}
-            <div className="lg:max-w-[560px] lg:shrink-0">
-              <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
-                <div className="min-w-0">
-                  <p className="caps-faint">{t("homeNetCashFlow")}</p>
-                  <p
-                    className={`figures-display mt-1 text-[32px] leading-none sm:text-[36px] ${
-                      stats.net < 0 ? "text-danger" : "text-income"
-                    }`}
-                  >
-                    <span className="mr-0.5 text-[0.5em] text-faint">{stats.net < 0 ? "−" : "+"}</span>
-                    {fmt(Math.abs(stats.net))}
-                  </p>
-                </div>
-                <div className="flex items-end pb-0.5">
-                  <div className="pr-5">
-                    <p className="caps-faint">IN</p>
-                    <p className="figures mt-1 text-sm text-income sm:text-[15px]">{fmt(stats.income)}</p>
-                  </div>
-                  <div className="border-l border-border pl-5">
-                    <p className="caps-faint">OUT</p>
-                    <p className="figures mt-1 text-sm text-danger sm:text-[15px]">{fmt(stats.spent)}</p>
-                  </div>
-                  <div className="border-l border-border pl-5">
-                    <p className="caps-faint">{t("homeSavingsRate")}</p>
-                    <p
-                      className={`figures mt-1 text-sm sm:text-[15px] ${
-                        savingsRate == null ? "text-faint" : savingsRate >= 20 ? "text-income" : "text-text"
-                      }`}
-                    >
-                      {savingsRate != null ? `${savingsRate}%` : "-"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              {/* One-line insight as muted subtext */}
-              <p className="mt-4 border-t border-border pt-3 text-[12px] leading-[18px] text-faint">
-                {triFlowInsight}
-                {!budgetSet && <span> · {t("triFlowNotSet")}</span>}
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {error ? <p className="border border-danger p-4 text-sm text-danger">{error}</p> : null}
-
-        {!error && (
-          <>
-            {/* ── 2. REPORT GRID: asymmetric 12-col, section titles outside
-                the charts as real typography; rows share equal heights ── */}
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
-              {/* Row 1: monthly comparison | category share */}
-              <section className="panel flex flex-col p-4 sm:p-5 lg:col-span-7">
-                <SectionHead
-                  title={t("anMonthlyBars")}
-                  sub={t("anMonthlyBarsSub")}
-                  aside={
-                    <span className="numeric hidden whitespace-nowrap pt-1 text-[11.5px] text-text-muted sm:block">
-                      <span className="font-semibold text-income">IN {fmt(monthlyMonths.reduce((s, m) => s + m.income, 0))}</span>
-                      <span className="mx-1.5 text-faint">·</span>
-                      <span className="font-semibold text-danger">OUT {fmt(monthlyMonths.reduce((s, m) => s + m.expense, 0))}</span>
-                    </span>
-                  }
-                />
-                <MonthlyBars months={monthlyMonths} formatted={fmt} compact={compactFmt} />
-              </section>
-
-              <section className="panel flex flex-col p-4 sm:p-5 lg:col-span-5">
-                <SectionHead title={t("anWhereMoneyGoes")} sub={t("anShareSub")} />
-                <ShareDonut slices={donutSlices} formatted={fmt} centerLabel={t("triFlowSpent")} />
-              </section>
-
-              {/* Row 2: net trend | top categories */}
-              <section className="panel flex flex-col p-4 sm:p-5 lg:col-span-7">
-                <SectionHead title={t("anNetTrend")} sub={t("anNetTrendSub")} />
-                <TrendArea points={trendPoints} formatted={fmt} locale={locale} />
-              </section>
-
-              <section className="panel flex flex-col p-4 sm:p-5 lg:col-span-5">
-                <SectionHead
-                  title={t("anTopCategories")}
-                  sub={tr(t("anNCategories"), { n: String(rankedRows.length) })}
-                  aside={
-                    <span className="numeric whitespace-nowrap pt-1 text-[11.5px] text-text-muted">
-                      {t("anTotalSpending")} <span className="font-bold text-text">{fmt(stats.spent)}</span>
-                    </span>
-                  }
-                />
-                <RankedBars rows={rankedRows} formatted={fmt} />
-              </section>
-
-              {/* Row 3: daily calendar | financial health */}
-              <section className="panel flex flex-col p-4 sm:p-5 lg:col-span-7">
-                <SectionHead title={t("anDailySpend")} sub={t("anDailySpendSub")} />
-                <CalendarHeatmap
-                  year={calMonth.year}
-                  month={calMonth.month}
-                  spend={daySpend}
-                  formatted={fmt}
-                  onPrevMonth={calPrev}
-                  onNextMonth={calNext}
-                  canNextMonth={!calIsCurrent}
-                  totalLabel={t("anMonthTotal")}
-                />
-              </section>
-
-              <HealthScoreCard health={health} t={t} entries={stats.entries} onOpen={() => setHealthModalOpen(true)} />
-            </div>
-          </>
-        )}
+                  setPeriodOpen(false);
+                }}
+              />
+            ))}
+          </FloatingSelect>
+        </div>
       </div>
 
-      {/* ── CUSTOM MONTH PICKER (period selector) ── */}
+      {error ? <p className="mt-3 border border-danger p-4 text-sm text-danger">{error}</p> : null}
+
+      {!error && rows.length === 0 && (
+        <section className="panel mt-3 flex flex-col items-center gap-2 p-10 text-center">
+          <span
+            className="grid h-11 w-11 place-items-center rounded-full"
+            style={{ backgroundColor: "var(--sf-track)" }}
+            aria-hidden
+          >
+            <Inbox size={20} className="text-faint" />
+          </span>
+          <p className="mt-1 text-sm font-bold text-text">{t("anAwaitTitle")}</p>
+          <p className="max-w-[360px] text-[12.5px] leading-[18px] text-faint">{t("anAwaitDesc")}</p>
+        </section>
+      )}
+
+      {!error && rows.length > 0 && (
+        <>
+          {/* ── 2. KPI ROW: the overview's approved StatCard, delta chips in
+              the caption slot ── */}
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <StatCard
+              icon={ArrowDownLeft}
+              tone="beige"
+              label={t("homeInflow")}
+              value={fmt(stats.income)}
+              caption={
+                <>
+                  {kpiDelta(deltas.income.pct, deltas.income.abs, true)}
+                  <span className="truncate">
+                    {savingsRate != null ? tr(t("anSavingsRatePill"), { r: String(savingsRate) }) : "\u00A0"}
+                  </span>
+                </>
+              }
+            />
+            <StatCard
+              icon={ArrowUpRight}
+              tone="rose"
+              label={t("homeOutflow")}
+              value={fmt(stats.spent)}
+              caption={
+                <>
+                  {kpiDelta(deltas.spent.pct, deltas.spent.abs, false)}
+                  <span className="truncate">
+                    {t("homeAvgDaily")}: {fmt(avgPerDay)}
+                  </span>
+                </>
+              }
+            />
+            <StatCard
+              icon={Wallet}
+              tone="sage"
+              label={t("cfNet")}
+              value={
+                <span>
+                  <span className="mr-0.5 text-[0.6em] text-faint">{stats.net < 0 ? "−" : "+"}</span>
+                  {fmt(Math.abs(stats.net))}
+                </span>
+              }
+              caption={
+                <>
+                  {kpiDelta(deltas.net.pct, deltas.net.abs, true)}
+                  <span className="truncate">
+                    {budgetSet
+                      ? overBudget
+                        ? tr(t("anBudgetOver"), { over: fmt(stats.spent - (budget ?? 0)), total: fmt(budget ?? 0) })
+                        : tr(t("anBudgetLeft"), { left: fmt((budget ?? 0) - stats.spent), total: fmt(budget ?? 0) })
+                      : "\u00A0"}
+                  </span>
+                </>
+              }
+            />
+          </div>
+          <p className="mt-2 text-[12px] leading-[18px] text-faint">
+            {triFlowInsight}
+            {!budgetSet && <span> · {t("triFlowNotSet")}</span>}
+          </p>
+
+          {/* ── 3. DASHCARD GRID: flow | donut, monthly bars | largest,
+              calendar | health ── */}
+          <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-12">
+            {/* Cash-flow lines over the selected window (overview hero chart) */}
+            <DashCard className="lg:col-span-7" title={t("homeNetCashFlow")}>
+              <p className="-mt-2.5 mb-3 text-[11.5px] text-faint">
+                {t("anVsPrev")} {formatShortDate(prevWindow.from, locale)} – {formatShortDate(prevWindow.to, locale)}
+              </p>
+              <div className="h-[260px] sm:h-[300px]">
+                <FlowChart
+                  points={flowPoints}
+                  format={fmt}
+                  tickFormat={axisFmt}
+                  labels={{
+                    income: t("flowIncome"),
+                    expense: t("flowExpenses"),
+                    empty: t("anNoPeriodTx"),
+                  }}
+                />
+              </div>
+            </DashCard>
+
+            {/* Category share donut - curated pastel ramp, interactive legend */}
+            <DashCard className="lg:col-span-5" title={t("anWhereMoneyGoes")}>
+              <p className="-mt-2.5 mb-3 text-[11.5px] text-faint">{t("anShareSub")}</p>
+              {donutSlices.length === 0 ? (
+                <p className="py-6 text-center text-[12.5px] text-faint">{t("anNoCategoryData")}</p>
+              ) : (
+                <ShareDonut slices={donutSlices} formatted={fmt} centerLabel={t("triFlowSpent")} />
+              )}
+            </DashCard>
+
+            {/* Month-by-month income vs expense columns - the liked anchor */}
+            <DashCard className="lg:col-span-7" title={t("anMonthlyBars")}>
+              <p className="-mt-2.5 mb-3 text-[11.5px] text-faint">{t("anMonthlyBarsSub")}</p>
+              <p className="numeric mb-2 whitespace-nowrap text-[11.5px] text-text-muted">
+                <span className="font-semibold text-income">IN {fmt(monthlyMonths.reduce((s, m) => s + m.income, 0))}</span>
+                <span className="mx-1.5 text-faint">·</span>
+                <span className="font-semibold text-danger">OUT {fmt(monthlyMonths.reduce((s, m) => s + m.expense, 0))}</span>
+              </p>
+              <MonthlyBars months={monthlyMonths} formatted={fmt} compact={tickFmt} />
+            </DashCard>
+
+            {/* Largest single outflows, drill-in to the entry */}
+            <DashCard className="lg:col-span-5" title={t("anLargestTitle")}>
+              <p className="-mt-2.5 mb-1 text-[11.5px] text-faint">{t("anLargestSub")}</p>
+              {largest.length === 0 ? (
+                <p className="py-6 text-center text-[12.5px] text-faint">{t("anNoPeriodTx")}</p>
+              ) : (
+                <div className="divide-y divide-border">
+                  {largest.map(({ row, value }, i) => {
+                    const Glyph = categoryGlyph(row.categories?.icon);
+                    return (
+                      <Link
+                        key={row.id}
+                        href={`/expense/${row.id}`}
+                        className="flex min-h-[52px] items-center gap-3 py-2 transition hover:opacity-75"
+                      >
+                        <span className="numeric w-4 shrink-0 text-[11px] font-bold text-faint">{i + 1}</span>
+                        <span
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border"
+                          style={{ backgroundColor: "var(--sf-surface-elevated)" }}
+                          aria-hidden
+                        >
+                          <Glyph size={15} className="text-text-muted" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[13px] font-semibold text-text">
+                            {row.description || row.categories?.name || "—"}
+                          </span>
+                          <span className="mt-0.5 block truncate text-[11px] text-faint">
+                            {row.categories?.name ?? "—"} · {formatShortDate(row.date, locale)}
+                          </span>
+                        </span>
+                        <span className="figures shrink-0 text-[13.5px] font-semibold text-danger">{fmt(value)}</span>
+                        <ChevronRight size={14} className="hidden shrink-0 text-faint sm:block" aria-hidden />
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </DashCard>
+
+            {/* Spending calendar - the overview's HeatGrid (styled tooltips) */}
+            <DashCard className="lg:col-span-7" title={t("anCalendarHeat")}>
+              <p className="-mt-2.5 mb-3 text-[11.5px] text-faint">{t("anDailySpendSub")}</p>
+              <HeatGrid
+                year={calMonth.year}
+                month={calMonth.month}
+                spend={daySpend}
+                formatted={fmt}
+                locale={locale}
+                onPrevMonth={calPrev}
+                onNextMonth={calNext}
+                canNextMonth={!calIsCurrent}
+                onDayTap={(iso) => router.push(`/history?from=${iso}&to=${iso}`)}
+                totalLabel={t("anMonthTotal")}
+              />
+            </DashCard>
+
+            {/* Financial health - mobile parity formulas */}
+            <HealthBand health={health} t={t} entries={stats.entries} onOpen={() => setHealthModalOpen(true)} />
+          </div>
+        </>
+      )}
+
+      {/* ── CUSTOM RANGE PICKER (period selector) ── */}
       <CalendarModal
         open={monthPickerOpen}
         onClose={() => setMonthPickerOpen(false)}
-        mode="single"
-        initial={{ from: `${customMonth.year}-${String(customMonth.month + 1).padStart(2, "0")}-15` }}
+        mode="range"
+        initial={customRange}
         onApply={(r) => {
-          const d = new Date(`${r.from}T00:00:00`);
-          setCustomMonth({ year: d.getFullYear(), month: d.getMonth() });
+          if (r.from && r.to) setCustomRange({ from: r.from, to: r.to });
           setPeriod("month");
           setMonthPickerOpen(false);
         }}
@@ -838,7 +998,7 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
           <button
             type="button"
             onClick={() => setHealthModalOpen(false)}
-            className="w-full rounded-xl bg-primary py-3 text-sm font-extrabold text-white transition active:scale-[0.99]"
+            className="w-full rounded-xl bg-primary py-3 text-sm font-extrabold text-primary-ink transition active:scale-[0.99]"
           >
             {t("anGotIt")}
           </button>
@@ -861,17 +1021,18 @@ function shiftDays(iso: string, days: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-/* ── Section header: real typography OUTSIDE the chart panel ── */
-function SectionHead({ title, sub, aside }: { title: string; sub: string; aside?: ReactNode }) {
+/** Inclusive day count between two ISO dates. */
+function daysBetween(a: string, b: string): number {
   return (
-    <div className="mb-4 flex items-start justify-between gap-3">
-      <div className="min-w-0">
-        <h2 className="text-[15px] font-semibold leading-snug text-text">{title}</h2>
-        <p className="mt-0.5 text-[12px] leading-4 text-faint">{sub}</p>
-      </div>
-      {aside}
-    </div>
+    Math.round((new Date(`${b}T00:00:00`).getTime() - new Date(`${a}T00:00:00`).getTime()) / 86_400_000) + 1
   );
+}
+
+/** Signed change between two window totals; null % when there is no baseline. */
+function pctDelta(cur: number, prev: number): { pct: number | null; abs: number } {
+  const abs = cur - prev;
+  if (prev === 0) return { pct: null, abs };
+  return { pct: Math.round((abs / Math.abs(prev)) * 100), abs };
 }
 
 /* ── Centered modal shell matching the mobile explainers ── */
@@ -956,9 +1117,9 @@ function ModalHead({
   );
 }
 
-/* ── Financial health: score ring + grade + one verdict + at most two
-   plain diagnostic rows (editorial collapse, 2026-10-11) ── */
-function HealthScoreCard({
+/* ── Financial health band: score ring + grade, verdict, top diagnostics and
+   the calculation explainer (mobile formulas, 1:1) ── */
+function HealthBand({
   health,
   t,
   entries,
@@ -977,55 +1138,66 @@ function HealthScoreCard({
   onOpen: () => void;
 }) {
   return (
-    <section className="panel flex flex-col p-4 sm:p-5 lg:col-span-5">
-      <SectionHead title={t("anHealthTitle")} sub={tr(t("anCalcAcross"), { n: String(entries) })} />
-
-      {/* score ring + grade - flex-grows so the row's height (set by the tall
-          calendar beside it) reads as deliberate whitespace around the dial */}
-      <button
-        type="button"
-        onClick={onOpen}
-        className="flex w-full flex-1 items-center gap-5 py-2 text-left transition active:scale-[0.99]"
-      >
-        <ProgressRing
-          pct={health.score / 100}
-          size={96}
-          strokeWidth={8}
-          color={health.color}
-          trackColor="var(--sf-track-2)"
-          ariaLabel={`${t("anHealthTitle")}: ${health.score}/100`}
+    <DashCard
+      className="lg:col-span-5"
+      title={t("anHealthTitle")}
+      action={
+        <button
+          type="button"
+          onClick={onOpen}
+          className="inline-flex h-7 shrink-0 items-center rounded-full border border-border px-3 text-[11.5px] font-semibold text-text-muted transition hover:text-text"
         >
-          <span className="numeric text-2xl font-bold" style={{ color: health.color }}>
-            {health.score}
+          {t("anHowCalc")}
+        </button>
+      }
+    >
+      <p className="-mt-2.5 mb-3 text-[11.5px] text-faint">{tr(t("anCalcAcross"), { n: String(entries) })}</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
+        <button
+          type="button"
+          onClick={onOpen}
+          aria-label={t("anHowCalc")}
+          className="flex shrink-0 items-center gap-4 self-start text-left transition active:scale-[0.99] sm:self-center"
+        >
+          <ProgressRing
+            pct={health.score / 100}
+            size={88}
+            strokeWidth={8}
+            color={health.color}
+            trackColor="var(--sf-track-2)"
+            ariaLabel={`${t("anHealthTitle")}: ${health.score}/100`}
+          >
+            <span className="numeric text-2xl font-bold" style={{ color: health.color }}>
+              {health.score}
+            </span>
+            <span className="caps-faint !text-[9px]">{t("anScoreWord")}</span>
+          </ProgressRing>
+          <span>
+            <span className="block text-[28px] font-bold leading-none tracking-[-0.01em]" style={{ color: health.color }}>
+              {health.grade}
+            </span>
+            <span className="mt-1 block text-[12.5px] font-semibold text-text">{health.status}</span>
           </span>
-          <span className="caps-faint !text-[9px]">{t("anScoreWord")}</span>
-        </ProgressRing>
-        <span className="min-w-0 flex-1">
-          <span className="block text-[30px] font-bold leading-none tracking-[-0.01em]" style={{ color: health.color }}>
-            {health.grade}
-          </span>
-          <span className="mt-1.5 block text-[13px] font-semibold text-text">{health.status}</span>
-        </span>
-      </button>
+        </button>
 
-      {/* ONE verdict sentence */}
-      <p className="mt-3 text-[12.5px] leading-[18px] text-text-muted">
-        {health.score >= 75 ? t("anVerdictTop") : t("anVerdictOpt")}
-      </p>
-
-      {/* at most two diagnostics, plain two-line rows */}
-      {health.insights.length > 0 && (
-        <div className="mt-4 divide-y divide-border border-t border-border">
-          {health.insights.slice(0, 2).map((ins, i) => (
-            <div key={i} className="py-2.5">
-              <p className={`text-[13px] font-semibold leading-snug ${ins.tone === "warning" ? "text-danger" : "text-text"}`}>
-                {ins.title}
-              </p>
-              <p className="mt-0.5 text-[11.5px] leading-4 text-faint">{ins.desc}</p>
+        <div className="min-w-0 flex-1 border-t border-border pt-3 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
+          <p className="text-[12.5px] leading-[18px] text-text-muted">
+            {health.score >= 75 ? t("anVerdictTop") : t("anVerdictOpt")}
+          </p>
+          {health.insights.length > 0 && (
+            <div className="mt-2.5 space-y-2.5">
+              {health.insights.slice(0, 2).map((ins, i) => (
+                <div key={i}>
+                  <p className={`text-[13px] font-semibold leading-snug ${ins.tone === "warning" ? "text-danger" : "text-text"}`}>
+                    {ins.title}
+                  </p>
+                  <p className="mt-0.5 text-[11.5px] leading-4 text-faint">{ins.desc}</p>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
-      )}
-    </section>
+      </div>
+    </DashCard>
   );
 }

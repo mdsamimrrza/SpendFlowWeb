@@ -13,7 +13,6 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  ArrowUpRight,
   Bell,
   Check,
   ChevronRight,
@@ -54,7 +53,7 @@ const COUNTRY_BY_CURRENCY = new Map<string, string>(
 );
 
 /** Language → flag country (mobile renders emoji flags; Windows can't). */
-const LANGUAGE_FLAG: Record<string, string> = { en: "us", hi: "in", ne: "np" };
+const LANGUAGE_FLAG: Record<string, string> = { en: "gb", hi: "in", ne: "np" };
 
 function Flag({ country, size = 20 }: { country: string; size?: number }) {
   return (
@@ -147,7 +146,6 @@ export default function SettingsPage() {
     <main className="mx-auto w-full max-w-[480px] md:max-w-[560px] lg:max-w-[1060px]">
       {/* Header - privacy eye & theme flip live in the shell topbar */}
       <header className="mb-5 mt-1">
-        <p className="text-[13px] font-medium text-faint">{t("settingsKicker")}</p>
         <h1 className="mt-0.5 text-xl font-bold tracking-[-0.02em] text-text sm:text-2xl">
           {t("settings")}
         </h1>
@@ -195,7 +193,7 @@ export default function SettingsPage() {
           </section>
 
           {/* Preferences - the four modal rows */}
-          <Panel label={t("settingsKicker")}>
+          <Panel label={t("settingsPrefs")}>
             <MenuRow
               icon={DollarSign}
               chip="bg-[var(--sf-primary-light)]"
@@ -231,7 +229,7 @@ export default function SettingsPage() {
               onOpen={() => setLanguageModalOpen(true)}
               right={
                 <span className="flex items-center gap-1.5 text-sm font-medium text-text-muted">
-                  <Flag country={LANGUAGE_FLAG[language] ?? "us"} size={16} />
+                  <Flag country={LANGUAGE_FLAG[language] ?? "gb"} size={16} />
                   {language === "en" ? "English" : language === "hi" ? "हिन्दी" : "नेपाली"}
                 </span>
               }
@@ -281,14 +279,6 @@ export default function SettingsPage() {
               iconColor="text-hue-amber"
               label={t("rowBullion")}
               href="/bullion"
-              right={
-                <span className="flex items-center gap-1 rounded-md bg-[var(--sf-tint-success)] px-[7px] py-[2px]">
-                  <span className="h-[5px] w-[5px] rounded-full bg-[var(--sf-hue-emerald)]" />
-                  <span className="text-[10px] font-bold text-[var(--sf-hue-emerald-600)]">
-                    Live
-                  </span>
-                </span>
-              }
             />
           </Panel>
 
@@ -602,11 +592,7 @@ function MenuRow({
       </span>
       <span className="flex shrink-0 items-center gap-1.5">
         {right}
-        {href ? (
-          <ArrowUpRight size={15} className="text-faint" aria-hidden />
-        ) : (
-          <ChevronRight size={15} className="text-faint" aria-hidden />
-        )}
+        <ChevronRight size={15} className="text-faint" aria-hidden />
       </span>
     </>
   );

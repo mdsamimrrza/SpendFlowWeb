@@ -695,7 +695,7 @@ function SquareBtn({
   loading?: boolean;
 }) {
   const VARIANTS = {
-    primary: "bg-primary text-white hover:bg-primary-strong",
+    primary: "bg-primary text-primary-ink hover:bg-primary-strong",
     outline: "border border-border bg-surface text-text-muted hover:border-faint hover:text-text",
     danger: "bg-danger text-white hover:opacity-90",
     ghost: "border border-border bg-surface text-text-muted hover:bg-surface-elevated hover:text-text",

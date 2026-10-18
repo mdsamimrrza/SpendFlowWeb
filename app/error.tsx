@@ -18,7 +18,7 @@ export default function ErrorPage({
   const { t } = useLanguage();
   const router = useRouter();
   useEffect(() => {
-    // Raw error goes to the console only — never rendered to the user
+    // Raw error goes to the console only – never rendered to the user
     // (digest is enough for support; mirrors the P3-9 no-leak rule).
     console.error(error);
   }, [error]);

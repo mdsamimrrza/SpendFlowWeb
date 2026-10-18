@@ -2,280 +2,343 @@
 @tailwind components;
 @tailwind utilities;
 
-/* SpendFlow Web V2 (2026-10-10, user-directed full redesign — see
-   docs/FEATURE-PARITY.md and docs/DESIGN-TOKEN-BRIDGE.md §0). Neutral
-   zinc surfaces, emerald brand, Inter. Token names unchanged so
-   components keep consuming semantic vars. */
+/* SpendFlow Web V5 "Sage Ledger" (2026-10-13, user-directed redesign – see
+   docs/FEATURE-PARITY.md). Warm cream surfaces, sage ink, pastel accent
+   quartet (sage / warm beige / dusty blue / rosewood), soft diffuse
+   shadows, DM Sans figures. Token names unchanged so every component keeps
+   consuming semantic vars. */
 :root {
-  /* Light — clean neutral + emerald brand */
-  --sf-primary: #059669;
-  --sf-primary-strong: #047857;
-  --sf-primary-light: #ecfdf5;
-  --sf-accent: #059669;
-  --sf-success: #059669;
-  --sf-income: #059669;
-  --sf-warning: #d97706;
-  --sf-danger: #dc2626;
-  --sf-rust: #dc2626;
-  --sf-info: #2563eb;
-  --sf-background: #f7f7f8;
-  --sf-surface: #ffffff;
-  --sf-surface-elevated: #f4f4f5;
-  --sf-text: #18181b;
-  --sf-text-muted: #52525b;
-  --sf-faint: #a1a1aa;
-  --sf-border: #e4e4e7;
+  /* Light – warm cream base, white-warm cards, sage ink */
+  --sf-primary: #5e7e5b;
+  --sf-primary-strong: #4c6a4b;
+  --sf-primary-light: #e8eee0;
+  --sf-primary-ink: #ffffff;
+  --sf-accent: #5e7e5b;
+  --sf-success: #4e7351;
+  --sf-income: #4e7351;
+  --sf-warning: #a97e2f;
+  --sf-danger: #b3593e;
+  --sf-rust: #b3593e;
+  --sf-info: #5b7d9c;
+  --sf-background: #f1eee5;
+  --sf-surface: #fdfcf9;
+  --sf-surface-elevated: #f3f0e6;
+  --sf-text: #363d31;
+  --sf-text-muted: #6d7460;
+  --sf-faint: #9aa18a;
+  --sf-border: #e8e3d3;
   --sf-input: #ffffff;
-  --sf-tab: #ffffff;
-  --sf-accent-bg: #ecfdf5;
-  --sf-card-highlight: #ecfdf5;
-  --sf-brass: #b45309;
-  --sf-brass-tint: #fef3c7;
-  --sf-rust-tint: #fee2e2;
-  /* Chart expense series — theme-conditional per the chart series rule:
-     red in light, soft red in dark. */
-  --sf-expense-series: var(--sf-danger);
+  --sf-tab: #fdfcf9;
+  --sf-accent-bg: #e8eee0;
+  --sf-card-highlight: #f5f2e8;
+  --sf-brass: #97783d;
+  --sf-hero-card: #356B51;
+  --sf-hero-ring: #3F735A;
+  --sf-hero-from: #1B4634;
+  --sf-hero-mid: #123826;
+  --sf-hero-to: #0B241A;
+  --sf-hero-accent: #7BE3B0;
+  --sf-brass-tint: #f2e9d7;
+  --sf-rust-tint: #f7e6de;
+  /* Chart expense series – theme-conditional per the chart series rule:
+     rosewood in light, soft clay in dark. */
+  --sf-expense-series: #c4785a;
 
-  /* Fixed accent hues — mobile renders these as raw hex regardless of
-     theme (KPI tiles, health grades, chronotype quadrants). Tokenized here
-     so components never carry raw hex. */
-  --sf-hue-amber: #f59e0b;
-  --sf-hue-sky: #38bdf8;
-  --sf-hue-sky-ink: #0284c7;
-  --sf-hue-emerald: #10b981;
-  --sf-hue-emerald-600: #059669;
-  --sf-hue-orange: #fb923c;
-  --sf-hue-red: #ef4444;
-  --sf-hue-indigo: #818cf8;
-  --sf-hue-violet: #8b5cf6;
+  /* Navigation rail – the sage sidebar column (light: sage panel, cream
+     active tile; dark: moss panel, sage active tile). */
+  --sf-rail: #8ba18c;
+  --sf-rail-ink: #eef0e2;
+  --sf-rail-active-bg: #f6f3e7;
+  --sf-rail-active-ink: #46603f;
 
-  /* Fixed tints — mobile component-level rgba literals shared by both
+  /* Pastel icon chips (stat cards, list rows) – tinted circle + deep ink. */
+  --sf-chip-sage-bg: #e9efe2;
+  --sf-chip-sage-ink: #5c7a56;
+  --sf-chip-beige-bg: #f4ebd8;
+  --sf-chip-beige-ink: #97783d;
+  --sf-chip-blue-bg: #e7eef4;
+  --sf-chip-blue-ink: #56789a;
+  --sf-chip-rose-bg: #f7e8df;
+  --sf-chip-rose-ink: #b06a45;
+
+  /* Dark hover tooltips (calendar cells etc.) – always-dark pill. */
+  --sf-tooltip-bg: #2c3226;
+  --sf-tooltip-ink: #f3f1e8;
+
+  /* Fixed accent hues – mobile renders these as raw hex regardless of
+     theme (KPI tiles, health grades, chronotype quadrants), re-tinted to
+     the pastel family. */
+  --sf-hue-amber: #d9a13e;
+  --sf-hue-sky: #86a7c3;
+  --sf-hue-sky-ink: #56789a;
+  --sf-hue-emerald: #6f9770;
+  --sf-hue-emerald-600: #567f58;
+  --sf-hue-orange: #cf8a5b;
+  --sf-hue-red: #c06a4f;
+  --sf-hue-indigo: #8494bd;
+  --sf-hue-violet: #a894c9;
+
+  /* Fixed tints – mobile component-level rgba literals shared by both
      themes (hero KPI tile, status banners, savings pills, grade chips). */
-  --sf-tile-hero: #e6f4ed;
-  --sf-tint-danger: rgb(239 68 68 / 0.1);
-  --sf-tint-success: rgb(16 185 129 / 0.1);
-  --sf-tint-emerald-15: rgb(16 185 129 / 0.15);
-  --sf-tint-amber-15: rgb(245 158 11 / 0.15);
-  --sf-tint-sky-15: rgb(56 189 248 / 0.15);
-  --sf-tint-red-15: rgb(239 68 68 / 0.15);
-  --sf-tint-orange-15: rgb(251 146 60 / 0.15);
+  --sf-tile-hero: #e8eee0;
+  --sf-tint-danger: rgb(179 89 62 / 0.1);
+  --sf-tint-success: rgb(78 115 81 / 0.1);
+  --sf-tint-emerald-15: rgb(111 151 112 / 0.15);
+  --sf-tint-amber-15: rgb(217 161 62 / 0.15);
+  --sf-tint-sky-15: rgb(134 167 195 / 0.15);
+  --sf-tint-red-15: rgb(192 106 79 / 0.15);
+  --sf-tint-orange-15: rgb(207 138 91 / 0.15);
 
   /* Theme-conditional fixed tints (mobile component-level literals) */
-  --sf-select-tint: #fffdf5; /* active row in the floating dropdowns */
-  --sf-chip-tint: rgba(79, 70, 229, 0.08); /* flip pill / selected breakdown row */
-  --sf-icon-chip: rgba(15, 92, 77, 0.1); /* tri-flow header icon chip */
-  --sf-tint-amber: #fef3c7;
-  --sf-tint-sky: #e0f2fe;
-  --sf-tint-sky-soft: rgba(56, 189, 248, 0.08);
-  --sf-tint-indigo: #eef2ff;
-  --sf-tile-income-bg: #f0fdf4;
-  --sf-tile-income-border: #bbf7d0;
-  --sf-tile-expense-bg: #fef2f2;
-  --sf-tile-expense-border: #fecaca;
-  --sf-track: rgba(0, 0, 0, 0.06); /* progress-bar tracks */
-  --sf-track-2: rgba(0, 0, 0, 0.08);
-  --sf-bar-expense: rgba(79, 70, 229, 0.35); /* weekday rhythm bars */
-  --sf-bar-income: rgba(16, 185, 129, 0.35);
+  --sf-select-tint: #eff2e4; /* active row in the floating dropdowns */
+  --sf-chip-tint: rgb(94 126 91 / 0.12); /* flip pill / selected breakdown row */
+  --sf-icon-chip: rgb(94 126 91 / 0.14); /* tri-flow header icon chip */
+  --sf-tint-amber: #f5ecd3;
+  --sf-tint-sky: #e6eef4;
+  --sf-tint-sky-soft: rgb(134 167 195 / 0.1);
+  --sf-tint-indigo: #eaedf5;
+  --sf-tile-income-bg: #eaf1e2;
+  --sf-tile-income-border: #d5e2c5;
+  --sf-tile-expense-bg: #f7e8e0;
+  --sf-tile-expense-border: #ecd4c5;
+  --sf-track: rgb(54 61 49 / 0.08); /* progress-bar tracks */
+  --sf-track-2: rgb(54 61 49 / 0.1);
+  --sf-bar-expense: rgb(196 120 90 / 0.4); /* weekday rhythm bars */
+  --sf-bar-income: rgb(78 115 81 / 0.35);
   /* CalendarModal (mobile ui/CalendarModal.tsx) fixed tints */
-  --sf-range-tint: rgb(15 159 142 / 0.15); /* in-range day fill */
-  --sf-jump-tint: rgb(5 150 105 / 0.1); /* selected year row in jump picker */
-  --sf-cell-idle: rgb(0 0 0 / 0.04); /* idle month cell */
+  --sf-range-tint: rgb(94 126 91 / 0.16); /* in-range day fill */
+  --sf-jump-tint: rgb(94 126 91 / 0.1); /* selected year row in jump picker */
+  --sf-cell-idle: rgb(54 61 49 / 0.05); /* idle month cell */
 
   /* Settings screen (mobile app/(tabs)/settings.tsx) component literals */
-  --sf-set-chip-teal: #e6f4ed;
-  --sf-set-chip-green: #d1fae5;
-  --sf-set-chip-blue: #dbeafe;
-  --sf-set-chip-gold: #fef3c7;
-  --sf-set-chip-gold-line: #fde68a;
-  --sf-set-chip-slate: #e2e8f0;
-  --sf-set-icon-slate: #475569;
-  --sf-set-icon-blue: #3b82f6;
-  --sf-set-live-bg: #d1fae5;
-  --sf-set-cur-selected: #e6f4ed; /* chosen currency chip */
-  --sf-set-option-selected: #e6f4ed; /* chosen theme/language option */
-  --sf-set-signout-bg: #f7f5ec;
-  --sf-set-signout-line: #f1dcd3;
-  --sf-set-danger-bg: #fee2e2;
-  --sf-set-danger-line: #fca5a5;
-  --sf-set-press: rgb(0 0 0 / 0.02); /* row pressed tint */
-  --sf-set-hero-glow: rgb(5 150 105 / 0.08); /* profile card primary glow */
-  --sf-set-card-shadow: rgb(0 0 0 / 0.04); /* grouped menu card */
+  --sf-set-chip-teal: #e8eee0;
+  --sf-set-chip-green: #eaf1e2;
+  --sf-set-chip-blue: #e6eef4;
+  --sf-set-chip-gold: #f2e9d7;
+  --sf-set-chip-gold-line: #e3d3ab;
+  --sf-set-chip-slate: #efede2;
+  --sf-set-icon-slate: #6d7460;
+  --sf-set-icon-blue: #5b7d9c;
+  --sf-set-live-bg: #e8eee0;
+  --sf-set-cur-selected: #e8eee0; /* chosen currency chip */
+  --sf-set-option-selected: #e8eee0; /* chosen theme/language option */
+  --sf-set-signout-bg: #f7e6de;
+  --sf-set-signout-line: #ecc9b9;
+  --sf-set-danger-bg: #f7e6de;
+  --sf-set-danger-line: #ecc9b9;
+  --sf-set-press: rgb(54 61 49 / 0.03); /* row pressed tint */
+  --sf-set-hero-glow: rgb(94 126 91 / 0.12); /* profile card primary glow */
+  --sf-set-card-shadow: rgb(64 58 40 / 0.05); /* grouped menu card */
 
   /* Bin screen (mobile app/bin.tsx) component literals */
-  --sf-bin-warn: #b45309; /* ≤21-day countdown tone */
-  --sf-bin-notice-bg: rgb(180 83 9 / 0.06);
-  --sf-bin-notice-line: rgb(180 83 9 / 0.18);
-  --sf-bin-restore-bg: rgb(5 150 105 / 0.08);
-  --sf-bin-purge-bg: rgb(180 83 9 / 0.08);
+  --sf-bin-warn: #a97e2f; /* ≤21-day countdown tone */
+  --sf-bin-notice-bg: rgb(169 126 47 / 0.07);
+  --sf-bin-notice-line: rgb(169 126 47 / 0.2);
+  --sf-bin-restore-bg: rgb(78 115 81 / 0.09);
+  --sf-bin-purge-bg: rgb(169 126 47 / 0.09);
 
   /* Categories & Budgets (mobile app/categories.tsx + CategoryBudgetFormModal) */
-  --sf-tab-expense: #dc2626; /* active Expense segment */
-  --sf-studio-chip: rgb(5 150 105 / 0.1); /* studio header chip / selected cat */
-  --sf-studio-icon: rgb(5 150 105 / 0.18); /* selected category icon circle */
-  --sf-studio-icon-idle: rgb(0 0 0 / 0.04);
-  --sf-studio-limit-bg: #d1fae5; /* per-category limit pill */
-  --sf-studio-limit-line: #a7f3d0;
-  --sf-studio-limit-ink: #065f46;
-  --sf-studio-nolimit-bg: rgb(0 0 0 / 0.04);
-  --sf-studio-clear-bg: rgb(239 68 68 / 0.08); /* delete-forever button on caps */
-  --sf-studio-clear-line: rgb(239 68 68 / 0.3);
-  --sf-studio-gauge-bg: #e6f4ed; /* allocation gauge card */
-  --sf-studio-track: rgb(0 0 0 / 0.08); /* gauge progress track */
-  --sf-grab: rgb(0 0 0 / 0.15); /* bottom-sheet grab handle */
+  --sf-tab-expense: #b3593e; /* active Expense segment */
+  --sf-studio-chip: rgb(94 126 91 / 0.12); /* studio header chip / selected cat */
+  --sf-studio-icon: rgb(94 126 91 / 0.2); /* selected category icon circle */
+  --sf-studio-icon-idle: rgb(54 61 49 / 0.05);
+  --sf-studio-limit-bg: #e8eee0; /* per-category limit pill */
+  --sf-studio-limit-line: #d5e2c5;
+  --sf-studio-limit-ink: #4c6a4b;
+  --sf-studio-nolimit-bg: rgb(54 61 49 / 0.04);
+  --sf-studio-clear-bg: rgb(179 89 62 / 0.09); /* delete-forever button on caps */
+  --sf-studio-clear-line: rgb(179 89 62 / 0.3);
+  --sf-studio-gauge-bg: #f5f2e8; /* allocation gauge card */
+  --sf-studio-track: rgb(54 61 49 / 0.08); /* gauge progress track */
+  --sf-grab: rgb(54 61 49 / 0.15); /* bottom-sheet grab handle */
 
   /* Export Center (mobile app/export.tsx) action-chip tints */
-  --sf-export-excel-bg: rgb(16 185 129 / 0.1);
-  --sf-export-csv-bg: rgb(14 165 233 / 0.1);
+  --sf-export-excel-bg: rgb(78 115 81 / 0.1);
+  --sf-export-csv-bg: rgb(91 125 156 / 0.1);
 
-  /* AccountManageModal (APK) — theme-invariant warning/delete tints */
-  --sf-acc-warn-bg: rgb(245 158 11 / 0.12);
-  --sf-acc-warn-line: rgb(245 158 11 / 0.35);
-  --sf-acc-warn-ink: #d97706;
-  --sf-acc-del-bg: rgb(239 68 68 / 0.12);
-  --sf-acc-del-line: rgb(239 68 68 / 0.25);
-  --sf-acc-del-line2: rgb(239 68 68 / 0.35);
-  --sf-acc-err-bg: rgb(239 68 68 / 0.15);
+  /* AccountManageModal (APK) – theme-invariant warning/delete tints */
+  --sf-acc-warn-bg: rgb(217 161 62 / 0.12);
+  --sf-acc-warn-line: rgb(217 161 62 / 0.35);
+  --sf-acc-warn-ink: #a97e2f;
+  --sf-acc-del-bg: rgb(179 89 62 / 0.12);
+  --sf-acc-del-line: rgb(179 89 62 / 0.25);
+  --sf-acc-del-line2: rgb(179 89 62 / 0.35);
+  --sf-acc-err-bg: rgb(179 89 62 / 0.15);
 
-  /* Bullion (mobile app/bullion.tsx) component literals */
-  --sf-bull-gold-bg: #fffdf5; /* selected gold benchmark card */
-  --sf-bull-gold-line: #d97706;
-  --sf-bull-gold-ink: #b45309;
-  --sf-bull-sil-bg: #f8fafc; /* selected silver benchmark card */
-  --sf-bull-sil-line: #475569;
-  --sf-bull-gold-accent: #d97706; /* chart spline / active pill (both themes) */
-  --sf-bull-sil-accent: #475569;
-  --sf-bull-gold-grad: #f59e0b; /* chart area gradient top */
-  --sf-bull-sil-grad: #64748b;
-  --sf-bull-pill-bg: rgb(0 0 0 / 0.05); /* last-updated pill */
-  --sf-bull-grid: rgb(0 0 0 / 0.08); /* chart gridlines */
-  --sf-bull-grid-v: rgb(0 0 0 / 0.06); /* chart vertical steps */
-  --sf-bull-grid-ink: rgb(0 0 0 / 0.45); /* chart axis labels */
-  --sf-bull-tooltip-bg: #1e293b;
-  --sf-bull-tooltip-line: rgb(0 0 0 / 0.2);
-  --sf-bull-result-bg: #e6f4ed; /* calculator result box */
+  /* Bullion (mobile app/bullion.tsx) component literals – gold keeps its
+     warm beige identity; silver cools to slate-blue */
+  --sf-bull-gold-bg: #faf5e6; /* selected gold benchmark card */
+  --sf-bull-gold-line: #b08340;
+  --sf-bull-gold-ink: #8a6425;
+  --sf-bull-sil-bg: #eff1ee; /* selected silver benchmark card */
+  --sf-bull-sil-line: #7c8fa3;
+  --sf-bull-gold-accent: #b08340; /* chart spline / active pill (both themes) */
+  --sf-bull-sil-accent: #7c8fa3;
+  --sf-bull-gold-grad: #c99a4e; /* chart area gradient top */
+  --sf-bull-sil-grad: #8fa2b5;
+  --sf-bull-pill-bg: rgb(54 61 49 / 0.05); /* last-updated pill */
+  --sf-bull-grid: rgb(54 61 49 / 0.08); /* chart gridlines */
+  --sf-bull-grid-v: rgb(54 61 49 / 0.06); /* chart vertical steps */
+  --sf-bull-grid-ink: rgb(54 61 49 / 0.45); /* chart axis labels */
+  --sf-bull-tooltip-bg: #2c3226;
+  --sf-bull-tooltip-line: rgb(54 61 49 / 0.2);
+  --sf-bull-result-bg: #f5f2e8; /* calculator result box */
   --sf-bull-result-line: var(--sf-border);
 }
 
 .dark {
-  /* Dark — near-black zinc + emerald */
-  --sf-primary: #059669;
-  --sf-primary-strong: #34d399;
-  --sf-primary-light: rgb(16 185 129 / 0.14);
-  --sf-accent: #34d399;
-  --sf-success: #34d399;
-  --sf-income: #34d399;
-  --sf-warning: #fbbf24;
-  --sf-danger: #f87171;
-  --sf-rust: #f87171;
-  --sf-info: #60a5fa;
-  --sf-background: #09090b;
-  --sf-surface: #111113;
-  --sf-surface-elevated: #1b1b1f;
-  --sf-text: #fafafa;
-  --sf-text-muted: #a1a1aa;
-  --sf-faint: #71717a;
-  --sf-border: #26262b;
-  --sf-input: #111113;
-  --sf-tab: #111113;
-  --sf-accent-bg: rgb(16 185 129 / 0.14);
-  --sf-card-highlight: #1b1b1f;
-  --sf-brass: #fbbf24;
-  --sf-brass-tint: rgb(251 191 36 / 0.14);
-  --sf-rust-tint: rgb(248 113 113 / 0.14);
-  /* Dark: soft red contrasts with the emerald income series. */
-  --sf-expense-series: var(--sf-danger);
+  /* Dark – moss-black night, lifted olive surfaces, sage ink */
+  --sf-primary: #a9c2a0;
+  --sf-primary-strong: #c1d5b8;
+  --sf-primary-light: rgb(169 194 160 / 0.16);
+  --sf-primary-ink: #1c2517;
+  --sf-accent: #c1d5b8;
+  --sf-success: #93be8e;
+  --sf-income: #93be8e;
+  --sf-warning: #d5b06c;
+  --sf-danger: #dc9178;
+  --sf-rust: #dc9178;
+  --sf-info: #97b5ce;
+  --sf-background: #161a12;
+  --sf-surface: #1f251a;
+  --sf-surface-elevated: #2a3123;
+  --sf-text: #edebe0;
+  --sf-text-muted: #aeb49d;
+  --sf-faint: #7f8670;
+  --sf-border: #333b2b;
+  --sf-input: #1f251a;
+  --sf-tab: #1f251a;
+  --sf-accent-bg: rgb(169 194 160 / 0.16);
+  --sf-card-highlight: #2a3123;
+  --sf-brass: #d2b183;
+  --sf-hero-card: #2E5943;
+  --sf-hero-ring: #3A6B52;
+  --sf-hero-from: #17402F;
+  --sf-hero-mid: #0F3021;
+  --sf-hero-to: #081B12;
+  --sf-hero-accent: #86EFAC;
+  --sf-brass-tint: rgb(210 177 131 / 0.16);
+  --sf-rust-tint: rgb(220 145 120 / 0.14);
+  /* Dark: soft clay contrasts with the sage income series. */
+  --sf-expense-series: #dc9178;
 
-  /* Fixed hues are theme-invariant — repeated for legibility */
-  --sf-hue-amber: #f59e0b;
-  --sf-hue-sky: #38bdf8;
-  --sf-hue-sky-ink: #0284c7;
-  --sf-hue-emerald: #10b981;
-  --sf-hue-orange: #fb923c;
-  --sf-hue-red: #ef4444;
-  --sf-hue-indigo: #818cf8;
-  --sf-hue-violet: #8b5cf6;
+  --sf-rail: #232b1d;
+  --sf-rail-ink: #9fa98a;
+  --sf-rail-active-bg: #a9c2a0;
+  --sf-rail-active-ink: #1c2517;
 
-  --sf-tile-hero: #17171a;
-  --sf-select-tint: rgb(217 119 6 / 0.15);
-  --sf-chip-tint: rgb(16 185 129 / 0.16);
-  --sf-icon-chip: rgb(16 185 129 / 0.15);
-  --sf-tint-amber: rgb(245 158 11 / 0.15);
-  --sf-tint-sky: rgb(56 189 248 / 0.15);
-  --sf-tint-sky-soft: rgb(56 189 248 / 0.1);
-  --sf-tint-indigo: rgb(16 185 129 / 0.15);
-  --sf-tile-income-bg: rgb(16 185 129 / 0.08);
-  --sf-tile-income-border: rgb(16 185 129 / 0.25);
-  --sf-tile-expense-bg: rgb(239 68 68 / 0.08);
-  --sf-tile-expense-border: rgb(239 68 68 / 0.25);
-  --sf-track: rgb(255 255 255 / 0.06);
-  --sf-track-2: rgb(255 255 255 / 0.08);
-  --sf-bar-expense: rgb(16 185 129 / 0.45);
-  --sf-bar-income: rgb(16 185 129 / 0.45);
-  --sf-range-tint: rgb(45 212 191 / 0.2);
-  --sf-jump-tint: rgb(16 185 129 / 0.18);
-  --sf-cell-idle: rgb(255 255 255 / 0.04);
+  --sf-chip-sage-bg: rgb(169 194 160 / 0.16);
+  --sf-chip-sage-ink: #b9cfb0;
+  --sf-chip-beige-bg: rgb(210 177 131 / 0.16);
+  --sf-chip-beige-ink: #d2b183;
+  --sf-chip-blue-bg: rgb(151 181 206 / 0.16);
+  --sf-chip-blue-ink: #97b5ce;
+  --sf-chip-rose-bg: rgb(220 145 120 / 0.16);
+  --sf-chip-rose-ink: #dc9178;
 
-  /* Settings screen — mobile dark variants of the same literals */
-  --sf-set-chip-teal: rgb(16 185 129 / 0.15);
-  --sf-set-chip-green: rgb(16 185 129 / 0.15);
-  --sf-set-chip-blue: rgb(59 130 246 / 0.15);
-  --sf-set-chip-gold: rgb(245 158 11 / 0.2);
-  --sf-set-chip-gold-line: rgb(245 158 11 / 0.35);
-  --sf-set-chip-slate: rgb(148 163 184 / 0.15);
-  --sf-set-icon-slate: #94a3b8;
-  --sf-set-live-bg: rgb(16 185 129 / 0.2);
-  --sf-set-cur-selected: rgb(16 185 129 / 0.2);
-  --sf-set-option-selected: rgb(16 185 129 / 0.16);
-  --sf-set-signout-bg: rgb(239 68 68 / 0.1);
-  --sf-set-signout-line: rgb(239 68 68 / 0.35);
-  --sf-set-danger-bg: rgb(239 68 68 / 0.16);
-  --sf-set-danger-line: rgb(239 68 68 / 0.35);
-  --sf-set-press: rgb(255 255 255 / 0.03);
-  --sf-set-hero-glow: rgb(16 185 129 / 0.2);
+  --sf-tooltip-bg: #12160e;
+  --sf-tooltip-ink: #edebe0;
+
+  /* Fixed hues are theme-invariant – repeated for legibility */
+  --sf-hue-amber: #d9a13e;
+  --sf-hue-sky: #86a7c3;
+  --sf-hue-sky-ink: #a9c4dc;
+  --sf-hue-emerald: #8ab58c;
+  --sf-hue-orange: #cf8a5b;
+  --sf-hue-red: #dc9178;
+  --sf-hue-indigo: #9aaad0;
+  --sf-hue-violet: #b3a1d4;
+
+  --sf-tile-hero: rgb(169 194 160 / 0.14);
+  --sf-tint-danger: rgb(220 145 120 / 0.12);
+  --sf-tint-success: rgb(147 190 142 / 0.12);
+  --sf-tint-emerald-15: rgb(138 181 140 / 0.15);
+  --sf-tint-amber-15: rgb(217 161 62 / 0.15);
+  --sf-tint-sky-15: rgb(134 167 195 / 0.15);
+  --sf-tint-red-15: rgb(220 145 120 / 0.15);
+  --sf-tint-orange-15: rgb(207 138 91 / 0.15);
+
+  --sf-select-tint: rgb(169 194 160 / 0.15);
+  --sf-chip-tint: rgb(169 194 160 / 0.15);
+  --sf-icon-chip: rgb(169 194 160 / 0.17);
+  --sf-tint-amber: rgb(217 161 62 / 0.16);
+  --sf-tint-sky: rgb(134 167 195 / 0.16);
+  --sf-tint-sky-soft: rgb(134 167 195 / 0.1);
+  --sf-tint-indigo: rgb(154 170 208 / 0.15);
+  --sf-tile-income-bg: rgb(147 190 142 / 0.1);
+  --sf-tile-income-border: rgb(147 190 142 / 0.3);
+  --sf-tile-expense-bg: rgb(220 145 120 / 0.1);
+  --sf-tile-expense-border: rgb(220 145 120 / 0.3);
+  --sf-track: rgb(237 235 224 / 0.08);
+  --sf-track-2: rgb(237 235 224 / 0.1);
+  --sf-bar-expense: rgb(220 145 120 / 0.5);
+  --sf-bar-income: rgb(147 190 142 / 0.4);
+  --sf-range-tint: rgb(169 194 160 / 0.2);
+  --sf-jump-tint: rgb(169 194 160 / 0.16);
+  --sf-cell-idle: rgb(237 235 224 / 0.05);
+
+  /* Settings screen – mobile dark variants of the same literals */
+  --sf-set-chip-teal: rgb(169 194 160 / 0.15);
+  --sf-set-chip-green: rgb(147 190 142 / 0.15);
+  --sf-set-chip-blue: rgb(151 181 206 / 0.15);
+  --sf-set-chip-gold: rgb(210 177 131 / 0.18);
+  --sf-set-chip-gold-line: rgb(210 177 131 / 0.35);
+  --sf-set-chip-slate: rgb(174 180 157 / 0.15);
+  --sf-set-icon-slate: #aeb49d;
+  --sf-set-icon-blue: #a9c2a0;
+  --sf-set-live-bg: rgb(169 194 160 / 0.18);
+  --sf-set-cur-selected: rgb(169 194 160 / 0.18);
+  --sf-set-option-selected: rgb(169 194 160 / 0.16);
+  --sf-set-signout-bg: rgb(220 145 120 / 0.1);
+  --sf-set-signout-line: rgb(220 145 120 / 0.35);
+  --sf-set-danger-bg: rgb(220 145 120 / 0.16);
+  --sf-set-danger-line: rgb(220 145 120 / 0.35);
+  --sf-set-press: rgb(237 235 224 / 0.03);
+  --sf-set-hero-glow: rgb(169 194 160 / 0.18);
   --sf-set-card-shadow: rgb(0 0 0 / 0.2);
 
-  --sf-bin-warn: #fbbf24;
-  --sf-bin-notice-bg: rgb(251 191 36 / 0.08);
-  --sf-bin-notice-line: rgb(251 191 36 / 0.22);
-  --sf-bin-restore-bg: rgb(16 185 129 / 0.12);
-  --sf-bin-purge-bg: rgb(248 113 113 / 0.12);
+  --sf-bin-warn: #d5b06c;
+  --sf-bin-notice-bg: rgb(213 176 108 / 0.08);
+  --sf-bin-notice-line: rgb(213 176 108 / 0.22);
+  --sf-bin-restore-bg: rgb(147 190 142 / 0.12);
+  --sf-bin-purge-bg: rgb(220 145 120 / 0.12);
 
-  --sf-tab-expense: #ef4444;
-  --sf-studio-chip: rgb(16 185 129 / 0.2);
-  --sf-studio-icon: rgb(16 185 129 / 0.35);
-  --sf-studio-icon-idle: rgb(255 255 255 / 0.06);
-  --sf-studio-limit-bg: rgb(16 185 129 / 0.2);
-  --sf-studio-limit-line: rgb(16 185 129 / 0.4);
-  --sf-studio-limit-ink: #34d399;
-  --sf-studio-nolimit-bg: rgb(255 255 255 / 0.05);
-  --sf-studio-clear-bg: rgb(239 68 68 / 0.15);
-  --sf-studio-gauge-bg: #17171a;
-  --sf-studio-track: rgb(255 255 255 / 0.08);
-  --sf-grab: rgb(255 255 255 / 0.2);
+  --sf-tab-expense: #dc9178;
+  --sf-studio-chip: rgb(169 194 160 / 0.18);
+  --sf-studio-icon: rgb(169 194 160 / 0.32);
+  --sf-studio-icon-idle: rgb(237 235 224 / 0.06);
+  --sf-studio-limit-bg: rgb(169 194 160 / 0.18);
+  --sf-studio-limit-line: rgb(169 194 160 / 0.38);
+  --sf-studio-limit-ink: #c1d5b8;
+  --sf-studio-nolimit-bg: rgb(237 235 224 / 0.05);
+  --sf-studio-clear-bg: rgb(220 145 120 / 0.15);
+  --sf-studio-gauge-bg: #2a3123;
+  --sf-studio-track: rgb(237 235 224 / 0.08);
+  --sf-grab: rgb(237 235 224 / 0.2);
 
-  --sf-export-excel-bg: rgb(52 211 153 / 0.15);
-  --sf-export-csv-bg: rgb(56 189 248 / 0.15);
+  --sf-export-excel-bg: rgb(147 190 142 / 0.15);
+  --sf-export-csv-bg: rgb(151 181 206 / 0.15);
 
-  --sf-bull-gold-bg: rgb(217 119 6 / 0.16);
-  --sf-bull-gold-line: #f59e0b;
-  --sf-bull-gold-ink: #fcd34d;
-  --sf-bull-sil-bg: rgb(100 116 139 / 0.2);
-  --sf-bull-sil-line: #94a3b8;
-  --sf-bull-pill-bg: rgb(255 255 255 / 0.06);
-  --sf-bull-grid: rgb(255 255 255 / 0.08);
-  --sf-bull-grid-v: rgb(255 255 255 / 0.06);
-  --sf-bull-grid-ink: rgb(255 255 255 / 0.45);
-  --sf-bull-tooltip-bg: #0f172a;
-  --sf-bull-tooltip-line: rgb(255 255 255 / 0.2);
-  --sf-bull-result-bg: #17171a;
-  --sf-bull-result-line: rgb(16 185 129 / 0.3);
+  --sf-bull-gold-bg: rgb(201 154 78 / 0.16);
+  --sf-bull-gold-line: #d9a13e;
+  --sf-bull-gold-ink: #e8c98a;
+  --sf-bull-sil-bg: rgb(174 180 157 / 0.2);
+  --sf-bull-sil-line: #aeb49d;
+  --sf-bull-pill-bg: rgb(237 235 224 / 0.06);
+  --sf-bull-grid: rgb(237 235 224 / 0.08);
+  --sf-bull-grid-v: rgb(237 235 224 / 0.06);
+  --sf-bull-grid-ink: rgb(237 235 224 / 0.45);
+  --sf-bull-tooltip-bg: #12160e;
+  --sf-bull-tooltip-line: rgb(237 235 224 / 0.2);
+  --sf-bull-result-bg: #2a3123;
+  --sf-bull-result-line: rgb(169 194 160 / 0.3);
 }
 
 body {
   background-color: var(--sf-background);
   color: var(--sf-text);
   font-family:
-    var(--font-inter),
+    var(--font-sans),
     ui-sans-serif,
     system-ui,
     -apple-system,
@@ -291,23 +354,26 @@ body {
 }
 
 /* ============================================================
-   SpendFlow V2 card language — white surfaces on a neutral base,
-   hairline borders, 12px radius, no ornament. Depth comes from
-   borders and type, not shadows or decoration.
+   SpendFlow V5 card language – warm white tiles on cream, hairline
+   warm borders, 20px radius, soft diffuse shadows (the pastel
+   consumer-dashboard feel). Depth comes from shadow + type.
    ============================================================ */
 
-/* Card surface: white tile on a hairline rule. */
+/* Card surface: soft white tile with a diffuse warm shadow. */
 .panel {
   background: var(--sf-surface);
   border: 1px solid var(--sf-border);
-  border-radius: 12px;
+  border-radius: 20px;
+  box-shadow:
+    0 1px 2px rgb(64 58 40 / 0.03),
+    0 12px 32px -16px rgb(64 58 40 / 0.12);
 }
 
 /* Flush variant that sits directly on the background. */
 .panel-flush {
   background: transparent;
   border: 1px solid var(--sf-border);
-  border-radius: 12px;
+  border-radius: 20px;
 }
 
 /* Internal divider under a card header. */
@@ -330,18 +396,35 @@ body {
   color: var(--sf-faint);
 }
 
-/* Display figures for money — Inter semibold, tight tracking. */
+/* Display figures for money – the UI sans with tabular digits (the
+   reference dashboard sets every figure in the same soft sans).
+   Tabular digits + the locked amount containers keep privacy-masked
+   amounts (• swaps) width-stable. */
 .figures {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   font-variant-numeric: lining-nums tabular-nums;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
 }
 
 /* Sans tabular figures for dense tabular money. */
 .numeric {
+  /* Money speaks Geist Mono (matching the Master Admin project). Monospace
+     digits line up in columns like a real register; no tracking on mono. */
+  font-family: var(--font-money), ui-monospace, "SFMono-Regular", Menlo, monospace;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
+  font-weight: 600;
+  letter-spacing: 0;
+  transition: filter 240ms ease;
 }
+
+/* Privacy eye: blur every money figure in place instead of dot-swapping.
+   The reference look - a soft blob where the amount was. */
+html.sf-privacy .numeric {
+  filter: blur(9px);
+  user-select: none;
+}
+
 
 /* Rule line that stretches after an inline label. */
 .rule-after {
@@ -364,14 +447,14 @@ body {
   color: var(--sf-faint);
 }
 
-/* ---- V2 figure helpers ---- */
+/* ---- V5 figure helpers ---- */
 
-/* Hero money figure — the banknote serif (Fraunces) over tabular digits. */
+/* Hero money figure – the sans at display size. */
 .figures-display {
-  font-family: var(--font-fraunces), var(--font-inter), ui-sans-serif, sans-serif;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   font-variant-numeric: lining-nums tabular-nums;
-  font-weight: 560;
-  letter-spacing: -0.01em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 /* Single hairlines (kept as hook names; V2 has no double rules). */
@@ -382,6 +465,7 @@ body {
 .rule-double-b {
   border-bottom: 1px solid var(--sf-border);
 }
+
 /* Frosted glass surface for floating chrome (top bar, dock). */
 .glass {
   background: color-mix(in srgb, var(--sf-surface) 82%, transparent);
@@ -389,7 +473,7 @@ body {
   -webkit-backdrop-filter: blur(14px);
 }
 
-/* Horizontally swipeable strip on narrow screens — scrollbar hidden so
+/* Horizontally swipeable strip on narrow screens – scrollbar hidden so
    masthead rules keep their height; touch/wheel scrolling still works. */
 .scroll-x {
   scrollbar-width: none;
@@ -442,7 +526,7 @@ body {
 }
 
 /* Card-face reveal when a breakdown view or flow-type flips (mobile
-   Animated.spring rotateY parity — the new face rotates in from 90°). */
+   Animated.spring rotateY parity – the new face rotates in from 90°). */
 .sf-flip-in {
   animation: sf-flip-in 360ms cubic-bezier(0.3, 0.8, 0.4, 1);
 }
@@ -484,6 +568,24 @@ body {
     animation: none;
   }
 }
+
+/* Left navigation drawer (hamburger) – slides in from the left. */
+.sf-drawer {
+  animation: sf-drawer-in 240ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+@keyframes sf-drawer-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sf-drawer {
+    animation: none;
+  }
+}
 @keyframes sf-pop {
   from {
     opacity: 0;
@@ -500,7 +602,7 @@ body {
   }
 }
 
-/* Right-docked record sheet (components/ui/SlideOver) — slides up as a
+/* Right-docked record sheet (components/ui/SlideOver) – slides up as a
    bottom sheet on phones, in from the right on sm and up. */
 .sf-slide-over {
   animation: sf-slide-over 220ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -607,7 +709,7 @@ tr {
   }
 }
 
-/* Phone-mockup animation kit (reference: SpendFlowWebsite style.css) —
+/* Phone-mockup animation kit (reference: SpendFlowWebsite style.css) –
    2026-09-15 redesign pass. */
 
 /* Ambient glow behind the phone breathes. */
@@ -626,7 +728,7 @@ tr {
   animation: glow-breathe 6s ease-in-out infinite;
 }
 
-/* Emphasis dot pulse (reference pulseDot — badge + LIVE tags). */
+/* Emphasis dot pulse (reference pulseDot – badge + LIVE tags). */
 @keyframes pulse-dot {
   0%,
   100% {
@@ -675,7 +777,7 @@ tr {
 }
 
 /* ============================================================
-   Auth polish kit (2026-09-15) — entrance motion, focus glow,
+   Auth polish kit (2026-09-15) – entrance motion, focus glow,
    button lift, accent hairline. All token-driven; reduced
    motion safe. Used by components/auth/AuthPrimitives.tsx.
    ============================================================ */
@@ -770,7 +872,7 @@ tr {
 }
 .sf-lift:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgb(10 14 12 / 0.1);
+  box-shadow: 0 4px 12px rgb(64 58 40 / 0.12);
 }
 .sf-lift:active:not(:disabled) {
   transform: translateY(0) scale(0.99);
@@ -803,15 +905,15 @@ tr {
     border-radius: 16px;
     background: var(--sf-surface);
     box-shadow:
-      0 1px 2px rgb(10 14 12 / 0.05),
-      0 16px 40px rgb(10 14 12 / 0.1);
+      0 1px 2px rgb(64 58 40 / 0.05),
+      0 16px 40px rgb(64 58 40 / 0.12);
     animation: sf-card-in 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
   .sf-auth-brand {
     background: var(--sf-surface);
     border-right: 1px solid var(--sf-border);
   }
-  /* The page's own card becomes plain content inside the right half —
+  /* The page's own card becomes plain content inside the right half –
      the master card carries the frame, shadow and entrance. */
   .sf-auth-master .sf-auth-card {
     overflow: visible;
@@ -833,4 +935,200 @@ tr {
     transform: none;
     box-shadow: none;
   }
+}
+
+/* ============================================================
+   V4 "Meridian" motion kit – data-arrival choreography. Sections
+   rise once on load; chart lines draw themselves (pathLength=100
+   normalization); donut/gauge segments sweep in; bars grow from
+   their baseline; heat cells stagger-fade.
+   Every base state is the SETTLED state: keyframes only animate
+   `from` hidden, so content stays visible whenever animations are
+   stripped or paused (screenshot tools, reduced motion).
+   ============================================================ */
+
+/* One-shot section rise (stagger via inline animation-delay). */
+.rise {
+  animation: rise 460ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* Line draw-in for SVG paths carrying pathLength={100}. Base = drawn. */
+.draw {
+  stroke-dasharray: 100;
+  animation: draw 900ms cubic-bezier(0.4, 0, 0.2, 1) backwards;
+}
+@keyframes draw {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Left-to-right reveal for stretched sparklines, where dasharray-based
+   draws are unreliable (non-scaling strokes measure in screen units).
+   Base = unclipped. */
+.wipe-x {
+  animation: wipe-x 900ms cubic-bezier(0.4, 0, 0.2, 1) backwards;
+}
+@keyframes wipe-x {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* Donut / gauge segment sweep: the element's own stroke-dasharray
+   attribute is the final state; the keyframe only supplies the start. */
+.sweep {
+  animation: sweep 720ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+@keyframes sweep {
+  from {
+    stroke-dasharray: 0 100;
+  }
+}
+
+/* Bars grow from their baseline (pair with origin-bottom). */
+.grow-y {
+  transform-origin: bottom;
+  animation: grow-y 620ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+@keyframes grow-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+/* Horizontal fills grow from the left (pace bars, progress tracks). */
+.grow-x {
+  transform-origin: left;
+  animation: grow-x 700ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* Heat-grid cells fade-scale in; per-cell delay via --d. */
+.cell-in {
+  animation: cell-in 300ms ease-out backwards;
+  animation-delay: var(--d, 0ms);
+}
+@keyframes cell-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise,
+  .draw,
+  .sweep,
+  .grow-y,
+  .grow-x,
+  .cell-in,
+  .wipe-x {
+    animation: none;
+  }
+}
+
+/* ============================================================
+   V6 PROPOSAL – "Professional" scoped preview skin (the engraved-
+   banknote branch direction standardized per user feedback: no
+   ornamentation, standard fintech voice). Used ONLY by
+   app/preview/screens/banknote.tsx (/preview/banknote); the live
+   app keeps V5 Sage Ledger untouched. Neutral canvas, pure white
+   cards, hairline neutral borders, deep banking-green ink. The
+   pastel chip quartet is intentionally inherited.
+   ============================================================ */
+.skin-banknote {
+  background-color: var(--sf-background);
+
+  --sf-primary: #2e5c43;
+  --sf-primary-strong: #254e39;
+  --sf-primary-light: #e7efe4;
+  --sf-primary-ink: #ffffff;
+  --sf-accent: #2e5c43;
+  --sf-accent-bg: #e7efe4;
+  --sf-success: #3c6b4e;
+  --sf-income: #3c6b4e;
+  --sf-background: #f4f4ef;
+  --sf-surface: #ffffff;
+  --sf-surface-elevated: #f7f7f2;
+  --sf-text: #20291f;
+  --sf-text-muted: #68705f;
+  --sf-faint: #979e8c;
+  --sf-border: #e7e7e0;
+  --sf-input: #ffffff;
+  --sf-tab: #ffffff;
+  --sf-card-highlight: #f7f7f1;
+  --sf-brass: #8a6c2f;
+  --sf-brass-tint: #f1ead9;
+  --sf-hero-from: #1c4531;
+  --sf-hero-mid: #153a28;
+  --sf-hero-to: #0e2b1d;
+  --sf-hero-accent: #8fe0af;
+
+  --sf-rail: #fbfbf9;
+  --sf-rail-ink: #5a6354;
+  --sf-rail-active-bg: #e7efe4;
+  --sf-rail-active-ink: #24503b;
+
+  --sf-select-tint: #eef2e8;
+  --sf-chip-tint: rgb(46 92 67 / 0.12);
+  --sf-icon-chip: rgb(46 92 67 / 0.14);
+  --sf-track: rgb(32 41 31 / 0.08);
+  --sf-track-2: rgb(32 41 31 / 0.1);
+}
+
+html.dark .skin-banknote {
+  /* Night office – neutral green-black canvas, white-cool cards. */
+  background-color: var(--sf-background);
+  --sf-primary: #9fbfa1;
+  --sf-primary-strong: #b7d0b6;
+  --sf-primary-light: rgb(159 191 161 / 0.16);
+  --sf-primary-ink: #14200f;
+  --sf-accent: #b7d0b6;
+  --sf-accent-bg: rgb(159 191 161 / 0.16);
+  --sf-success: #8fba8c;
+  --sf-income: #8fba8c;
+  --sf-background: #131611;
+  --sf-surface: #1b1f18;
+  --sf-surface-elevated: #232820;
+  --sf-text: #ebece3;
+  --sf-text-muted: #a3aa97;
+  --sf-faint: #7b8270;
+  --sf-border: #2c3126;
+  --sf-input: #1b1f18;
+  --sf-tab: #1b1f18;
+  --sf-card-highlight: #232820;
+  --sf-brass: #d2b183;
+  --sf-brass-tint: rgb(210 177 131 / 0.16);
+  --sf-hero-from: #16351f;
+  --sf-hero-mid: #0e2a15;
+  --sf-hero-to: #071a0c;
+  --sf-hero-accent: #86e8ab;
+
+  --sf-rail: #161911;
+  --sf-rail-ink: #9aa28b;
+  --sf-rail-active-bg: #9fbfa1;
+  --sf-rail-active-ink: #14200f;
+
+  --sf-select-tint: rgb(159 191 161 / 0.15);
+  --sf-chip-tint: rgb(159 191 161 / 0.15);
+  --sf-icon-chip: rgb(159 191 161 / 0.17);
+  --sf-track: rgb(235 236 227 / 0.08);
+  --sf-track-2: rgb(235 236 227 / 0.1);
 }

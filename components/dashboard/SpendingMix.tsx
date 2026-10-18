@@ -22,7 +22,7 @@ interface SpendingMixProps {
 }
 
 /**
- * Spending mix — ranked composition view. A single segmented share bar up
+ * Spending mix – ranked composition view. A single segmented share bar up
  * top shows the cycle's category split at a glance; below it, rows rank each
  * category (icon chip, share bar scaled to the top category, figure + %).
  * Replaces the donut on the dashboard so the page has varied chart shapes,
@@ -50,7 +50,7 @@ export function SpendingMix({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {/* Segmented share bar — one glance at the whole mix */}
+      {/* Segmented share bar – one glance at the whole mix */}
       <div
         className={`flex gap-[2px] overflow-hidden rounded-full ${compact ? "h-2" : "h-3"}`}
         role="img"
@@ -73,12 +73,12 @@ export function SpendingMix({
         ))}
       </div>
 
-      {/* Ranked rows — spread evenly when the panel is stretched to match a
+      {/* Ranked rows – spread evenly when the panel is stretched to match a
           taller grid sibling, natural spacing otherwise. */}
       <ul className={`flex flex-1 flex-col justify-evenly ${compact ? "mt-1" : "mt-1.5"}`}>
         {rows.map((r) => {
           const pct = Math.round((r.value / total) * 100);
-          // Stored icons are emoji (mobile) OR lucide names — resolve both
+          // Stored icons are emoji (mobile) OR lucide names – resolve both
           // through the shared glyph mapper so raw text never leaks in.
           const Glyph = categoryGlyph(r.icon);
           return (
@@ -129,7 +129,7 @@ export function SpendingMix({
         })}
       </ul>
 
-      {/* Cycle-total footer — pins to the bottom so the panel fills a taller
+      {/* Cycle-total footer – pins to the bottom so the panel fills a taller
           grid row (beside the cash-flow card) without a dead block. */}
       <div className={`mt-auto flex items-center justify-between gap-2 border-t border-border ${compact ? "pt-2.5" : "pt-3.5"}`}>
         <p className="caps">{cycleTotalLabel}</p>

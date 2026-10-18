@@ -184,7 +184,7 @@ export function AccountsStatement({ inject }: AccountsPageProps) {
         <button
           type="button"
           onClick={openAdd}
-          className="hidden h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-strong active:scale-[0.98] sm:inline-flex"
+          className="hidden h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-ink transition-colors hover:bg-primary-strong active:scale-[0.98] sm:inline-flex"
         >
           <Plus size={16} aria-hidden />
           {t("accAddAccount")}

@@ -13,7 +13,7 @@ import { isSupabaseConfigured } from "@/utils/supabase/browser";
  * Auth shell for /sign-in, /sign-up and /forgot-password.
  * Mobile-first: below lg a compact masthead + guilloche ambience behind one
  * note-paper card. From lg (laptop) up the whole experience lives in ONE
- * master card — brand statement half on the left, form half on the right.
+ * master card – brand statement half on the left, form half on the right.
  */
 export default function AuthLayout({ children }: { children: ReactNode }) {
   const { t } = useLanguage();
@@ -46,7 +46,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        {/* Laptop/desktop controls — top right of the viewport */}
+        {/* Laptop/desktop controls – top right of the viewport */}
         <div className="absolute right-5 top-6 z-10 hidden items-center gap-2 lg:flex xl:right-10">
           <LangPills />
           <ThemeToggle className="h-9 w-9" />
@@ -56,7 +56,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           {/* Below lg: a plain centering wrapper. From lg: one master card
               (frame, accent bar and entrance handled by .sf-auth-master). */}
           <div className="sf-auth-master flex w-full max-w-[960px] justify-center lg:grid lg:grid-cols-[1.05fr_1fr] lg:items-stretch">
-            {/* ===== Brand half — laptop and up ===== */}
+            {/* ===== Brand half – laptop and up ===== */}
             <aside className="sf-auth-brand hidden flex-col justify-between p-8 lg:flex xl:p-10">
               <Link href="/" className="flex items-center gap-2.5">
                 <SpendFlowSeal size={34} />
@@ -86,7 +86,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
               <p className="stamp">{t("authFooterSynced")}</p>
             </aside>
 
-            {/* ===== Form half — the page's own card (children) ===== */}
+            {/* ===== Form half – the page's own card (children) ===== */}
             <div className="flex w-full justify-center lg:items-center lg:p-8 xl:p-10">
               {children}
             </div>

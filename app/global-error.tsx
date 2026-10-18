@@ -8,11 +8,11 @@ import { StatusPage } from "@/components/layout/StatusPage";
 import { en, hi, ne, type TranslationKey } from "@/constants/i18n/dictionaries";
 
 /**
- * Last-resort boundary for errors in the ROOT layout itself — renders its own
+ * Last-resort boundary for errors in the ROOT layout itself – renders its own
  * <html>/<body>, so Providers (LanguageContext, ThemeToggle…) are unavailable.
  * Reads the persisted language directly from localStorage (en fallback) and
  * composes the same StatusPage shell with plain dictionary lookups.
- * Theme class is not applied here — the root layout that manages it failed,
+ * Theme class is not applied here – the root layout that manages it failed,
  * so this page always renders in light mode.
  */
 export default function GlobalError({

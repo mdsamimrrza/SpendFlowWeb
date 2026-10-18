@@ -18,9 +18,9 @@ export const isSupabaseConfigured = Boolean(
 let browserClient: SupabaseClient<Database> | undefined;
 
 /**
- * Cookie-backed browser client (@supabase/ssr — the web equivalent of
+ * Cookie-backed browser client (@supabase/ssr – the web equivalent of
  * mobile's chunked SecureStore adapter). The session cookies are readable
- * from JS BY DESIGN (docs/SECURITY.md §2 — no-BFF anon-key architecture);
+ * from JS BY DESIGN (docs/SECURITY.md §2 – no-BFF anon-key architecture);
  * NV-9: `secure` is set explicitly because @supabase/ssr's defaults emit no
  * Secure attribute (dev on http://localhost keeps it off so cookies persist).
  * Anon key only; RLS is the security boundary (docs/SECURITY.md).

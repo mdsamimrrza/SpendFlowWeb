@@ -20,7 +20,7 @@ import type { LanguageCode } from "@/utils/format";
 /* Shell pieces                                                        */
 /* ------------------------------------------------------------------ */
 
-/** The parchment card every auth screen sits on — flat, hairline, no shadow. */
+/** The parchment card every auth screen sits on – flat, hairline, no shadow. */
 export function AuthCard({
   overline,
   title,
@@ -46,7 +46,7 @@ export function AuthCard({
   );
 }
 
-/** Error / info banner — sharp tinted strip with a lucide tone icon. */
+/** Error / info banner – sharp tinted strip with a lucide tone icon. */
 export function AuthBanner({ kind, text }: { kind: "error" | "info"; text: string }) {
   const Icon = kind === "error" ? CircleAlert : Info;
   return (
@@ -75,7 +75,7 @@ export function AuthDivider({ label }: { label: string }) {
   );
 }
 
-/** Quiet shield line under the form — mirrors the brand panel promise. */
+/** Quiet shield line under the form – mirrors the brand panel promise. */
 export function AuthSecureNote() {
   const { t } = useLanguage();
   return (
@@ -177,7 +177,7 @@ export function AuthField({
   );
 }
 
-/** Full-width sharp primary — same masthead button language as the landing. */
+/** Full-width sharp primary – same masthead button language as the landing. */
 export function AuthSubmit({
   loading,
   disabled,
@@ -196,7 +196,7 @@ export function AuthSubmit({
       type={type}
       onClick={onClick}
       disabled={disabled || loading}
-      className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-white transition-colors hover:bg-primary-strong active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+      className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-ink transition-colors hover:bg-primary-strong active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
     >
       {loading && (
         <span
@@ -209,7 +209,7 @@ export function AuthSubmit({
   );
 }
 
-/** Google button — the official 4-colour G is logo art, not an emoji glyph. */
+/** Google button – the official 4-colour G is logo art, not an emoji glyph. */
 export function AuthGoogleButton({ onClick, label }: { onClick: () => void; label: string }) {
   return (
     <button
@@ -226,7 +226,7 @@ export function AuthGoogleButton({ onClick, label }: { onClick: () => void; labe
 /* Cross-links & chrome                                                */
 /* ------------------------------------------------------------------ */
 
-/** "Don't have an account? Create account" — sharp caps link, ≥44px row. */
+/** "Don't have an account? Create account" – sharp caps link, ≥44px row. */
 export function AuthSwitchLink({
   question,
   actionLabel,
@@ -263,7 +263,7 @@ export function LangPills() {
             i > 0 ? "-ml-px" : ""
           } ${
             language === l
-              ? "relative z-10 border-primary bg-primary text-white"
+              ? "relative z-10 border-primary bg-primary text-primary-ink"
               : "border-border bg-transparent text-text-muted hover:border-text-muted"
           }`}
         >

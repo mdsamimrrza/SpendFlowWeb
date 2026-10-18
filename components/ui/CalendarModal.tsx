@@ -1,6 +1,6 @@
 "use client";
 
-/* ── CalendarModal — 1:1 port of the mobile ui/CalendarModal.tsx, shared by
+/* ── CalendarModal – 1:1 port of the mobile ui/CalendarModal.tsx, shared by
    every date input in the web app (the native browser date pickers are gone).
    Bottom sheet (rounded-t-24, 88vh max, slide-up), Calendar-icon header +
    round X, From/To banner (single mode: a centered selected-date banner),
@@ -9,22 +9,22 @@
    "September 2026 ▾" pill opens the year-list (2000→now+1, auto-scrolled) +
    month-grid JUMP picker, Sunday-first day grid with adjacent-month days
    dimmed, teal in-range fill, 1.5px primary today ring, Reset / Apply Range
-   footer (hidden in single mode — tapping a date applies and closes, exactly
+   footer (hidden in single mode – tapping a date applies and closes, exactly
    like the app).
-   Manual typing (user request, 2026-09-15 — beyond the mobile app): the
+   Manual typing (user request, 2026-09-15 – beyond the mobile app): the
    banner From/To cells AND the DateField/RangeField triggers are dd/mm/yyyy
-   digit-masked inputs — slashes auto-insert, only digits are accepted, and a
+   digit-masked inputs – slashes auto-insert, only digits are accepted, and a
    date commits live the moment it is complete and valid (grid jumps to it).
    Impossible dates (31/04, month 13, year outside 2000→next year) show an
    inline "Invalid date" error and never corrupt the calendar. ── */
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Calendar, ChevronDown, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ArrowRight, Calendar, ChevronDown, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useLanguage } from "@/store/LanguageContext";
 import { toISODate } from "@/utils/format";
 
-/* The app renders these calendar labels in English in every language —
+/* The app renders these calendar labels in English in every language –
    mirrored exactly (ui/CalendarModal.tsx WEEKDAYS / MONTH_NAMES / YEARS). */
 const CAL_WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 const CAL_MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -83,8 +83,8 @@ export function CalendarModal({
 }: {
   open: boolean;
   onClose: () => void;
-  /** 'single' — picks one date (hides the From/To banner and presets).
-   *  'range'  — default, full range-picker behaviour (mobile parity). */
+  /** 'single' – picks one date (hides the From/To banner and presets).
+   *  'range'  – default, full range-picker behaviour (mobile parity). */
   mode?: "single" | "range";
   initial?: { from?: string; to?: string };
   onApply: (range: CalendarRange) => void;
@@ -92,7 +92,7 @@ export function CalendarModal({
   const { t, locale } = useLanguage();
   const isSingle = mode === "single";
 
-  // 'calendar' — day grid | 'monthYear' — month+year jump picker (mobile parity)
+  // 'calendar' – day grid | 'monthYear' – month+year jump picker (mobile parity)
   const [view, setView] = useState<"calendar" | "monthYear">("calendar");
   const [anchor, setAnchor] = useState(() => {
     const now = new Date();
@@ -176,7 +176,7 @@ export function CalendarModal({
     jumpTo(iso);
   };
 
-  // Mobile handleDatePress: single mode applies immediately; range mode —
+  // Mobile handleDatePress: single mode applies immediately; range mode –
   // first tap starts, second tap ends (a day before the start restarts the
   // selection; the same day closes a one-day range).
   const pickDay = (iso: string) => {
@@ -202,7 +202,7 @@ export function CalendarModal({
       return { y: next.getFullYear(), m: next.getMonth() };
     });
 
-  // Mobile handleQuickPreset — sets a full day range and keeps the calendar
+  // Mobile handleQuickPreset – sets a full day range and keeps the calendar
   // on the current month (last-month preset stays on this month, like the app).
   const quick = (kind: "today" | "yesterday" | "last7" | "thisMonth" | "lastMonth") => {
     const now = new Date();
@@ -304,7 +304,7 @@ export function CalendarModal({
             </button>
           </div>
 
-          {/* ── From / To banner — masked typeable cells (dd/mm/yyyy) ── */}
+          {/* ── From / To banner – masked typeable cells (dd/mm/yyyy) ── */}
           {isSingle ? (
             <div className="rounded-xl border border-border bg-surface-elevated p-2.5">
               {bannerInput("from", from, fromDraft, setFromDraft)}
@@ -503,7 +503,7 @@ export function CalendarModal({
                 onApply({ from: from || null, to: (to || from) || null });
                 onClose();
               }}
-              className="min-h-[44px] flex-[2] rounded-xl bg-primary text-sm font-extrabold text-white transition active:scale-[0.98]"
+              className="min-h-[44px] flex-[2] rounded-xl bg-primary text-sm font-extrabold text-primary-ink transition active:scale-[0.98]"
             >
               {t("anCalApplyRange")}
             </button>
@@ -521,7 +521,7 @@ function clampISO(v: string, min?: string, max?: string): string {
   return v;
 }
 
-/* ── DateField — a single-date input the user can TYPE (digits-only
+/* ── DateField – a single-date input the user can TYPE (digits-only
    dd/mm/yyyy mask, live-validated) or pick via the calendar button. Same
    visual language as ui/Input: caps label, hairline box. Owns its
    CalendarModal (single mode); min/max reject out-of-range dates. ── */
@@ -620,7 +620,7 @@ export function DateField({
   );
 }
 
-/* ── RangeField — a From→To pill that opens the shared range CalendarModal
+/* ── RangeField – a From→To pill that opens the shared range CalendarModal
    (whose banner cells are typeable). min/max clamp the applied range. ── */
 export function RangeField({
   from,
@@ -652,7 +652,7 @@ export function RangeField({
         <Calendar size={13} className="shrink-0 text-text-muted" aria-hidden />
         <span className="numeric min-w-0 truncate">
           {from ? toDMY(from) : t("anCalFrom")}
-          <span className="mx-1.5 text-faint">→</span>
+          <ArrowRight size={11} className="mx-1.5 shrink-0 text-faint" aria-hidden />
           {to ? toDMY(to) : t("anCalTo")}
         </span>
       </button>

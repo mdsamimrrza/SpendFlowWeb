@@ -13,6 +13,7 @@ import {
   Camera,
   Check,
   ChevronDown,
+  ChevronRight,
   ChevronLeft,
   ChevronUp,
   Clock,
@@ -177,7 +178,7 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
   const [bankAccountId, setBankAccountId] = useState("");
   const [notes, setNotes] = useState("");
   // ── PAY FROM PLAN (mobile §6): plans are managed ONLY on the Recurring
-  //    tab; the form's recurring surface is exactly one thing — paying a
+  //    tab; the form's recurring surface is exactly one thing – paying a
   //    plan's open installment with what's in the form. Saving books the
   //    rule's slot AND re-anchors the chain from this payment date. ──
   const [plans, setPlans] = useState<RecurringRuleRow[]>([]);
@@ -268,7 +269,7 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
     };
   }, [userId, supabase, existing?.updated_at, accountsReload]);
 
-  // ── Active plans for the pay-from-plan row (add mode only — mobile §6). ──
+  // ── Active plans for the pay-from-plan row (add mode only – mobile §6). ──
   useEffect(() => {
     if (expenseId || !userId) {
       setPlans([]);
@@ -425,7 +426,7 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
   }, [userId]);
 
   // Circle row = current pick first (always visible + ringed), then the
-  // most-used categories; the rendered slice is dynamic — as many as fit
+  // most-used categories; the rendered slice is dynamic – as many as fit
   // the card width (see useFitCount) with one slot reserved for ▦ All.
   const categoryRow = useMemo(() => {
     const selected = categories.find((c) => c.id === categoryId) ?? null;
@@ -536,7 +537,7 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
   //    effective snapshot date (override or transaction date) + the display
   //    currency's own rate. Recomputed on every keystroke/currency/date change.
   const effectiveSnapshot = snapshotDate || date;
-  // USD entries have no rate to lock — a snapshot date picked under another
+  // USD entries have no rate to lock – a snapshot date picked under another
   // currency must never survive a switch to USD.
   useEffect(() => {
     if (currency === "USD") setSnapshotDate("");
@@ -600,7 +601,7 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
           })),
         );
       } catch {
-        /* no history — popover shows the fallback note */
+        /* no history – popover shows the fallback note */
       }
     })();
     return () => {
@@ -823,7 +824,7 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
       //    FORM's values (a corrected price wins and self-updates the rule),
       //    then the chain re-anchors from THIS payment date. The row is
       //    written inside the service, so the generic save and the deferred
-      //    receipt are skipped — the receipt is uploaded FIRST and rides in
+      //    receipt are skipped – the receipt is uploaded FIRST and rides in
       //    with the installment.
       if (payPlan) {
         let planReceiptUrl: string | null = null;
@@ -874,7 +875,7 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
           if (existingPath) await deleteReceipt(supabase, userId, existingPath);
         } catch (err) {
           showToast(
-            err instanceof Error ? `${err.message} — ${t("entrySaved")}` : "Receipt upload failed",
+            err instanceof Error ? `${err.message} – ${t("entrySaved")}` : "Receipt upload failed",
             "error",
           );
         }
@@ -1037,7 +1038,7 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
   const signedMoney = entryMoney ? `${flowType === "income" ? "+ " : "- "}${mask(entryMoney)}` : null;
   const errorList = Object.values(errors);
 
-  // FX detail line — the record's snapshot row, live (spec §2).
+  // FX detail line – the record's snapshot row, live (spec §2).
   const fxLine =
     usdPerUnit != null
       ? `1 ${currency} = ${usdPerUnit.toFixed(6)} USD` +
@@ -1179,7 +1180,7 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
             widest un-shrinkable child (quick-tag strip ≈570px intrinsic min),
             pushing the whole page into horizontal scroll on phones. */}
         <div className="order-2 min-w-0 space-y-4 min-[900px]:order-1">
-          {/* ══ 1+2. Type toggle + hero amount & currency — one card ══ */}
+          {/* ══ 1+2. Type toggle + hero amount & currency – one card ══ */}
           <section className={`panel border-2 ${accentBorder}`}>
             <div className="p-3 sm:p-4">
               <div className="grid grid-cols-2 gap-1 border border-border bg-surface p-1">
@@ -1394,7 +1395,7 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
             </section>
           )}
 
-          {/* ══ 3. CATEGORY — APK circle-row card (icon circles + ▦ All) ═ */}
+          {/* ══ 3. CATEGORY – APK circle-row card (icon circles + ▦ All) ═ */}
           <div ref={categoryCardRef}>
             <section className="panel">
               <div className="space-y-2 p-3 sm:p-4">
@@ -1554,7 +1555,7 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
                       >
                         <Plus size={13} /> {t("addNewCategory")}
                       </button>
-                      {/* APK "Edit Category" pill — opens the same modal on the
+                      {/* APK "Edit Category" pill – opens the same modal on the
                           current pick (create mode when nothing is selected). */}
                       <button
                         type="button"
@@ -1578,7 +1579,7 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
             </section>
           </div>
 
-          {/* ══ 4. BANK ACCOUNT / WALLET — APK circle-row card ══ */}
+          {/* ══ 4. BANK ACCOUNT / WALLET – APK circle-row card ══ */}
           <div ref={accountCardRef}>
             <section className="panel">
               <div className="space-y-2 p-3 sm:p-4">
@@ -1756,7 +1757,7 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
             </section>
           </div>
 
-          {/* ══ 5+6. Date & time + payment channel — one card ══ */}
+          {/* ══ 5+6. Date & time + payment channel – one card ══ */}
           <div ref={dateCardRef}>
             <section className="panel">
               <div className="space-y-3 p-3 sm:p-4">
@@ -1839,7 +1840,7 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
                   </button>
                 </div>
 
-                {/* Payment channel (expense only — hidden for income, APK §6) */}
+                {/* Payment channel (expense only – hidden for income, APK §6) */}
                 {flowType === "expense" && (
                   <div>
                     <p className="caps-faint mb-1.5 text-[10px]">{t("paymentChannel")}</p>
@@ -1906,7 +1907,7 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
                   </button>
                 ))}
               </div>
-              {/* Notes live here — never behind an accordion on a phone. */}
+              {/* Notes live here – never behind an accordion on a phone. */}
               <div className="mt-3">
                 <label htmlFor="expense-notes" className="mb-1 block text-[13px] font-bold text-text-muted">
                   {t("notes")}
@@ -1945,14 +1946,14 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
                       href="/recurring"
                       className="stamp inline-flex items-center gap-1 font-bold text-primary hover:underline"
                     >
-                      <Repeat size={11} /> {t("recurring_part_of_plan")} · {t("recurring_manage_plan")} →
+                      <Repeat size={11} /> {t("recurring_part_of_plan")} · {t("recurring_manage_plan")} <ChevronRight size={11} />
                     </Link>
                   </div>
                 )}
                 <div>
-                  {/* Rate + snapshot lock — moved out of the hero card (APK parity:
+                  {/* Rate + snapshot lock – moved out of the hero card (APK parity:
                       no FX line while typing); the record row still previews in the rail.
-                      USD is the base currency — there is no rate to inspect or lock,
+                      USD is the base currency – there is no rate to inspect or lock,
                       so the whole block stays hidden for USD entries. */}
                   {currency !== "USD" && (
                     <>
@@ -2012,7 +2013,7 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
             )}
           </section>
 
-          {/* ══ 8. Receipt attach (expense only — APK §7) — one compact strip ══ */}
+          {/* ══ 8. Receipt attach (expense only – APK §7) – one compact strip ══ */}
           {flowType === "expense" && (
             <section className="panel">
               <div className="p-3 sm:p-4">
@@ -2129,12 +2130,12 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
           )}
         </div>
 
-        {/* ══════════ Sticky record-preview rail — ≥900px only; below that the
+        {/* ══════════ Sticky record-preview rail – ≥900px only; below that the
              same preview appears on Save as a full review sheet ══════════ */}
         <aside className="hidden min-[900px]:order-2 min-[900px]:block">
           <div className="min-[900px]:sticky min-[900px]:top-6">
             {/* Full record sheet on the rail: header, detail rows, impact
-                lines and ref stamp — the complete 1:1 record, same as the
+                lines and ref stamp – the complete 1:1 record, same as the
                 mobile Save review sheet. */}
             <RecordPreviewRail preview={railPreview} variant="full" />
           </div>
@@ -2371,7 +2372,7 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
   );
 }
 
-/** 7-day rate sparkline — plain SVG, theme tokens only (spec §2 popover). */
+/** 7-day rate sparkline – plain SVG, theme tokens only (spec §2 popover). */
 function RateSparkline({ points }: { points: { date: string; rate: number }[] }) {
   const w = 288;
   const h = 72;

@@ -267,7 +267,7 @@ export function TransferStatement({ inject }: TransferPageProps) {
         notes: notes.trim() || null,
       });
       showToast(
-        `${t("transferDone")}: ${money(created.amount, created.from_currency)} → ${money(
+        `${t("transferDone")}: ${money(created.amount, created.from_currency)} to ${money(
           created.converted_amount,
           created.to_currency,
         )}`,
@@ -542,7 +542,7 @@ export function TransferStatement({ inject }: TransferPageProps) {
               type="button"
               onClick={() => void submit()}
               disabled={saving}
-              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-semibold text-white transition-colors hover:bg-primary-strong active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-semibold text-primary-ink transition-colors hover:bg-primary-strong active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {saving ? (
                 <span

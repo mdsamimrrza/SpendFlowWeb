@@ -8,7 +8,7 @@ import { useEffect as useReactEffect } from "react";
 import { getCycleWindow, quantizeMoney, toISODate, todayISO } from "@/utils/format";
 
 /**
- * Display-currency rate (USD per unit, today — freshness-gated by getRate).
+ * Display-currency rate (USD per unit, today – freshness-gated by getRate).
  * Rows convert on the SAME basis: every figure prices at the live cross, so a
  * display-currency total matches what a public FX converter says for the same
  * amount (user decision 2026-09-15, docs/FEATURE-PARITY.md).
@@ -19,7 +19,7 @@ export function useDisplayRate(displayCurrency: string | undefined) {
 
   useEffect(() => {
     // Session-gated: design-preview mounts (middleware-public /preview/*)
-    // pass constant currencies without a session — anonymous visitors must
+    // pass constant currencies without a session – anonymous visitors must
     // not spend the shared feeds' quota from the public surface.
     if (!displayCurrency || !user) return;
     let cancelled = false;
@@ -36,10 +36,10 @@ export function useDisplayRate(displayCurrency: string | undefined) {
 
 /**
  * Budget in the display currency (mobile getMonthlyBudget parity): the stored
- * monthly_budget is expressed in the budget's OWN currency — resolved
+ * monthly_budget is expressed in the budget's OWN currency – resolved
  * profile.budget_currency (users column) → auth metadata → latest
  * user_settings_history row that HAS a currency (cycle-only rows store NULL,
- * so "latest row" alone is not enough) → preferred_currency — and converted
+ * so "latest row" alone is not enough) → preferred_currency – and converted
  * for display ONLY; the stored figure is never rewritten.
  */
 export function useBudget(): number | null {
@@ -106,17 +106,17 @@ export interface ConvertibleRow {
 
 /**
  * Convert rows to the display currency with the ACTIVE-MONTH LIVE-RATE rule
- * (user decision 2026-09-19 — supersedes the 2026-09-16 all-own-date basis,
+ * (user decision 2026-09-19 – supersedes the 2026-09-16 all-own-date basis,
  * docs/SYNC-STRATEGY.md §6.1): rows dated inside the user's ACTIVE financial
  * cycle (calendar month, or the custom paycheck window from
- * profile.cycle_start_day/cycle_end_day) price at TODAY's live rate — the
- * active month is live everywhere. Anything dated BEFORE the cycle start —
- * even one day before — prices at its OWN-DATE rate, so closed periods stay
+ * profile.cycle_start_day/cycle_end_day) price at TODAY's live rate – the
+ * active month is live everywhere. Anything dated BEFORE the cycle start –
+ * even one day before – prices at its OWN-DATE rate, so closed periods stay
  * frozen history that never changes when markets move. `convertFrozen`
  * returns the all-own-date basis for the "At transaction-date rates"
  * debugger line (mobile TodayRateLine parity).
  *
- * Both sides of the cross always resolve from the SAME day — getRate('NPR',
+ * Both sides of the cross always resolve from the SAME day – getRate('NPR',
  * d) is defined as getRate('INR', d) ÷ 1.6, so pegged pairs cancel to
  * exactly 1.6. The stored `exchange_rate_to_usd` snapshot is deliberately
  * NOT used for display: legacy rows were stamped from the stale table on
@@ -136,7 +136,7 @@ export function useRowConverter(
   const [ratesByPair, setRatesByPair] = useState<Map<string, number>>(new Map());
   const todayKey = todayISO();
 
-  // Active financial cycle window (local ISO dates) — the live/frozen divider.
+  // Active financial cycle window (local ISO dates) – the live/frozen divider.
   const activeWindow = useMemo(() => {
     const win = getCycleWindow(new Date(), profile?.cycle_start_day ?? 1, profile?.cycle_end_day ?? null);
     return { from: toISODate(win.start), to: toISODate(win.end) };
@@ -193,7 +193,7 @@ export function useRowConverter(
       // Active-month rule: rows inside the active cycle window price through
       // TODAY's live cross; rows before it price at their own date. Both
       // sides of the cross always resolve from the same day (never the
-      // stored snapshot — see the resolver doc above).
+      // stored snapshot – see the resolver doc above).
       convert: (row: ConvertibleRow): number => {
         if (!displayCurrency || row.currency === displayCurrency) return row.amount;
         const dateKey =
@@ -205,9 +205,9 @@ export function useRowConverter(
         // (TESTING.md §2).
         return from && to
           ? quantizeMoney((row.amount * from) / to, displayCurrency)
-          : row.amount; // rate not resolved yet — show raw rather than wrong
+          : row.amount; // rate not resolved yet – show raw rather than wrong
       },
-      // ALL-own-date basis (never today's rate) — the "At transaction-date
+      // ALL-own-date basis (never today's rate) – the "At transaction-date
       // rates" debugger line cross-checks the live headline against this.
       convertFrozen: (row: ConvertibleRow): number => {
         if (!displayCurrency || row.currency === displayCurrency) return row.amount;

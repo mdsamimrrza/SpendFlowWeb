@@ -1,5 +1,5 @@
 /**
- * Export builders — mobile services/export.ts parity (APK Export Center):
+ * Export builders – mobile services/export.ts parity (APK Export Center):
  * statement file names, CSV (full column set), multi-sheet Excel workbook
  * data, and the comprehensive PDF financial statement HTML. Web only swaps
  * expo-print/SAF for the browser (Blob download + print window); the file
@@ -40,7 +40,7 @@ export function stripExportQuote(value: string): string {
   return value.startsWith("'") ? value.slice(1) : value;
 }
 
-/** APK escapeHtml parity — user text must never break out of the PDF's HTML. */
+/** APK escapeHtml parity – user text must never break out of the PDF's HTML. */
 export function escapePdf(value: unknown): string {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -52,7 +52,7 @@ export function escapePdf(value: unknown): string {
 
 // Category icons are stored as lucide icon names for default categories
 // ('utensils', 'landmark', 'car'…) and as emojis for custom ones. Exports
-// can't render lucide names — map them to emojis; unknown names fall back to
+// can't render lucide names – map them to emojis; unknown names fall back to
 // 💳. (APK ICON_EMOJI parity.)
 const ICON_EMOJI: Record<string, string> = {
   utensils: "🍽️", food: "🍲", car: "🚗", transport: "🚗", fuel: "⛽",
@@ -76,7 +76,7 @@ function quoteCell(value: string): string {
   return `"${value.replaceAll('"', '""')}"`;
 }
 
-/** APK exportCsv parity — every column, plus the web-only converted amount. */
+/** APK exportCsv parity – every column, plus the web-only converted amount. */
 export function csvText(rows: ExpenseRow[], convert: (r: ExpenseRow) => number, displayCurrency: string): string {
   const header = [
     "Date", "Type", "Time", "Amount", "Currency", "Category", "Payment Method", "Description", "Notes",
@@ -98,7 +98,7 @@ export function csvText(rows: ExpenseRow[], convert: (r: ExpenseRow) => number, 
   // system ANSI codepage and emoji/glyphs become mojibake.
   // Currency-consistency (2026-09-16): when the period spans currencies, the
   // file ends with raw per-currency totals split by direction (the re-import
-  // parser skips these summary lines — their Date column isn't an ISO date).
+  // parser skips these summary lines – their Date column isn't an ISO date).
   const spentByCcy = currencyTotals(rows.filter((r) => (r.type || "expense") !== "income"), convert);
   const incomeByCcy = currencyTotals(rows.filter((r) => r.type === "income"), convert);
   const tail: string[][] = [];
@@ -116,7 +116,7 @@ export function csvText(rows: ExpenseRow[], convert: (r: ExpenseRow) => number, 
 
 export type Cell = { value: string | number };
 
-/** Category aggregates in the display currency — APK groupByCategory parity:
+/** Category aggregates in the display currency – APK groupByCategory parity:
  *  expense (outflow) records only, integer minor units, converted per row. */
 export interface CategoryTotal {
   label: string;
@@ -137,7 +137,7 @@ export function categoryTotals(rows: ExpenseRow[], convert: (r: ExpenseRow) => n
     .sort((a, b) => b.total - a.total);
 }
 
-/** Sheet 1 "Expenses Ledger" + sheet 2 "Category Analytics" — same 10 columns
+/** Sheet 1 "Expenses Ledger" + sheet 2 "Category Analytics" – same 10 columns
  *  as the CSV; amounts stay raw numbers with a converted display column. */
 export function excelSheets(
   rows: ExpenseRow[],
@@ -302,7 +302,7 @@ export function statementHtml(o: StatementPdfOptions): string {
 
   const transactionRowsHtml = outflow
     .map(({ record: e, converted }, i) => {
-      const desc = e.description || e.notes || "—";
+      const desc = e.description || e.notes || "–";
       const subNotes =
         e.description && e.notes
           ? `<div style="font-size:11px;color:#64748B;">${esc(e.notes)}</div>`

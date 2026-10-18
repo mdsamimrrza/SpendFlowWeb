@@ -1,6 +1,6 @@
 "use client";
 
-import { DashboardShell } from "@/components/layout/DashboardShell";
+import { AppShell } from "@/components/shell/AppShell";
 import { TransferStatement, type TransferInject } from "@/components/transfer/TransferStatement";
 import type { BankAccountRow } from "@/services/bankAccounts";
 
@@ -77,8 +77,8 @@ const inject: TransferInject = {
 
 export default function PreviewTransferPage() {
   return (
-    <DashboardShell>
+    <AppShell>
       <TransferStatement inject={inject} />
-    </DashboardShell>
+    </AppShell>
   );
 }

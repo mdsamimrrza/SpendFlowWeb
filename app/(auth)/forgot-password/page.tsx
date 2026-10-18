@@ -15,7 +15,7 @@ import { resetPassword } from "@/services/auth";
 import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
 
 /**
- * Password recovery — its own screen now (was a cramped modal on sign-in).
+ * Password recovery – its own screen now (was a cramped modal on sign-in).
  * Broker semantics preserved: no_account answers intentionally, and a 60s
  * resend cooldown mirrors the server-side gate so the UI never invites a
  * doomed retry.
@@ -53,7 +53,7 @@ export default function ForgotPasswordPage() {
     const outcome = await resetPassword(supabase, trimmed);
     setSending(false);
     if (outcome === "no_account") {
-      // Existence answer is intentional (2026-09-15, owner request) — the
+      // Existence answer is intentional (2026-09-15, owner request) – the
       // broker rate-limits not-found attempts identically to real sends.
       setError(t("noAccountFound"));
       return;

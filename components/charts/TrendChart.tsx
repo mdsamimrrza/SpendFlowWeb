@@ -65,7 +65,7 @@ export function TrendChart({ points, locale = "en-US", compact = false, formatVa
     const innerW = W - PAD.left - PAD.right;
     const innerH = H - PAD.top - PAD.bottom;
     // SSR and client can drift in the last float bits, which React reports as
-    // a hydration attribute mismatch on raw cx/cy — round the emitted coords.
+    // a hydration attribute mismatch on raw cx/cy – round the emitted coords.
     const round3 = (v: number) => Math.round(v * 1000) / 1000;
     const x = (i: number) =>
       round3(PAD.left + (points.length === 1 ? innerW / 2 : (i / (points.length - 1)) * innerW));
@@ -163,11 +163,11 @@ export function TrendChart({ points, locale = "en-US", compact = false, formatVa
 
   return (
     <div ref={wrapRef} className="relative">
-      {/* Readout strip (hover / pinned) — suppressed when the floating card is on */}
+      {/* Readout strip (hover / pinned) – suppressed when the floating card is on */}
       <div className="mb-1 flex h-5 items-center justify-between gap-2">
         <span className="stamp truncate">
           {points.length > 1
-            ? `${formatShortDate(points[0].date, locale)} — ${formatShortDate(lastPoint.date, locale)}`
+            ? `${formatShortDate(points[0].date, locale)} – ${formatShortDate(lastPoint.date, locale)}`
             : ""}
         </span>
         {hovered && !floatingCard && (
@@ -185,7 +185,7 @@ export function TrendChart({ points, locale = "en-US", compact = false, formatVa
         )}
       </div>
 
-      {/* Floating frosted readout card — follows the crosshair, flips at the
+      {/* Floating frosted readout card – follows the crosshair, flips at the
           right edge, never intercepts the pointer. */}
       {floatingCard && hovered && active != null && (
         <div
@@ -307,7 +307,7 @@ export function TrendChart({ points, locale = "en-US", compact = false, formatVa
           className="chart-draw"
         />
 
-        {/* High / low markers (outflow) — skipped in floating-card mode, the
+        {/* High / low markers (outflow) – skipped in floating-card mode, the
             card already carries the exact figures */}
         {!compact && !floatingCard && points.length > 2 && (
           <g>
@@ -418,7 +418,7 @@ export function TrendChart({ points, locale = "en-US", compact = false, formatVa
           </g>
         )}
 
-        {/* Hit zones — pointer-driven so touch taps work on phones. */}
+        {/* Hit zones – pointer-driven so touch taps work on phones. */}
         {points.map((p, i) => (
           <rect
             key={p.date}

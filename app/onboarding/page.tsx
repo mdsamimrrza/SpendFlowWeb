@@ -75,7 +75,7 @@ export default function OnboardingPage() {
                 onClick={() => setSelected(c.code)}
                 className={`flex h-10 items-center gap-1.5 rounded-lg border px-3.5 text-[13px] font-semibold transition active:scale-[0.98] ${
                   selected === c.code
-                    ? "border-primary bg-primary text-white"
+                    ? "border-primary bg-primary text-primary-ink"
                     : "border-border bg-surface text-text-muted hover:text-text"
                 }`}
               >

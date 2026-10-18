@@ -1,11 +1,11 @@
 "use client";
 
-import { DashboardShell } from "@/components/layout/DashboardShell";
+import { AppShell } from "@/components/shell/AppShell";
 import { ExportStatement, type ExportInject } from "@/components/export/ExportStatement";
 
 /**
  * Static design preview of the Export & import statement tool (mock data, no
- * auth, no network) — period pills, inflow/outflow split bar, net card and
+ * auth, no network) – period pills, inflow/outflow split bar, net card and
  * the dropzone-style import chooser, screenshottable without an account.
  */
 const CATS = {
@@ -61,8 +61,8 @@ const inject: ExportInject = {
 
 export default function PreviewExportPage() {
   return (
-    <DashboardShell>
+    <AppShell>
       <ExportStatement inject={inject} />
-    </DashboardShell>
+    </AppShell>
   );
 }

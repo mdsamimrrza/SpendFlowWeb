@@ -1,5 +1,5 @@
 /**
- * Expenses service — mirrors mobile services/expenses.ts: explicit column
+ * Expenses service – mirrors mobile services/expenses.ts: explicit column
  * list, category join, live-row filter, FX snapshot on write, soft delete.
  * Web keeps a light localStorage read-cache (page 0) like mobile's cache-paint.
  */
@@ -19,7 +19,7 @@ export interface ExpenseFilters {
   to?: string;
   categoryId?: string;
   type?: "expense" | "income";
-  /** Mobile parity — service supports what the History toolbar now exposes. */
+  /** Mobile parity – service supports what the History toolbar now exposes. */
   paymentMethod?: PaymentMethod;
   bankAccountId?: string;
   minAmount?: number;
@@ -44,7 +44,7 @@ export function cacheExpenses(userId: string, rows: ExpenseRow[]): void {
   try {
     localStorage.setItem(cacheKey(userId), JSON.stringify(rows.slice(0, PAGE_SIZE)));
   } catch {
-    // quota / private mode — cache is best-effort
+    // quota / private mode – cache is best-effort
   }
 }
 
@@ -72,7 +72,7 @@ export async function listExpenses(
     .is("deleted_at", null);
 
   if (filters.search && filters.search.trim()) {
-    // Mobile parity: search must never reach PostgREST raw — backslash/quote
+    // Mobile parity: search must never reach PostgREST raw – backslash/quote
     // are stripped and the value is double-quoted so it stays a single ilike
     // literal inside the or() filter tree. Covers description AND notes.
     const pattern = `%${filters.search.trim().replace(/[\\"]/g, "")}%`;
@@ -129,7 +129,7 @@ export interface CreateExpenseInput {
   /**
    * Web-only: lock the FX snapshot at a fixing date other than the
    * transaction date (back-dated entries needing a past fixing).
-   * Default (null) follows mobile exactly — snapshot at `date`.
+   * Default (null) follows mobile exactly – snapshot at `date`.
    */
   snapshotDate?: string | null;
   /**
@@ -143,7 +143,7 @@ export interface CreateExpenseInput {
 }
 
 /** Amount/date rules mirrored by the create and update paths (DB CHECKs back up).
- * Exported so the CSV import path validates with the SAME single-source rules —
+ * Exported so the CSV import path validates with the SAME single-source rules –
  * never re-implement money validation at component level (AGENTS.md §8). */
 export function assertAmountAndDate(amount: number, date: string): void {
   if (!Number.isFinite(amount) || !(amount > 0) || amount > 1_000_000_000_000) {
@@ -195,7 +195,7 @@ export async function createExpense(
 ): Promise<Expense> {
   assertAmountAndDate(input.amount, input.date);
   await assertOwnedReferences(supabase, input.userId, input.categoryId, input.bankAccountId);
-  // Audit P2-5: never stamp a rule id we cannot prove is the caller's — RLS
+  // Audit P2-5: never stamp a rule id we cannot prove is the caller's – RLS
   // would let a foreign (rule, slot) pair insert into the attacker's own row
   // and silently squat the victim's dedup slot.
   if (input.recurringRuleId) {
@@ -249,7 +249,7 @@ export async function updateExpense(
 ): Promise<Expense> {
   assertAmountAndDate(update.amount, update.date);
   await assertOwnedReferences(supabase, userId, update.categoryId, update.bankAccountId);
-  // Mobile updateExpense parity: the stored FX snapshot is FROZEN — it is
+  // Mobile updateExpense parity: the stored FX snapshot is FROZEN – it is
   // re-fetched only when the date or currency actually changed (or a manual
   // snapshot-date override is set). Editing an amount or note must not
   // silently re-rate the row at today's FX.

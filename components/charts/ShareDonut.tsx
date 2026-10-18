@@ -8,16 +8,18 @@ export interface ShareDonutSlice {
   value: number;
 }
 
-/* Deliberate PASTEL ramp (soft consumer-dashboard restyle 2026-10-11): mint/
-   emerald/teal soft tints instead of the old deep emeralds, zinc closing the
-   ramp for the "Other" remainder. The ONLY raw hexes allowed in this file;
-   stored category colors are data (mobile writes them) and stay ignored. */
+/* Distinct PASTEL hues (V5 "Sage Ledger" 2026-10-13): every rank gets its
+   own clearly-different colour – sage, amber, dusty blue, clay, violet –
+   so a dominant slice never drowns the small ones the way the old
+   single-hue ramp did. Zinc closes the ramp for the "Other" remainder.
+   The ONLY raw hexes allowed in this file; stored category colors are data
+   (mobile writes them) and stay ignored. */
 export const DONUT_RAMP = [
-  "#10b981",
-  "#34d399",
-  "#6ee7b7",
-  "#a7f3d0",
-  "#5eead4",
+  "#7d9878",
+  "#d9a13e",
+  "#7c98b8",
+  "#c98274",
+  "#a08fc9",
   "#a1a1aa", // "Other"
 ] as const;
 
@@ -33,7 +35,7 @@ interface ShareDonutProps {
  * Category-share donut (Monarch Reports pattern): SVG stroke arcs with 2px
  * gaps, center shows the total or the hovered/tapped slice's share, legend
  * rows below highlight their slice on hover/tap. Slices are colored from the
- * curated pastel DONUT_RAMP (emerald -> mint -> teal, zinc for Other), not
+ * curated sage DONUT_RAMP (deep sage -> pale tint, zinc for Other), not
  * from stored category colors.
  */
 export function ShareDonut({ slices, formatted, centerLabel }: ShareDonutProps) {
@@ -54,7 +56,7 @@ export function ShareDonut({ slices, formatted, centerLabel }: ShareDonutProps) 
         ...s,
         color: DONUT_RAMP[Math.min(i, DONUT_RAMP.length - 1)],
         pct: Math.round(share * 100),
-        dash: `${round2(Math.max(len - gap, 0.2))} ${round2(100 - Math.max(len - gap, 0.2))}`,
+        dash: `${round2(Math.max(len - gap, 0.6))} ${round2(100 - Math.max(len - gap, 0.6))}`,
         offset: round2(-start - gap / 2),
       };
       start += len;

@@ -1,6 +1,6 @@
 /**
  * Native-resolution ELEMENT crops of the redesigned Analytics sections
- * (top outflows, health card, compact calendar, KPI row) — full-page
+ * (top outflows, health card, compact calendar, KPI row) – full-page
  * captures downscale the tall 390px sheet until text is unreadable, so
  * visual review needs per-section crops.
  *
@@ -28,7 +28,7 @@ for (const width of [390, 1280]) {
   await page.goto(`${BASE}/preview/analytics`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1500);
 
-  // KPI tile row — the grid holding DAILY VELOCITY.
+  // KPI tile row – the grid holding DAILY VELOCITY.
   const kpi = page.getByText("Daily velocity", { exact: true }).locator("xpath=ancestor::div[contains(@class,'grid')][1]");
   if (await kpi.count()) {
     await kpi.first().screenshot({ path: `shots/sec-kpi-row-${width}.png` });

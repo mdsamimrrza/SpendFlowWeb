@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
+  ArrowRight,
   ArrowUpRight,
   BarChart3,
   Bell,
@@ -32,7 +33,7 @@ import type { LanguageCode } from "@/utils/format";
 import { CURRENCIES, CURRENCY_DETAILS, ANDROID_DOWNLOAD_URL } from "@/constants/app";
 
 /**
- * Public landing page — 2026-10-10 Engraved Banknote pass on the 2026-09-15
+ * Public landing page – 2026-10-10 Engraved Banknote pass on the 2026-09-15
  * structure: light (note paper/engraved ink/foil) and dark (night vault/gold)
  * both read as SpendFlow (docs/DESIGN-TOKEN-BRIDGE.md §0).
  *
@@ -41,13 +42,13 @@ import { CURRENCIES, CURRENCY_DETAILS, ANDROID_DOWNLOAD_URL } from "@/constants/
  * mobile-first: chips collapse to a grid under the phone) → features bento →
  * currency/trust strip → 3-step install → closing CTA → footer.
  *
- * Motion: one-shot scroll reveals (Reveal), chip bob, live clock — all
+ * Motion: one-shot scroll reveals (Reveal), chip bob, live clock – all
  * disabled under prefers-reduced-motion. The demo ledger cycles through all
  * 12 currencies (figures quantized per currency, verify-currency-sync parity).
  * Signed-in users never see it (middleware routes them to /overview).
  */
 
-/** Demo ledger in NPR minor units — converted per cycled display currency. */
+/** Demo ledger in NPR minor units – converted per cycled display currency. */
 const DEMO_ROWS: { type: "expense" | "income"; amountNpr: number }[] = [
   { type: "income", amountNpr: 42000 },
   { type: "expense", amountNpr: 12750 },
@@ -73,11 +74,11 @@ const DEMO_USD_PER_UNIT: Record<string, number> = {
 };
 
 /** APK facts (measured from the production build, 2026-09-15). Version
- *  strings are deliberately NOT shown — the download always serves the latest
+ *  strings are deliberately NOT shown – the download always serves the latest
  *  release, so a printed version would go stale on every new build. */
 const APK_SIZE = "~53 MB";
 
-/** Hex tints are the app's own fixed accent hues — legible on both themes. */
+/** Hex tints are the app's own fixed accent hues – legible on both themes. */
 const FEATURES: {
   icon: React.ReactNode;
   hex: string;
@@ -164,7 +165,7 @@ export default function LandingPage() {
       href={ANDROID_DOWNLOAD_URL}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex h-12 items-center justify-center gap-2.5 rounded-lg bg-primary px-7 text-sm font-semibold text-white transition-colors hover:bg-primary-strong sm:h-11"
+      className="flex h-12 items-center justify-center gap-2.5 rounded-lg bg-primary px-7 text-sm font-semibold text-primary-ink transition-colors hover:bg-primary-strong sm:h-11"
     >
       <Download size={16} /> {t("downloadAndroid")}
     </a>
@@ -187,7 +188,7 @@ export default function LandingPage() {
                   onClick={() => setLanguage(l)}
                   className={`h-9 rounded-lg border px-2.5 text-[11px] font-semibold transition ${
                     language === l
-                      ? "border-primary bg-primary text-white"
+                      ? "border-primary bg-primary text-primary-ink"
                       : "border-border bg-transparent text-text-muted"
                   }`}
                 >
@@ -206,7 +207,7 @@ export default function LandingPage() {
             </a>
             <Link
               href="/sign-in"
-              className="flex h-9 items-center rounded-lg bg-primary px-4 text-[13px] font-semibold text-white transition-colors hover:bg-primary-strong"
+              className="flex h-9 items-center rounded-lg bg-primary px-4 text-[13px] font-semibold text-primary-ink transition-colors hover:bg-primary-strong"
             >
               {t("signIn")}
             </Link>
@@ -241,7 +242,7 @@ export default function LandingPage() {
                   href="/sign-up"
                   className="flex h-12 items-center justify-center gap-2 rounded-lg border border-border bg-surface px-7 text-sm font-semibold text-text transition-colors hover:bg-surface-elevated sm:h-11"
                 >
-                  {t("landingCtaCreate")} <ArrowUpRight size={15} />
+                  {t("landingCtaCreate")} <ArrowRight size={15} />
                 </Link>
               </div>
             </Reveal>
@@ -280,7 +281,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ===== GET THE APP — showcase with floating chips ===== */}
+        {/* ===== GET THE APP – showcase with floating chips ===== */}
         <section id="get-the-app" className="relative border-t border-border py-14 lg:py-20">
           <div className="relative grid items-center gap-12 lg:grid-cols-2 xl:grid-cols-[1fr_1.35fr]">
             <div className="order-2 lg:order-1">
@@ -437,13 +438,13 @@ export default function LandingPage() {
                     key={c}
                     className={`flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12px] font-extrabold transition-all duration-300 ${
                       active
-                        ? "scale-105 border-primary bg-primary text-white shadow-pop"
+                        ? "scale-105 border-primary bg-primary text-primary-ink shadow-pop"
                         : "border-border bg-surface text-text-muted"
                     }`}
                   >
                     <span className="text-[14px] leading-none">{CURRENCY_DETAILS[c]?.flag}</span>
                     {c}
-                    <span className={`text-[10px] font-bold ${active ? "text-white/80" : "text-faint"}`}>
+                    <span className={`text-[10px] font-bold ${active ? "text-primary-ink/80" : "text-faint"}`}>
                       {CURRENCY_DETAILS[c]?.symbol}
                     </span>
                   </span>
@@ -464,7 +465,7 @@ export default function LandingPage() {
           </Reveal>
         </section>
 
-        {/* ===== Install — 3 steps ===== */}
+        {/* ===== Install – 3 steps ===== */}
         <section id="install" className="relative overflow-hidden border-t border-border py-14 lg:py-16">
           <Reveal>
             <div className="relative flex flex-col items-center text-center">
@@ -543,9 +544,9 @@ export default function LandingPage() {
                 <div className="flex w-full shrink-0 flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
                   <Link
                     href="/sign-up"
-                    className="flex h-11 items-center justify-center gap-2 rounded-lg bg-primary px-6 text-sm font-semibold text-white transition-colors hover:bg-primary-strong"
+                    className="flex h-11 items-center justify-center gap-2 rounded-lg bg-primary px-6 text-sm font-semibold text-primary-ink transition-colors hover:bg-primary-strong"
                   >
-                    {t("getStarted")} <ArrowUpRight size={15} />
+                    {t("getStarted")} <ArrowRight size={15} />
                   </Link>
                   <a
                     href={ANDROID_DOWNLOAD_URL}
@@ -668,7 +669,7 @@ function FeatureChip({
 }
 
 /**
- * CSS-built replica of the app's dashboard (Budget tab) — mirrors the real
+ * CSS-built replica of the app's dashboard (Budget tab) – mirrors the real
  * mobile UI: status bar, greeting + currency chip, tab pills, monthly-target
  * card with gradient progress, vault & cash-flow card, recent activity, and
  * the bottom nav with the center add button.

@@ -2,7 +2,7 @@ import type { Config } from "tailwindcss";
 
 /**
  * Token values come from docs/DESIGN-TOKEN-BRIDGE.md (the web's V2 system,
- * §0). Components must use these semantic names — never raw hex.
+ * §0). Components must use these semantic names – never raw hex.
  */
 const config: Config = {
   darkMode: "class",
@@ -17,6 +17,7 @@ const config: Config = {
         primary: "var(--sf-primary)",
         "primary-strong": "var(--sf-primary-strong)",
         "primary-light": "var(--sf-primary-light)",
+        "primary-ink": "var(--sf-primary-ink)",
         accent: "var(--sf-accent)",
         success: "var(--sf-success)",
         income: "var(--sf-income)",
@@ -53,12 +54,12 @@ const config: Config = {
         "2xl": "24px",
       },
       boxShadow: {
-        soft: "0 1px 2px rgb(10 14 12 / 0.05), 0 8px 24px rgb(10 14 12 / 0.06)",
-        pop: "0 4px 12px rgb(10 14 12 / 0.10), 0 16px 40px rgb(10 14 12 / 0.14)",
+        soft: "0 1px 2px rgb(64 58 40 / 0.04), 0 10px 28px -8px rgb(64 58 40 / 0.1)",
+        pop: "0 4px 14px rgb(64 58 40 / 0.08), 0 24px 48px -12px rgb(64 58 40 / 0.22)",
       },
       fontFamily: {
         sans: [
-          "var(--font-inter)",
+          "var(--font-sans)",
           "ui-sans-serif",
           "system-ui",
           "-apple-system",
@@ -66,6 +67,7 @@ const config: Config = {
           "Roboto",
           "sans-serif",
         ],
+        mono: ["ui-monospace", "Cascadia Mono", "Segoe UI Mono", "monospace"],
         brand: [
           "ui-sans-serif",
           "system-ui",
@@ -74,7 +76,7 @@ const config: Config = {
           "Roboto",
           "sans-serif",
         ],
-        display: ["var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"],
+        display: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
       },
       keyframes: {
         shimmer: {

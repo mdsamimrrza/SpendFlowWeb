@@ -16,6 +16,8 @@ export function FloatingSelect({
   open,
   onToggle,
   children,
+  pill = false,
+  menuClassName = "",
 }: {
   className?: string;
   icon?: ReactNode;
@@ -23,6 +25,10 @@ export function FloatingSelect({
   open: boolean;
   onToggle: () => void;
   children: ReactNode;
+  /** Rounded-full trigger (toolbar pill style). */
+  pill?: boolean;
+  /** Extra classes for the popover list (e.g. scrollable max-h). */
+  menuClassName?: string;
 }) {
   return (
     <div className={className}>
@@ -31,7 +37,7 @@ export function FloatingSelect({
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={onToggle}
-        className={`flex min-h-[44px] w-full items-center justify-between gap-1 rounded-lg border bg-surface px-3.5 py-2.5 transition-colors ${
+        className={`flex min-h-[44px] w-full items-center justify-between gap-1 ${pill ? "rounded-full" : "rounded-lg"} border bg-input px-3.5 py-2.5 transition-colors ${
           open ? "border-primary" : "border-border"
         }`}
       >
@@ -48,7 +54,7 @@ export function FloatingSelect({
       {open && (
         <div
           role="listbox"
-          className="sf-pop absolute left-0 right-0 top-[52px] z-50 space-y-[3px] rounded-xl border border-border bg-surface p-[5px] shadow-pop"
+          className={`sf-pop absolute left-0 right-0 top-[52px] z-50 space-y-[3px] rounded-xl border border-border bg-surface p-[5px] shadow-pop ${menuClassName}`}
         >
           {children}
         </div>

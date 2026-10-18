@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Budget & Reports (Profit & Loss) — 1:1 web mirror of mobile
+ * Budget & Reports (Profit & Loss) – 1:1 web mirror of mobile
  * app/profit-loss.tsx: back-chip header, the calendar range picker card, the
  * Period-summary stock chart (All Flows / Income / Expense / Net pills,
  * tap-scrub HUD, gridlines, crosshair, savings badge, income/expense/net
@@ -194,7 +194,7 @@ export default function ProfitLossPage() {
   );
 
   // Budget conversion at a bucket's end date (mobile rateResolver.convert
-  // parity) — snapshot rates cached per currency+date.
+  // parity) – snapshot rates cached per currency+date.
   const rateCache = useRef(new Map<string, number | null>());
   const convertBudgetAt = useCallback(
     async (amount: number, fromCur: string, dateISO: string): Promise<number> => {
@@ -225,7 +225,7 @@ export default function ProfitLossPage() {
   );
 
   // Budget active during a bucket (profile monthly_budget converted at the
-  // bucket's end date — mobile buildCalendarMonthRows parity).
+  // bucket's end date – mobile buildCalendarMonthRows parity).
   const rawBudget = profile?.monthly_budget ?? 0;
   const budgetCurrency = (profile?.budget_currency || profile?.preferred_currency || "NPR").toUpperCase();
 
@@ -458,8 +458,8 @@ export default function ProfitLossPage() {
   );
 
   // Attach the IN-FORCE budget per row (mobile parity: past cycles use the
-  // budget active at the time — newest settings row effective on/before the
-  // bucket end — never the current figure retro-projected onto history).
+  // budget active at the time – newest settings row effective on/before the
+  // bucket end – never the current figure retro-projected onto history).
   const [monthRows, setMonthRows] = useState<MonthRow[]>([]);
   useEffect(() => {
     let cancelled = false;
@@ -522,7 +522,7 @@ export default function ProfitLossPage() {
     return { income: inc, expense: exp };
   }, [itemsInRange, convertFrozen]);
 
-  // ── Cycle window change — always confirmed first (warning dialog states
+  // ── Cycle window change – always confirmed first (warning dialog states
   // exactly what changes and what stays untouched) ──
   const [pendingCycle, setPendingCycle] = useState<{ start: number; end: number | null } | null>(null);
 
@@ -724,7 +724,7 @@ export default function ProfitLossPage() {
               <button
                 onClick={() => void handleSaveBudget()}
                 disabled={savingBudget}
-                className="h-11 shrink-0 rounded-lg bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-strong active:scale-[0.98] disabled:opacity-85"
+                className="h-11 shrink-0 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-ink transition-colors hover:bg-primary-strong active:scale-[0.98] disabled:opacity-85"
               >
                 {savingBudget ? t("common_saving") : t("pl_set_budget")}
               </button>
@@ -739,10 +739,10 @@ export default function ProfitLossPage() {
                   <Calendar size={18} className="text-primary" aria-hidden />
                 </span>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-bold leading-[18px] text-text">
+                  <p className="text-sm font-bold leading-[18px] text-text">
                     {t("plCycleCardTitle")}
                   </p>
-                  <p className="truncate text-[11px] leading-[14px] text-text-muted">
+                  <p className="text-[11px] leading-[14px] text-text-muted">
                     {t("plCycleCardSub")}
                   </p>
                 </div>
@@ -759,7 +759,7 @@ export default function ProfitLossPage() {
                   setCycleCalendarMode("range");
                   setCycleCalendarOpen(true);
                 }}
-                className="flex h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary px-2 text-[13px] font-semibold text-white transition-colors hover:bg-primary-strong active:scale-[0.98]"
+                className="flex h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary px-2 text-[13px] font-semibold text-primary-ink transition-colors hover:bg-primary-strong active:scale-[0.98]"
               >
                 <CalendarDays size={15} aria-hidden />
                 <span className="truncate">{t("plPickCalendar")}</span>
@@ -1019,13 +1019,18 @@ function StockChartCard({
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
+  // The measured div mounts only after the async load gives the chart
+  // non-zero totals, so the observer must attach when that flips – a
+  // mount-only effect finds no element and the SVG never gets a width.
+  const chartVisible = rows.length > 0 && totalIncome + totalExpense > 0;
   useEffect(() => {
+    if (!chartVisible) return;
     const el = wrapRef.current;
     if (!el) return;
     const ro = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [chartVisible]);
 
   const chartW = Math.max(Math.min((width || 360) - 36, 480), 280);
   const chartH = 180;
@@ -1099,7 +1104,7 @@ function StockChartCard({
                 onClick={() => onMode(tab.m)}
                 className={`shrink-0 rounded-lg border px-3 py-1.5 text-[12px] font-semibold transition-colors ${
                   active
-                    ? "border-primary bg-primary text-white"
+                    ? "border-primary bg-primary text-primary-ink"
                     : "border-border bg-surface-elevated text-text hover:border-faint"
                 }`}
               >
@@ -1139,7 +1144,15 @@ function StockChartCard({
         </div>
       )}
 
-      {n > 0 && (
+      {/* Buckets exist for every calendar month, so "empty" means no money
+          moved - a flat zero line reads as a broken chart. */}
+      {(n === 0 || (totalIncome === 0 && totalExpense === 0)) && (
+        <div className="flex h-[140px] items-center justify-center border border-dashed border-border">
+          <p className="caps">{t("pl_empty_title")}</p>
+        </div>
+      )}
+
+      {chartVisible && (
         <div ref={wrapRef} className="relative flex justify-center">
           {width > 0 && (
             <svg width={chartW} height={chartH} role="img" aria-label="Period performance chart">
@@ -1371,7 +1384,7 @@ function CycleSettingsModal({
                   }}
                   className={`shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
                     active
-                      ? "border-primary bg-primary text-white"
+                      ? "border-primary bg-primary text-primary-ink"
                       : "border-border bg-surface-elevated text-text hover:border-faint"
                   }`}
                 >
@@ -1446,7 +1459,7 @@ function CycleSettingsModal({
           <button
             onClick={onSave}
             disabled={saving}
-            className="flex h-[46px] min-w-0 flex-[1.5] items-center justify-center gap-2 rounded-lg bg-primary text-[13px] font-semibold text-white transition-colors hover:bg-primary-strong active:scale-[0.98] disabled:opacity-85"
+            className="flex h-[46px] min-w-0 flex-[1.5] items-center justify-center gap-2 rounded-lg bg-primary text-[13px] font-semibold text-primary-ink transition-colors hover:bg-primary-strong active:scale-[0.98] disabled:opacity-85"
           >
             {saving && (
               <span aria-hidden className="block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -1464,7 +1477,7 @@ function CycleSettingsModal({
  * Cycle-change warning: before any paycheck-cycle save (from Configure Days
  * or Pick on Calendar) the user sees exactly what changes (future grouping
  * only) and what can never change (recorded transactions, dates, amounts,
- * past months — the settings trail keeps old cycles as they were).
+ * past months – the settings trail keeps old cycles as they were).
  */
 function CycleConfirmDialog({
   pending,
@@ -1538,7 +1551,7 @@ function CycleConfirmDialog({
           </button>
           <button
             onClick={onConfirm}
-            className="h-[46px] min-w-0 flex-1 rounded-lg bg-primary text-[13px] font-semibold text-white transition-colors hover:bg-primary-strong active:scale-[0.98]"
+            className="h-[46px] min-w-0 flex-1 rounded-lg bg-primary text-[13px] font-semibold text-primary-ink transition-colors hover:bg-primary-strong active:scale-[0.98]"
           >
             {t("plCycleConfirmYes")}
           </button>

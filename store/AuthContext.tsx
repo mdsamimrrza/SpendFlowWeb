@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           })
           .catch(() => undefined);
       } catch {
-        // Offline / transient — keep previous cached profile.
+        // Offline / transient – keep previous cached profile.
       } finally {
         lastFetchedAt.current = Date.now();
       }
@@ -100,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!nextSession) {
         setProfile(null);
         // Audit P3-4: session can vanish without an explicit sign-out click
-        // (expiry / global sign-out on another device) — purge per-user caches.
+        // (expiry / global sign-out on another device) – purge per-user caches.
         clearLocalCaches();
       }
     });
@@ -144,7 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!session?.user) return;
       const next = await updateProfile(supabase, session.user.id, update);
       setProfile(next);
-      // Mirror profile facts into auth metadata (mobile parity) — used as a
+      // Mirror profile facts into auth metadata (mobile parity) – used as a
       // fallback when a fresh install reads the profile while offline.
       void supabase.auth
         .updateUser({

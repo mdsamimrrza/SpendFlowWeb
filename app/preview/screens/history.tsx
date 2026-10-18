@@ -1,12 +1,12 @@
 "use client";
 
 /**
- * Static design-preview route for the redesigned History page — the real
- * register rendered inside the real DashboardShell with an injected mock
+ * Static design-preview route for the redesigned History page – the real
+ * register rendered inside the real AppShell with an injected mock
  * dataset (client-side mirror of the server filters; no auth, no network).
  * Not linked from navigation.
  */
-import { DashboardShell } from "@/components/layout/DashboardShell";
+import { AppShell } from "@/components/shell/AppShell";
 import { HistoryRegister } from "@/components/history/HistoryRegister";
 import type { ExpenseRow } from "@/services/expenses";
 
@@ -101,8 +101,8 @@ const rows = buildRows();
 
 export default function PreviewHistoryPage() {
   return (
-    <DashboardShell>
+    <AppShell>
       <HistoryRegister inject={{ rows }} />
-    </DashboardShell>
+    </AppShell>
   );
 }

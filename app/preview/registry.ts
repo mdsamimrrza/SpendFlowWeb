@@ -7,6 +7,7 @@
 import type { ComponentType } from "react";
 import Accounts from "./screens/accounts";
 import Analytics from "./screens/analytics";
+import Banknote from "./screens/banknote";
 import Bin from "./screens/bin";
 import Bullion from "./screens/bullion";
 import Categories from "./screens/categories";
@@ -14,6 +15,7 @@ import CycleReport from "./screens/cycle-report";
 import Dash from "./screens/dash";
 import Expense from "./screens/expense";
 import Export from "./screens/export";
+import FlowVariants from "./screens/flow-variants";
 import History from "./screens/history";
 import Profile from "./screens/profile";
 import ProfitLoss from "./screens/profit-loss";
@@ -25,6 +27,7 @@ import Transfer from "./screens/transfer";
 export const SCREENS: Record<string, ComponentType> = {
   accounts: Accounts,
   analytics: Analytics,
+  banknote: Banknote,
   bin: Bin,
   bullion: Bullion,
   categories: Categories,
@@ -32,6 +35,7 @@ export const SCREENS: Record<string, ComponentType> = {
   dash: Dash,
   expense: Expense,
   export: Export,
+  "flow-variants": FlowVariants,
   history: History,
   profile: Profile,
   "profit-loss": ProfitLoss,

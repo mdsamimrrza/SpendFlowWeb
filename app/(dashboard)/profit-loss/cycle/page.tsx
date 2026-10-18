@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Cycle report — opened by tapping a Month-by-Month card on /profit-loss
+ * Cycle report – opened by tapping a Month-by-Month card on /profit-loss
  * (?from=&to=, inclusive both ends). One financial cycle at a glance:
  * summary hero, the daily stock-flow graph, the category mix donut, and the
  * cycle's full transaction register paginated 10 per page. Mobile mirror:
@@ -120,7 +120,7 @@ function CycleReportInner() {
     [itemsInRange, convert],
   );
 
-  // Daily buckets over the cycle — per-DAY values (the line height IS that
+  // Daily buckets over the cycle – per-DAY values (the line height IS that
   // day's figure, matching the tooltip; no cumulative plateaus), the same
   // daily-basis logic the dashboard's cash-flow card plots.
   const dailyPoints = useMemo<TrendPoint[]>(() => {
@@ -141,7 +141,7 @@ function CycleReportInner() {
     return out;
   }, [converted, from, to, valid]);
 
-  // Card insights — same trio the dashboard's cash-flow card shows.
+  // Card insights – same trio the dashboard's cash-flow card shows.
   const insights = useMemo(() => {
     let busiest: TrendPoint | null = null;
     let activeDays = 0;
@@ -180,7 +180,7 @@ function CycleReportInner() {
   }, [itemsInRange, convert]);
 
   // Budget IN FORCE for this cycle (newest settings row effective on/before
-  // the cycle end), converted at the end date — never today's figure
+  // the cycle end), converted at the end date – never today's figure
   // retro-projected onto a past cycle.
   const rawBudget = profile?.monthly_budget ?? 0;
   const budgetCurrency = (profile?.budget_currency || profile?.preferred_currency || "NPR").toUpperCase();
@@ -268,7 +268,7 @@ function CycleReportInner() {
 
   return (
     <main className="mx-auto w-full max-w-[560px] space-y-4 p-0.5 lg:max-w-[1100px] lg:space-y-5">
-      {/* ── STATEMENT MASTHEAD — the page's one bold element ── */}
+      {/* ── STATEMENT MASTHEAD – the page's one bold element ── */}
       <section className="rounded-2xl border border-border bg-surface shadow-soft">
         <div className="p-5 sm:p-6">
           <div className="flex items-start justify-between gap-3">
@@ -347,11 +347,11 @@ function CycleReportInner() {
       </section>
 
       {/* ── CHART BAND: flow 3/5 + mix 2/5 on laptop, stacked on phones.
-          Columns stretch to EQUAL height for any category count — SpendingMix
+          Columns stretch to EQUAL height for any category count – SpendingMix
           spreads its rows evenly (justify-evenly) and pins its footer, and
           the flow card fills with the heat grid. ── */}
       <div className="space-y-4 lg:grid lg:grid-cols-5 lg:gap-4 lg:space-y-0">
-        {/* ── DAILY FLOW — the dashboard's cash-flow stock graph over the cycle ── */}
+        {/* ── DAILY FLOW – the dashboard's cash-flow stock graph over the cycle ── */}
         <section className="panel flex flex-col rounded-2xl p-4 lg:col-span-3">
         <p className="mb-2 text-sm font-extrabold text-text">{t("plCycleDailyFlow")}</p>
         {loading ? (
@@ -453,7 +453,7 @@ function CycleReportInner() {
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-[13px] font-bold text-text">
-                            {r.description || r.categories?.name || "—"}
+                            {r.description || r.categories?.name || "–"}
                           </span>
                           <span className="block truncate text-[11px] font-semibold text-text-muted">
                             {r.categories?.name ?? "Other"}

@@ -15,12 +15,12 @@ const PUBLIC_PATHS = ["/", "/sign-in", "/sign-up", "/forgot-password", "/onboard
 
 // Route prefixes that actually exist under (dashboard)/ + expense/[id].
 // Unknown paths (typos, stale links, probes) must NOT bounce anonymous users
-// to /sign-in — they fall through so Next renders the custom 404 page.
+// to /sign-in – they fall through so Next renders the custom 404 page.
 const APP_PATHS = ["/overview", "/history", "/accounts", "/categories", "/transfer", "/recurring", "/profit-loss", "/analytics", "/bullion", "/export", "/settings", "/profile", "/bin", "/expense"];
 
 export async function middleware(request: NextRequest) {
   // NV-9 + rotation-drop fix (prior audit): collect cookie writes instead of
-  // attaching them to a response object the redirect branches later replace —
+  // attaching them to a response object the redirect branches later replace –
   // the final response (redirect or passthrough) gets the rotated tokens.
   const cookieWrites: Array<{ name: string; value: string; options: CookieOptions }> = [];
   const supabase = createServerClient<Database>(supabaseUrl, supabaseAnonKey, {

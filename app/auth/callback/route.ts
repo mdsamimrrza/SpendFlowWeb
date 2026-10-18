@@ -3,35 +3,35 @@ import { getSupabaseServerClient } from "@/utils/supabase/server";
 
 /**
  * OAuth PKCE code exchange (docs/API.md §1). Same-origin only; rejects
- * untrusted `next` paths (open-redirect guard — web counterpart of mobile's
+ * untrusted `next` paths (open-redirect guard – web counterpart of mobile's
  * deep-link trust gate).
  *
  * Two failure modes are surfaced distinctly on /sign-in:
  *   - `error=oauth_cancelled`: Google redirected back with access_denied (the
- *     user closed/blocked the consent) — the mobile app shows the same
+ *     user closed/blocked the consent) – the mobile app shows the same
  *     "cancelled" wording.
  *   - `error=oauth`: missing code or failed exchange.
  *
  * Redirect targets are built from the forwarded Host header, not request.url:
  * next dev normalizes the latter to its bind host (localhost), which would
- * bounce a LAN/nip.io session to http://localhost:3000 — unreachable from a
+ * bounce a LAN/nip.io session to http://localhost:3000 – unreachable from a
  * phone and a different cookie jar (docs/SUPABASE.md §7).
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
-  // Signed-in destination defaults to the app, not the marketing page —
+  // Signed-in destination defaults to the app, not the marketing page –
   // same as password sign-in (router.push("/overview") on /sign-in).
   const nextParam = searchParams.get("next") ?? "/overview";
 
   // next dev normalizes request.url to its bind host (localhost), which would
-  // bounce LAN/nip.io sessions to http://localhost:3000 — a host a phone can't
+  // bounce LAN/nip.io sessions to http://localhost:3000 – a host a phone can't
   // reach and a cookie jar without the just-exchanged session. The browser's
   // real host (and the PKCE cookies) live in the forwarded Host headers.
   // Audit P3-1: forwarded headers are only trusted in development (LAN/nip.io
   // need them there); in production they are attacker-influenceable if a proxy
-  // is misconfigured, so the request's own URL — set by the server on the real
-  // deployment host — is authoritative.
+  // is misconfigured, so the request's own URL – set by the server on the real
+  // deployment host – is authoritative.
   const host =
     process.env.NODE_ENV === "development"
       ? request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ??
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Password-recovery codes land here too (services/auth.ts redirectTo is kept
-  // a bare allowlisted /auth/callback per docs/SUPABASE.md §7 — the flow type
+  // a bare allowlisted /auth/callback per docs/SUPABASE.md §7 – the flow type
   // rides on GoTrue's own `type=recovery` param, not a nested query).
   if (searchParams.get("type") === "recovery") {
     return NextResponse.redirect(`${origin}/profile?recovery=1`);
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
   // Google photos live on lh*.googleusercontent.com, which this app can never
   // render (avatar allowlist P3-2 + CSP img-src) and never hotlinks. Mirror
   // the photo into the project's own avatars bucket once, at sign-in, when
-  // the user has no avatar yet — the resulting bucket URL passes every gate
+  // the user has no avatar yet – the resulting bucket URL passes every gate
   // and lands in users.avatar_url (web) + auth metadata (mobile parity).
   // Strictly best-effort: any failure must not block or slow the redirect.
   try {
@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
               data: { publicUrl },
             } = supabase.storage.from("avatars").getPublicUrl(path);
             // Row may not exist yet for a first-time OAuth user (ensureProfile
-            // creates it client-side) — the metadata write below covers that.
+            // creates it client-side) – the metadata write below covers that.
             await supabase.from("users").update({ avatar_url: publicUrl }).eq("id", user.id);
             await supabase.auth.updateUser({ data: { avatar_url: publicUrl } });
           }
@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
       }
     }
   } catch {
-    // Cosmetic mirror — sign-in succeeds regardless.
+    // Cosmetic mirror – sign-in succeeds regardless.
   }
 
   return NextResponse.redirect(`${origin}${safeNext}`);
