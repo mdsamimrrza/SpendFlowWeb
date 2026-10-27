@@ -4,8 +4,13 @@
  * by the /preview-history design harness (route files may only export the
  * default component, so the props seam cannot live here).
  */
+import { Suspense } from "react";
 import { HistoryRegister } from "@/components/history/HistoryRegister";
 
 export default function HistoryPage() {
-  return <HistoryRegister />;
+  return (
+    <Suspense>
+      <HistoryRegister />
+    </Suspense>
+  );
 }

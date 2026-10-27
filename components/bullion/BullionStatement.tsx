@@ -281,7 +281,7 @@ export function BullionStatement({ inject }: BullionPageProps) {
           </button>
           <div className="min-w-0">
             <p className="text-[13px] font-medium text-faint">{t("bullionTitle")}</p>
-            <h1 className="mt-0.5 truncate text-xl font-bold tracking-[-0.02em] text-text sm:text-2xl">
+            <h1 className="mt-0.5 truncate text-[26px] font-bold tracking-tight text-text">
               {t("bullion_title")}
             </h1>
           </div>

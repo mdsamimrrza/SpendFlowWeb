@@ -293,7 +293,7 @@ export function TransferStatement({ inject }: TransferPageProps) {
     return (
       <main className="mx-auto w-full max-w-lg">
         <Skeleton className="h-8 w-36" />
-        <div className="mt-4 rounded-2xl border border-border bg-surface p-4 shadow-soft sm:p-5">
+        <div className="mt-4 rounded-xl border border-border bg-surface p-4 shadow-soft sm:p-5">
           <div className="flex flex-col gap-4">
             <Skeleton className="h-16 w-full rounded-lg" />
             <Skeleton className="h-16 w-full rounded-lg" />
@@ -307,10 +307,10 @@ export function TransferStatement({ inject }: TransferPageProps) {
   }
 
   return (
-    <main className="mx-auto w-full max-w-lg">
+    <main className="mx-auto w-full max-w-lg lg:max-w-[1100px]">
       {/* Page header - the live route sits in the caption line */}
       <header className="mb-4">
-        <h1 className="text-xl font-bold tracking-[-0.02em] text-text sm:text-2xl">
+        <h1 className="text-[26px] font-bold tracking-tight text-text">
           {t("transferTitle")}
         </h1>
         <p className="mt-0.5 text-[13px] text-faint">
@@ -328,7 +328,7 @@ export function TransferStatement({ inject }: TransferPageProps) {
         </p>
       </header>
 
-      <div className="rounded-2xl border border-border bg-surface p-4 shadow-soft sm:p-5">
+      <div className="rounded-xl border border-border bg-surface p-4 shadow-soft sm:p-5">
         {!canTransfer ? (
           <EmptyState
             title={t("transferTitle")}
@@ -340,7 +340,8 @@ export function TransferStatement({ inject }: TransferPageProps) {
             }
           />
         ) : (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-5">
+            <div className="flex min-w-0 flex-1 flex-col gap-4">
             {/* FROM / TO ACCOUNT PICKERS */}
             <AccountPicker
               label={t("transferFromLabel")}
@@ -443,36 +444,6 @@ export function TransferStatement({ inject }: TransferPageProps) {
               </div>
             </div>
 
-            {/* CONVERSION PREVIEW */}
-            <div
-              className={`flex flex-col gap-1.5 rounded-xl border bg-surface-elevated p-4 transition-colors ${
-                fromAccount && toAccount && amountNum > 0 ? "border-primary/30" : "border-border"
-              }`}
-            >
-              <span className="caps flex items-center gap-1.5 !text-primary">
-                <ArrowLeftRight size={12} aria-hidden />
-                {t("recipientGets")}
-              </span>
-
-              <p className="figures-display truncate text-2xl leading-8 text-text">
-                {previewLoading ? "..." : preview ? money(preview.converted, toCurrency) : "-"}
-              </p>
-
-              <p className="text-[11px] leading-4 text-text-muted">
-                {previewLoading
-                  ? t("rateLoading")
-                  : preview
-                    ? sameCurrency
-                      ? t("sameCurrencyNoConvert")
-                      : `1 ${fromCurrency} = ${preview.rate.toFixed(4)} ${toCurrency} · ${t(
-                          "todayExchangeRate",
-                        )}`
-                    : fromAccount && toAccount
-                      ? t("transferErrAmount")
-                      : t("transferErrAccounts")}
-              </p>
-            </div>
-
             {/* FEE & NOTE */}
             <div className="flex flex-col gap-2.5">
               <div className="flex items-center gap-2.5 rounded-lg border border-border bg-surface-elevated px-3 py-1 transition-colors focus-within:border-primary">
@@ -506,6 +477,39 @@ export function TransferStatement({ inject }: TransferPageProps) {
                 rows={2}
                 className="min-h-[44px] w-full resize-y rounded-lg border border-border bg-surface-elevated px-3 py-2.5 text-[13.5px] leading-5 text-text outline-none transition-colors placeholder:text-text-muted focus:border-primary"
               />
+            </div>
+          </div>
+
+          {/* SUMMARY RAIL – live conversion, guards and submit (sticky on desktop) */}
+          <div className="flex flex-col gap-4 lg:sticky lg:top-20 lg:w-[360px] lg:shrink-0 lg:border-l lg:border-border lg:pl-5">
+            {/* CONVERSION PREVIEW */}
+            <div
+              className={`flex flex-col gap-1.5 rounded-xl border bg-surface-elevated p-4 transition-colors ${
+                fromAccount && toAccount && amountNum > 0 ? "border-primary/30" : "border-border"
+              }`}
+            >
+              <span className="caps flex items-center gap-1.5 !text-primary">
+                <ArrowLeftRight size={12} aria-hidden />
+                {t("recipientGets")}
+              </span>
+
+              <p className="figures-display truncate text-2xl leading-8 text-text">
+                {previewLoading ? "..." : preview ? money(preview.converted, toCurrency) : "-"}
+              </p>
+
+              <p className="text-[11px] leading-4 text-text-muted">
+                {previewLoading
+                  ? t("rateLoading")
+                  : preview
+                    ? sameCurrency
+                      ? t("sameCurrencyNoConvert")
+                      : `1 ${fromCurrency} = ${preview.rate.toFixed(4)} ${toCurrency} · ${t(
+                          "todayExchangeRate",
+                        )}`
+                    : fromAccount && toAccount
+                      ? t("transferErrAmount")
+                      : t("transferErrAccounts")}
+              </p>
             </div>
 
             {/* INSUFFICIENT BALANCE BANNER */}
@@ -554,6 +558,7 @@ export function TransferStatement({ inject }: TransferPageProps) {
               )}
               {t("transferTitle")}
             </button>
+          </div>
           </div>
         )}
       </div>

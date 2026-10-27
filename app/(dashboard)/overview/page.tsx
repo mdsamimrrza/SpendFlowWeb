@@ -1,13 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { ElementType } from "react";
 import {
   ArrowDownLeft,
   ArrowUpRight,
-  CalendarDays,
-  Layers,
+  Banknote,
+  ChevronRight,
+  Clock,
+  CreditCard,
+  Download,
+  Landmark,
+  MoreHorizontal,
   PiggyBank,
+  Plus,
+  Search,
+  SlidersHorizontal,
+  TrendingUp,
   Wallet,
 } from "lucide-react";
 import { useAuth } from "@/store/AuthContext";
@@ -15,30 +25,18 @@ import { useLanguage } from "@/store/LanguageContext";
 import { subscribeToExpenseChanges, useCategories } from "@/hooks/useExpenses";
 import { useRowConverter } from "@/hooks/useRates";
 import { cacheExpenses, getCachedExpenses, listExpenses } from "@/services/expenses";
+import { computeAccountBalances, listBankAccounts, type BankAccountRow } from "@/services/bankAccounts";
+import { getRate } from "@/services/exchange";
 import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
-import { AccountsStrip } from "@/components/dash/AccountsStrip";
-import { BalanceCard } from "@/components/dash/BalanceCard";
-import { Upcoming } from "@/components/dash/Upcoming";
-import { BillsDue } from "@/components/dash/BillsDue";
-import { Feed } from "@/components/dash/Feed";
-import { MixCard } from "@/components/dash/MixCard";
-import {
-  CardPillLink,
-  DashCard,
-  DeltaChip,
-  RangeChip,
-} from "@/components/dash/primitives";
 import type { FlowPoint } from "@/components/graphs/FlowChart";
-import { CashFlowCard } from "@/components/dash/CashFlowCard";
+import { CashFlowSplineChart } from "@/components/dash/CashFlowSplineChart";
 import type { DonutSlice } from "@/components/dash/MixCard";
-import { HeatGrid } from "@/components/graphs/HeatGrid";
-import { TodayRateLine } from "@/components/ui/TodayRateLine";
 import { ExpenseDetailSheet } from "@/components/expense/ExpenseDetailSheet";
 import { CalendarModal } from "@/components/ui/CalendarModal";
+import { FloatingSelect, SelectRow } from "@/components/ui/FloatingSelect";
+import { FitText } from "@/components/ui/FitText";
+import { useCountUp } from "@/components/graphs/useCountUp";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { Button } from "@/components/ui/Button";
-import { CurrencyFlag } from "@/components/ui/CurrencyFlag";
 import type { ExpenseRow } from "@/services/expenses";
 import {
   formatMoney,
@@ -57,16 +55,7 @@ import { useBudget } from "@/hooks/useRates";
 
 type FlowRange = "1d" | "1w" | "1m" | "cycle" | "1y" | "custom";
 
-/**
- * Home – V5 "Sage Ledger" rebuild (2026-10-13): the reference dashboard's
- * composition – a row of pastel-chip stat cards (income / expenses / net /
- * today / safe-to-spend), then the cash-flow + mix donut pair, the recent
- * register beside upcoming payments, and the calendar + accounts pair
- * (the budget pacing card was removed by user direction – budget state
- * lives on in the Safe-to-spend stat card and the reports). All
- * aggregation mirrors the mobile statement logic (cycle-scoped totals,
- * FX-converted rows, previous-cycle delta).
- */
+
 export default function HomePage() {
   const { user, profile, loading: authLoading } = useAuth();
   const { showToast } = useToast();
@@ -82,6 +71,10 @@ export default function HomePage() {
   const [range, setRange] = useState<FlowRange>("cycle");
   const [custom, setCustom] = useState<{ from: string; to: string } | null>(null);
   const [customOpen, setCustomOpen] = useState(false);
+  const [rangeOpen, setRangeOpen] = useState(false);
+  const [txSearch, setTxSearch] = useState("");
+  const [txCount, setTxCount] = useState(5);
+  const [accounts, setAccounts] = useState<BankAccountRow[]>([]);
 
   // Instant cache paint so mobile & slow-network never stays on skeleton if we have past data
   useEffect(() => {
@@ -134,6 +127,66 @@ export default function HomePage() {
       unsubscribe();
     };
   }, [user, supabase]);
+
+  useEffect(() => {
+    if (!user) {
+      setAccounts([]);
+      return;
+    }
+    void listBankAccounts(supabase, user.id)
+      .then(setAccounts)
+      .catch(() => setAccounts([]));
+  }, [user, supabase]);
+
+  // Highest balance first: each account's LIVE balance from the shared
+  // computation (the Accounts page's source of truth — the current_balance
+  // column is only written at create/edit, so it reads 0 forever), converted
+  // to the display currency at today's rate. Re-runs on expense changes so
+  // newly logged entries move the card.
+  const [sortedAccounts, setSortedAccounts] = useState<{ account: BankAccountRow; value: number }[]>([]);
+  useEffect(() => {
+    if (!user || accounts.length === 0) {
+      setSortedAccounts([]);
+      return;
+    }
+    let cancelled = false;
+    const target = profile?.preferred_currency ?? "NPR";
+    const compute = async () => {
+      let live = new Map<string, number>();
+      try {
+        live = await computeAccountBalances(supabase, user.id, accounts);
+      } catch {
+        live = new Map(accounts.map((a) => [a.id, Number(a.initial_balance) || 0]));
+      }
+      const withConverted = await Promise.all(
+        accounts.map(async (a) => {
+          const base = live.get(a.id) ?? 0;
+          if (a.currency === target) return { account: a, value: base };
+          try {
+            const [from, to] = await Promise.all([
+              getRate(supabase, a.currency),
+              getRate(supabase, target),
+            ]);
+            return {
+              account: a,
+              value: to > 0 ? (base * from) / to : base,
+            };
+          } catch {
+            return { account: a, value: base };
+          }
+        }),
+      );
+      if (!cancelled) {
+        setSortedAccounts(withConverted.sort((x, y) => y.value - x.value));
+      }
+    };
+    void compute();
+    const unsubscribe = subscribeToExpenseChanges(() => void compute());
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [user, accounts, profile?.preferred_currency, supabase]);
   const budget = useBudget();
 
   // Rail calendar month (local view state only – prev/next shifts the grid,
@@ -214,9 +267,9 @@ export default function HomePage() {
     return { daysTotal, daysElapsed, spentPct, expectedPct, projected, onPace };
   }, [cycle, budget, stats.spent]);
 
-  const prevDelta = useMemo(() => {
-    // True previous cycle: the cycle that ended the day before this one
-    // began (re-derived from the start/end day rule – NOT a ms-span shift).
+  // Previous salary cycle's income/spend from the full row set — the stat
+  // cards' like-for-like delta chips. Null when it has no entries.
+  const prevCycleTotals = useMemo(() => {
     const prev = getPreviousCycleWindow(
       new Date(),
       profile?.cycle_start_day ?? 1,
@@ -224,20 +277,27 @@ export default function HomePage() {
     );
     const startISO = toISODate(prev.start);
     const endISO = toISODate(prev.end);
-    let prevNet = 0;
+    let income = 0;
+    let spent = 0;
     let hasRows = false;
     for (const row of rows) {
       if (row.date < startISO || row.date > endISO) continue;
       hasRows = true;
-      prevNet += row.type === "income" ? convert(row) : -convert(row);
+      if (row.type === "income") income += convert(row);
+      else spent += convert(row);
     }
-    if (!hasRows) return null;
-    const diff = stats.net - prevNet;
-    return {
-      text: `${diff >= 0 ? "+" : "−"}${fmt(Math.abs(diff))}`,
-      positive: diff >= 0,
-    };
-  }, [rows, profile?.cycle_start_day, profile?.cycle_end_day, stats.net, convert, fmt]);
+    return hasRows ? { income, spent } : null;
+  }, [rows, profile?.cycle_start_day, profile?.cycle_end_day, convert]);
+
+  // Signed pct vs the previous cycle, capped like the flow delta chip.
+  const pctDelta = (cur: number, prev: number | undefined): number | null => {
+    if (prev == null || prev === 0) return null;
+    const pct = Math.round(((cur - prev) / Math.abs(prev)) * 100);
+    return Number.isFinite(pct) && Math.abs(pct) <= 999 ? pct : null;
+  };
+  const netPct = pctDelta(stats.net, prevCycleTotals ? prevCycleTotals.income - prevCycleTotals.spent : undefined);
+  const incomePct = pctDelta(stats.income, prevCycleTotals?.income);
+  const expensePct = pctDelta(stats.spent, prevCycleTotals?.spent);
 
   const categorySlices = useMemo<DonutSlice[]>(() => {
     const byCategory = new Map<string, DonutSlice>();
@@ -252,6 +312,39 @@ export default function HomePage() {
     }
     return Array.from(byCategory.values()).sort((a, b) => b.value - a.value);
   }, [rows, cycle, convert]);
+
+  // Top-5 cycle categories for the Spending by Category card (share of the
+  // cycle's converted outflow; stored category colors drive the bars).
+  const topCategories = useMemo(() => {
+    const total = categorySlices.reduce((sum, c) => sum + c.value, 0);
+    return categorySlices.slice(0, 5).map((c) => ({
+      label: c.label,
+      value: c.value,
+      color: c.color,
+      pct: total > 0 ? Math.max(1, Math.round((c.value / total) * 100)) : 0,
+    }));
+  }, [categorySlices]);
+
+  // Budget bars: categories with a monthly cap, worst-paced first, cycle
+  // spend from the category slices.
+  const budgetRows = useMemo(() => {
+    const spentByName = new Map<string, number>();
+    for (const c of categorySlices) spentByName.set(c.label, c.value);
+    return categories
+      .filter((c) => (c.budget_monthly ?? 0) > 0)
+      .map((c) => {
+        const limit = c.budget_monthly as number;
+        const spent = spentByName.get(c.name) ?? 0;
+        return {
+          name: c.name,
+          spent,
+          limit,
+          pct: limit > 0 ? Math.min(100, Math.round((spent / limit) * 100)) : 0,
+        };
+      })
+      .sort((a, b) => b.pct - a.pct)
+      .slice(0, 3);
+  }, [categories, categorySlices]);
 
   // Unbounded per-day outflow so the rail calendar tints months you
   // navigate back through.
@@ -581,6 +674,95 @@ export default function HomePage() {
       ),
     [locale],
   );
+
+  const transactionList = useMemo(() => {
+    if (rows && rows.length > 0) {
+      return rows.slice(0, txCount).map((r) => {
+        const isInc = r.type === "income";
+        return {
+          id: r.id,
+          name: r.description?.trim() || r.categories?.name || "Transaction",
+          method: r.payment_method || "Card Payment",
+          date: r.date,
+          category: r.categories?.name || "General",
+          status: "completed",
+          amount: `${isInc ? "+" : "-"}${fmt(convert(r))}`,
+          isIncome: isInc,
+          raw: r,
+        };
+      });
+    }
+    return [];
+  }, [rows, txCount, convert, fmt]);
+
+  const filteredTransactions = useMemo(() => {
+    if (!txSearch.trim()) return transactionList;
+    const q = txSearch.toLowerCase();
+    return transactionList.filter(
+      (tx) =>
+        tx.name.toLowerCase().includes(q) ||
+        tx.category.toLowerCase().includes(q) ||
+        tx.date.includes(q),
+    );
+  }, [transactionList, txSearch]);
+
+  // Footer stamp (mobile): the newest entry drives "last updated" - real
+  // data, never a hardcoded clock.
+  const lastUpdated = useMemo(() => {
+    const r = rows[0];
+    if (!r) return null;
+    const d = new Date(r.time ? `${r.date}T${r.time}` : `${r.date}T00:00:00`);
+    const time = new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" }).format(d);
+    if (toISODate(d) === todayISO()) return `Last updated today at ${time}`;
+    return `Last updated ${new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(d)}`;
+  }, [rows, locale]);
+
+  // Mouse users can't swipe the account strip: wheel scrolls it sideways
+  // and click-drag pans (touch swipes natively). Hook sits above the
+  // skeleton early return with every other hook.
+  const stripRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = stripRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      el.scrollLeft += e.deltaY;
+      e.preventDefault();
+    };
+    let dragging = false;
+    let startX = 0;
+    let startLeft = 0;
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType === "touch") return;
+      dragging = true;
+      startX = e.clientX;
+      startLeft = el.scrollLeft;
+    };
+    const onMove = (e: PointerEvent) => {
+      if (dragging) el.scrollLeft = startLeft - (e.clientX - startX);
+    };
+    const onUp = () => {
+      dragging = false;
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    el.addEventListener("pointerdown", onDown);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      el.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, []);
+
+  // Entrance count-ups: the stat figures tick from 0 on first load and
+  // re-animate from their previous value when the cycle totals change.
+  const animNet = useCountUp(stats.net, fmt, 900, true);
+  const animIncome = useCountUp(stats.income, fmt, 900, true);
+  const animSpent = useCountUp(stats.spent, fmt, 900, true);
+
+
   const showSkeleton = authLoading || (loading && rows.length === 0);
   if (showSkeleton) {
     // Mirrors the hero + ruled-section layout – no shift when data lands.
@@ -615,6 +797,7 @@ export default function HomePage() {
       positive: net >= 0,
     };
   };
+
   // Rail calendar nav bounds: next is capped at the current month.
   const canNextMonth =
     calYm.y * 12 + calYm.m < new Date().getFullYear() * 12 + new Date().getMonth();
@@ -627,226 +810,556 @@ export default function HomePage() {
     "1y": t("range1Y"),
   };
 
+  const firstName = profile?.display_name?.split(" ")[0] || "";
+
   return (
-    <div className="mx-auto w-full max-w-[1100px]">
-      {/* Masthead: greeting + date left, cycle pill right */}
-      <header className="rise flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[12.5px] font-medium text-faint">{dateLine}</p>
-          <h1 className="mt-0.5 truncate text-[22px] font-bold tracking-tight text-text sm:text-2xl">
-            {t(greetingKey)},{" "}
-            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-              {profile?.display_name
-                ? formatDisplayName(profile.display_name)
-                : "there"}
-              {profile?.preferred_currency && (
-                <CurrencyFlag currency={profile.preferred_currency} size={18} />
-              )}
+    <div className="-mt-3 -mx-5 max-w-[1340px] bg-white dark:bg-[#000000] px-5 dark:text-gray-100 sm:-mx-6 sm:px-6 lg:mx-0 lg:bg-transparent lg:px-0">
+      {/* ===== Page Header ===== */}
+      <div className="flex flex-wrap items-end justify-between gap-4 pb-6">
+        <div>
+          <h1 className="text-[26px] font-bold tracking-tight text-gray-900 dark:text-gray-100">Financial Overview</h1>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Welcome back{firstName ? `, ${firstName}` : ""}. Here's what's happening with your money.
+          </p>
+        </div>
+        <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto sm:gap-2.5">
+          {/* Range dropdown: the same window the cash-flow chart buckets by.
+              "Custom" hands off to the calendar; Apply switches the range. */}
+          <FloatingSelect
+            ghost
+            className="relative flex-1 sm:w-[160px] sm:flex-none"
+            label={
+              range === "custom" && custom
+                ? `${formatShort(new Date(`${custom.from <= custom.to ? custom.from : custom.to}T00:00:00`), locale)} – ${formatShort(new Date(`${custom.from <= custom.to ? custom.to : custom.from}T00:00:00`), locale)}`
+                : rangeLabels[range === "custom" ? "cycle" : range]
+            }
+            open={rangeOpen}
+            onToggle={() => setRangeOpen((v) => !v)}
+            menuClassName="max-h-72 overflow-y-auto"
+          >
+            {(["1d", "1w", "1m", "cycle", "1y"] as const).map((key) => (
+              <SelectRow
+                key={key}
+                selected={range === key}
+                label={rangeLabels[key]}
+                onSelect={() => {
+                  setRange(key);
+                  setRangeOpen(false);
+                }}
+              />
+            ))}
+            <SelectRow
+              selected={range === "custom"}
+              label={t("filterCustom")}
+              onSelect={() => {
+                setRangeOpen(false);
+                setCustomOpen(true);
+              }}
+            />
+          </FloatingSelect>
+          <Link
+            href="/export"
+            aria-label="Export overview"
+            className="grid h-10 w-10 place-items-center rounded-lg border border-gray-200 dark:border-[#262626]/70 bg-[#f7f8f9] dark:bg-[#141414] text-gray-600 dark:text-gray-400 transition-colors hover:bg-gray-100 dark:hover:bg-[#141414]"
+          >
+            <Download size={15} />
+          </Link>
+          <Link
+            href="/history"
+            aria-label="Filter transactions"
+            className="hidden h-10 w-10 sm:grid place-items-center rounded-lg border border-gray-200 dark:border-[#262626]/70 bg-[#f7f8f9] dark:bg-[#141414] text-gray-600 dark:text-gray-400 transition-colors hover:bg-gray-100 dark:hover:bg-[#141414]"
+          >
+            <SlidersHorizontal size={15} />
+          </Link>
+          <Link
+            href="/expense/new"
+            className="flex h-9 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-primary px-3 text-xs font-semibold text-primary-ink shadow-xs transition-colors hover:bg-primary-strong sm:flex-none sm:gap-2 sm:px-4"
+          >
+            <Plus size={14} />
+            <span>Add Transaction</span>
+          </Link>
+        </div>
+      </div>
+
+      {/* ===== 4 Metric Cards ===== */}
+      <section className="rise grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {/* Total Balance */}
+        <div className="rounded-xl border border-[#eaecf0] dark:border-[#262626] bg-white dark:bg-[#0a0a0a] p-5 shadow-[0_1px_3px_rgba(16,24,40,0.04)]">
+          <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+            <span>Total Balance</span>
+            <span className="text-gray-400">
+              <Wallet size={16} />
             </span>
-          </h1>
-        </div>
-        <span className="numeric hidden h-9 items-center gap-2 rounded-full border border-border bg-surface px-3.5 text-[12px] text-text-muted shadow-soft sm:flex">
-          <CurrencyFlag currency={displayCurrency} size={15} />
-          <span className="whitespace-nowrap">{cycleLabel}</span>
-        </span>
-      </header>
-
-      {/* Hero – the total-balance statement card with the cycle figures */}
-      <div className="rise mt-6" style={{ animationDelay: "40ms" }}>
-        <BalanceCard
-          cycleLabel={cycleLabel}
-          net={netText}
-          netDelta={
-            prevDelta ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold text-white">
-                {prevDelta.text}
-                <span className="font-medium text-white/70">{t("homeVsPrev")}</span>
+          </div>
+          <p className="numeric mt-3 font-bold tracking-tight text-gray-900 dark:text-gray-100">
+            <FitText basePx={26} minPx={15}>{animNet}</FitText>
+          </p>
+          <div className="mt-2 flex min-h-4 items-center gap-1.5 text-xs">
+            {netPct != null && (
+              <span className={`flex items-center gap-0.5 font-semibold ${netPct >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                {netPct >= 0 ? <ArrowUpRight size={12} aria-hidden /> : <ArrowDownLeft size={12} aria-hidden />}
+                {netPct >= 0 ? "+" : "−"}{Math.abs(netPct)}%
               </span>
-            ) : null
-          }
-          income={fmt(stats.income).replace(/^[^\d]*/, "")}
-          expense={fmt(stats.spent).replace(/^[^\d]*/, "")}
-          safe={
-            budget != null && budget > 0
-              ? fmt(Math.max(0, budget - stats.spent)).replace(/^[^\d]*/, "")
-              : "—"
-          }
-          safeCaption={
-            budget != null && budget > 0 ? (
-              `${Math.round(pace.spentPct * 100)}% ${t("homeOfBudget")} ${fmt(budget)}`
-            ) : undefined
-          }
-          budget={
-            budget != null && budget > 0
-              ? {
-                  amount: fmt(budget),
-                  pct: pace.spentPct,
-                  left: fmt(Math.max(0, budget - stats.spent)),
-                }
-              : null
-          }
-        />
-      </div>
-
-      {frozenTotals && (
-        <div className="mt-3">
-          <TodayRateLine
-            live={{ income: stats.income, expense: stats.spent }}
-            frozen={frozenTotals}
-            fmt={fmt}
-          />
+            )}
+            <span className="text-[11px] text-gray-400">vs last cycle</span>
+          </div>
         </div>
-      )}
 
-      {/* Urgent bills: overdue pay_on_due plans with one-tap Mark Paid.
-          Self-removes when nothing is owed. */}
-      <div className="mt-4">
-        <BillsDue />
-      </div>
+        {/* Monthly Income */}
+        <div className="rounded-xl border border-[#eaecf0] dark:border-[#262626] bg-white dark:bg-[#0a0a0a] p-5 shadow-[0_1px_3px_rgba(16,24,40,0.04)]">
+          <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+            <span>Monthly Income</span>
+            <span className="text-gray-400">
+              <Banknote size={16} />
+            </span>
+          </div>
+          <p className="numeric mt-3 font-bold tracking-tight text-gray-900 dark:text-gray-100">
+            <FitText basePx={26} minPx={15}>{animIncome}</FitText>
+          </p>
+          <div className="mt-2 flex min-h-4 items-center gap-1.5 text-xs">
+            {incomePct != null && (
+              <span className={`flex items-center gap-0.5 font-semibold ${incomePct >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                {incomePct >= 0 ? <ArrowUpRight size={12} aria-hidden /> : <ArrowDownLeft size={12} aria-hidden />}
+                {incomePct >= 0 ? "+" : "−"}{Math.abs(incomePct)}%
+              </span>
+            )}
+            <span className="text-[11px] text-gray-400">vs last cycle</span>
+          </div>
+        </div>
 
-      {/* Cash flow + spending calendar */}
-      <div className="mt-4 grid gap-3 sm:gap-4 lg:grid-cols-3">
-        <DashCard
-          title={t("cashFlow")}
-          className="flex flex-col lg:col-span-2"
-          bodyClassName="flex min-h-0 flex-1 flex-col"
-          action={
-            <div
-              role="group"
-              aria-label={t("cashFlow")}
-              className="flex items-center rounded-full border border-border bg-surface p-0.5"
-            >
-              {(Object.keys(rangeLabels) as Exclude<FlowRange, "custom">[]).map((r) => (
-                <RangeChip
-                  key={r}
-                  active={range === r}
-                  label={rangeLabels[r]}
-                  onClick={() => setRange(r)}
-                />
-              ))}
-              <button
-                type="button"
-                aria-pressed={range === "custom"}
-                aria-label={t("rangeCustom")}
-                onClick={() => setCustomOpen(true)}
-                className={`flex h-7 items-center rounded-full px-2 transition-colors ${
-                  range === "custom"
-                    ? "bg-[var(--sf-primary-light)] text-primary-strong"
-                    : "text-text-muted hover:text-text"
-                }`}
-              >
-                <CalendarDays size={13} aria-hidden />
-              </button>
+        {/* Monthly Expenses */}
+        <div className="rounded-xl border border-[#eaecf0] dark:border-[#262626] bg-white dark:bg-[#0a0a0a] p-5 shadow-[0_1px_3px_rgba(16,24,40,0.04)]">
+          <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+            <span>Monthly Expenses</span>
+            <span className="text-gray-400">
+              <CreditCard size={16} />
+            </span>
+          </div>
+          <p className="numeric mt-3 font-bold tracking-tight text-gray-900 dark:text-gray-100">
+            <FitText basePx={26} minPx={15}>{animSpent}</FitText>
+          </p>
+          <div className="mt-2 flex min-h-4 items-center gap-1.5 text-xs">
+            {expensePct != null && (
+              <span className={`flex items-center gap-0.5 font-semibold ${expensePct > 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                {expensePct > 0 ? <ArrowUpRight size={12} aria-hidden /> : <ArrowDownLeft size={12} aria-hidden />}
+                {expensePct > 0 ? "+" : "−"}{Math.abs(expensePct)}%
+              </span>
+            )}
+            <span className="text-[11px] text-gray-400">vs last cycle</span>
+          </div>
+        </div>
+
+        {/* Net Savings */}
+        <div className="rounded-xl border border-[#eaecf0] dark:border-[#262626] bg-white dark:bg-[#0a0a0a] p-5 shadow-[0_1px_3px_rgba(16,24,40,0.04)]">
+          <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+            <span>Net Savings</span>
+            <span className="text-gray-400">
+              <TrendingUp size={16} />
+            </span>
+          </div>
+          <p className="numeric mt-3 font-bold tracking-tight text-gray-900 dark:text-gray-100">
+            <FitText basePx={26} minPx={15}>{animNet}</FitText>
+          </p>
+          <div className="mt-2 flex min-h-4 items-center gap-1.5 text-xs">
+            {netPct != null && (
+              <span className={`flex items-center gap-0.5 font-semibold ${netPct >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                {netPct >= 0 ? <ArrowUpRight size={12} aria-hidden /> : <ArrowDownLeft size={12} aria-hidden />}
+                {netPct >= 0 ? "+" : "−"}{Math.abs(netPct)}%
+              </span>
+            )}
+            <span className="text-[11px] text-gray-400">vs last cycle</span>
+          </div>
+        </div>
+      </section>
+
+      {/* ===== Middle Section: Cash Flow Trends + Spending by Category ===== */}
+      <section className="rise mt-6 grid gap-5 lg:grid-cols-[minmax(0,1.9fr)_minmax(310px,1fr)]">
+        {/* Cash Flow Trends Card */}
+        <div className="min-w-0 p-0 lg:rounded-xl lg:border lg:border-[#eaecf0] dark:border-[#262626] lg:bg-white dark:bg-[#0a0a0a] lg:p-5 lg:shadow-[0_1px_3px_rgba(16,24,40,0.04)]">
+          <CashFlowSplineChart points={flowPoints} />
+        </div>
+
+        {/* Spending by Category Card */}
+        <div className="flex min-w-0 flex-col justify-between p-0 lg:rounded-xl lg:border lg:border-[#eaecf0] dark:border-[#262626] lg:bg-white dark:bg-[#0a0a0a] lg:p-5 lg:shadow-[0_1px_3px_rgba(16,24,40,0.04)]">
+          <div>
+            <h2 className="text-[15px] font-bold text-gray-900 dark:text-gray-100">Spending by Category</h2>
+            <p className="mt-0.5 text-[11px] text-gray-400">Your biggest expenses this week</p>
+
+            <div className="mt-6 space-y-4">
+              {topCategories.length === 0 ? (
+                <p className="py-6 text-center text-xs text-gray-400">No spending this cycle yet.</p>
+              ) : (
+                topCategories.map((cat) => (
+                  <div key={cat.label}>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-medium text-gray-800 dark:text-gray-100">{cat.label}</span>
+                      <span className="numeric font-semibold text-gray-900 dark:text-gray-100">{fmt(cat.value)}</span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-[#141414]">
+                      <div
+                        className="grow-x h-full rounded-full transition-all duration-500"
+                        style={{ width: `${cat.pct}%`, backgroundColor: cat.color }}
+                      />
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
-          }
-        >
-          <CashFlowCard
-            key={range}
-            design="ratio"
-            points={flowPoints}
-            totals={{ income: flowSummary.income, expense: flowSummary.expense }}
-            delta={flowSummary.delta}
-            windowLabel={flowSummary.windowLabel}
-            insight={flowSummary.insight}
-            format={fmt}
-            tickFormat={axisFmt}
-            labels={{
-              income: t("income"),
-              expense: t("expense"),
-              empty: t("homeNoFlowData"),
-            }}
-          />
-        </DashCard>
+          </div>
 
-        <DashCard title={t("anCalendarHeat")}>
-          <HeatGrid
-            year={calYm.y}
-            month={calYm.m}
-            spend={spendByDay}
-            formatted={fmt}
-            locale={locale}
-            onPrevMonth={() =>
-              setCalYm(({ y, m }) => (m === 0 ? { y: y - 1, m: 11 } : { y, m: m - 1 }))
-            }
-            onNextMonth={() =>
-              setCalYm(({ y, m }) => (m === 11 ? { y: y + 1, m: 0 } : { y, m: m + 1 }))
-            }
-            canNextMonth={canNextMonth}
-            onDayTap={(iso) => {
-              window.location.href = `/history?from=${iso}&to=${iso}`;
-            }}
-            totalLabel={t("anMonthTotal")}
-          />
-        </DashCard>
-      </div>
+          <Link
+            href="/analytics"
+            className="mt-6 flex items-center justify-center gap-1 text-[11px] font-semibold text-gray-900 dark:text-gray-100 transition-colors hover:text-black"
+          >
+            <span>View All Insights</span>
+            <ChevronRight size={13} />
+          </Link>
+        </div>
+      </section>
 
-      {/* Recent | Upcoming / Accounts | Mix (mix under upcoming) - the 2x2 block */}
-      <div className="mt-4 grid gap-3 sm:gap-4 lg:grid-cols-2">
-        <DashCard
-          title={t("recentActivity")}
-          className="lg:col-start-1 lg:row-start-1 lg:row-span-3"
-          action={<CardPillLink href="/history">{t("viewAll")}</CardPillLink>}
-        >
-          {rows.length === 0 ? (
-            <div className="py-2">
-              <EmptyState
-                title={t("noTransactions")}
-                message={t("noTransactionsHint")}
-                action={
-                  <Link href="/expense/new">
-                    <Button>{t("homeAddFirstEntry")}</Button>
-                  </Link>
-                }
+      {/* ===== Bottom Section: Recent Transactions ===== */}
+      <section className="rise -mx-5 mt-6 overflow-hidden rounded-none border-y border-[#eaecf0] dark:border-[#262626] bg-white dark:bg-[#0a0a0a] px-5 py-5 lg:mx-0 lg:rounded-xl lg:border-x lg:shadow-[0_1px_3px_rgba(16,24,40,0.04)]">
+        {/* Mobile header */}
+        <div className="mb-1 flex items-center justify-between pb-3 lg:hidden">
+          <h2 className="text-[15px] font-bold text-gray-900 dark:text-gray-100">Recent Transactions</h2>
+          <Link
+            href="/history"
+            className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 transition-colors hover:text-gray-900 dark:hover:text-gray-100"
+          >
+            VIEW ALL
+          </Link>
+        </div>
+        {/* Desktop header */}
+        <div className="hidden flex-wrap items-center justify-between gap-3 pb-4 lg:flex">
+          <div>
+            <h2 className="text-[15px] font-bold text-gray-900 dark:text-gray-100">Recent Transactions</h2>
+            <p className="mt-0.5 text-[11px] text-gray-400">Review your latest financial activity</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="relative flex items-center">
+              <Search size={13} className="absolute left-2.5 text-gray-400" />
+              <input
+                type="text"
+                value={txSearch}
+                onChange={(e) => setTxSearch(e.target.value)}
+                placeholder="Filter transactions..."
+                className="h-8 w-52 rounded-lg border border-gray-200 dark:border-[#262626] bg-white dark:bg-[#0a0a0a] pl-8 pr-2.5 text-xs text-gray-700 dark:text-gray-300 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-gray-400 dark:focus:border-gray-500 focus:outline-none"
               />
             </div>
-          ) : (
-            <Feed
-              rows={rows}
-              amountFor={(r) => fmt(convert(r))}
-              dayNetFor={dayNet}
-              locale={locale}
-              onOpen={setSelected}
-              max={6}
-              labels={{ today: t("today"), yesterday: t("homeYesterday") }}
-            />
-          )}
-          {rows.length > 6 && (
-            <Link
-              href="/history"
-              className="mt-4 flex h-11 items-center justify-center gap-1.5 rounded-full border border-border bg-surface text-[13px] font-semibold text-text-muted transition-colors hover:border-faint hover:text-text"
+            <button
+              type="button"
+              className="flex h-8 items-center gap-1.5 rounded-lg border border-gray-200 dark:border-[#262626] bg-white dark:bg-[#0a0a0a] px-3 text-xs font-medium text-gray-700 dark:text-gray-300 shadow-xs transition-colors hover:bg-gray-50 dark:hover:bg-[#141414]"
             >
-              <Layers size={14} aria-hidden />
-              {t("viewAll")} – {rows.length} {t("homeEntriesWord")}
+              <SlidersHorizontal size={12} className="text-gray-500 dark:text-gray-400" />
+              <span>Filter</span>
+            </button>
+          </div>
+        </div>
+
+        {filteredTransactions.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 py-10 text-center">
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400">No transactions yet</p>
+            <Link
+              href="/expense/new"
+              className="text-xs font-semibold text-blue-600 transition-colors hover:text-blue-700"
+            >
+              Add your first transaction
             </Link>
-          )}
-        </DashCard>
-
-        <DashCard
-          title={t("homeUpcoming")}
-          className="self-start lg:col-start-2 lg:row-start-1"
-          action={<CardPillLink href="/history">{t("viewAll")}</CardPillLink>}
-        >
-          <Upcoming />
-        </DashCard>
-
-        {categorySlices.length > 0 && (
-          <DashCard
-            title={t("homeSpendingMix")}
-            className="self-start lg:col-start-2 lg:row-start-3"
-            bodyClassName="flex h-full flex-col justify-center"
-            action={<CardPillLink href="/analytics">{t("analytics")}</CardPillLink>}
+          </div>
+        ) : (
+          <>
+        {/* Mobile: stacked rows */}
+        <div className="divide-y divide-gray-50 lg:hidden">
+          {filteredTransactions.map((tx) => (
+            <div
+              key={tx.id}
+              onClick={() => {
+                if ("raw" in tx && tx.raw) setSelected(tx.raw as ExpenseRow);
+              }}
+              className="flex cursor-pointer items-center gap-3 py-3.5 transition-colors hover:bg-gray-50 dark:hover:bg-[#141414]/70"
+            >
+              <span
+                className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${
+                  tx.isIncome ? "bg-blue-50 text-blue-600" : "bg-gray-100 dark:bg-[#141414] text-gray-500 dark:text-gray-400"
+                }`}
+              >
+                {tx.isIncome ? <ArrowUpRight size={16} /> : <ArrowDownLeft size={16} />}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[13px] font-semibold text-gray-900 dark:text-gray-100">{tx.name}</span>
+                <span className="mt-0.5 block truncate text-[10px] text-gray-400">
+                  {tx.date} · {tx.category}
+                </span>
+              </span>
+              <span className="flex shrink-0 flex-col items-end gap-1">
+                <span className={`numeric text-[13px] font-bold ${tx.isIncome ? "text-blue-600" : "text-gray-900 dark:text-gray-100"}`}>
+                  {tx.amount}
+                </span>
+                {tx.status === "completed" ? (
+                  <span className="flex items-center gap-1 text-[10px] font-medium text-blue-600">
+                    <span className="h-1.5 w-1.5 rounded-full bg-blue-600" aria-hidden />
+                    completed
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-[10px] font-medium text-gray-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-gray-400" aria-hidden />
+                    pending
+                  </span>
+                )}
+              </span>
+            </div>
+          ))}
+        </div>
+        {filteredTransactions.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setTxCount((c) => c + 5)}
+            className="flex w-full items-center justify-center gap-2 border-t border-gray-100 dark:border-[#262626] py-3.5 text-center text-[10px] font-bold uppercase tracking-wider text-gray-400 transition-colors hover:text-gray-700 dark:hover:text-gray-300 lg:hidden"
           >
-            <MixCard slices={categorySlices} format={fmt} otherLabel={t("analyticsOther")} />
-          </DashCard>
+            LOAD MORE
+            <MoreHorizontal size={13} aria-hidden />
+          </button>
+        )}
+        {/* lg+: ledger table */}
+        <div className="hidden scroll-x overflow-x-auto lg:block">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-gray-100 dark:border-[#262626] text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                <th className="py-3 pr-4 font-semibold">Entity / Merchant</th>
+                <th className="py-3 px-4 font-semibold">Date</th>
+                <th className="py-3 px-4 font-semibold">Category</th>
+                <th className="py-3 px-4 font-semibold">Status</th>
+                <th className="py-3 pl-4 text-right font-semibold">Amount</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {filteredTransactions.map((tx) => (
+                <tr
+                  key={tx.id}
+                  onClick={() => {
+                    if ("raw" in tx && tx.raw) {
+                      setSelected(tx.raw as ExpenseRow);
+                    }
+                  }}
+                  className="cursor-pointer text-xs transition-colors hover:bg-gray-50 dark:hover:bg-[#141414]/70"
+                >
+                  <td className="py-3.5 pr-4">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`grid h-8 w-8 place-items-center rounded-lg ${
+                          tx.isIncome ? "bg-blue-50 text-blue-600" : "bg-gray-100 dark:bg-[#141414] text-gray-500 dark:text-gray-400"
+                        }`}
+                      >
+                        {tx.isIncome ? <ArrowUpRight size={15} /> : <ArrowDownLeft size={15} />}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900 dark:text-gray-100">{tx.name}</p>
+                        <p className="text-[10px] text-gray-400">{tx.method}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-3.5 px-4 text-gray-500 dark:text-gray-400">{tx.date}</td>
+                  <td className="py-3.5 px-4">
+                    <span className="rounded-full bg-gray-100 dark:bg-[#141414] px-2.5 py-0.5 text-[10px] font-medium text-gray-600 dark:text-gray-400">
+                      {tx.category}
+                    </span>
+                  </td>
+                  <td className="py-3.5 px-4">
+                    {tx.status === "completed" ? (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600">
+                        <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
+                        completed
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-400">
+                        <span className="h-1.5 w-1.5 rounded-full bg-gray-400" />
+                        pending
+                      </span>
+                    )}
+                  </td>
+                  <td
+                    className={`numeric py-3.5 pl-4 text-right font-bold ${
+                      tx.isIncome ? "text-blue-600" : "text-gray-900 dark:text-gray-100"
+                    }`}
+                  >
+                    {tx.amount}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+          </>
         )}
 
-        <div
-          className={`self-start lg:col-start-2 lg:row-start-2 ${categorySlices.length > 0 ? "" : ""}`}
+        <Link
+          href="/history"
+          className="hidden border-t border-gray-100 dark:border-[#262626] py-3.5 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 transition-colors hover:text-gray-900 dark:hover:text-gray-100 lg:block"
         >
-          <AccountsStrip />
-        </div>
-      </div>
+          View All Transactions &nbsp;›
+        </Link>
+      </section>
 
+      {/* ===== Bottom Row: Linked Accounts + Recent Budgets ===== */}
+      <section className="rise mt-6 grid gap-5 lg:grid-cols-2">
+        {/* Linked Accounts Card */}
+        <div className="flex min-w-0 flex-col justify-between p-0 lg:rounded-xl lg:border lg:border-[#eaecf0] dark:border-[#262626] lg:bg-white dark:bg-[#0a0a0a] lg:p-5 lg:shadow-[0_1px_3px_rgba(16,24,40,0.04)]">
+          <div>
+            <div className="flex items-center justify-between">
+              <h2 className="text-[15px] font-bold text-gray-900 dark:text-gray-100">Linked Accounts</h2>
+              <Link
+                href="/accounts"
+                aria-label="Add account"
+                className="grid h-7 w-7 place-items-center rounded-lg text-gray-500 dark:text-gray-400 transition-colors hover:bg-gray-100 dark:hover:bg-[#141414] hover:text-gray-900 dark:hover:text-gray-100 lg:hidden"
+              >
+                <Plus size={15} />
+              </Link>
+            </div>
+            {accounts.length === 0 ? (
+              <p className="py-6 text-center text-xs text-gray-400">No accounts linked yet.</p>
+            ) : (
+              <>
+                {/* Mobile: swipeable balance cards */}
+                <div ref={stripRef} className="-mx-5 mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-1 lg:hidden">
+                  {sortedAccounts.slice(0, 5).map(({ account: a, value }) => (
+                    <div
+                      key={a.id}
+                      className="min-w-[200px] snap-start rounded-xl border border-[#eef0f2] bg-[#f7f8f9] dark:bg-[#141414] p-4"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span
+                          className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-white"
+                          style={{ backgroundColor: a.color || "#111827" }}
+                        >
+                          <Landmark size={16} />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-xs font-semibold text-gray-900 dark:text-gray-100">{a.name}</span>
+                          <span className="block truncate text-[9px] font-bold uppercase tracking-wider text-gray-400">
+                            {a.account_type}
+                          </span>
+                        </span>
+                      </div>
+                      <p className="mt-4 text-[9px] font-bold uppercase tracking-wider text-gray-400">Available Balance</p>
+                      <p className="numeric mt-1 text-lg font-bold text-gray-900 dark:text-gray-100">
+                        {formatMoney(value, displayCurrency, locale)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                {/* lg+: rows */}
+                <div className="mt-4 hidden space-y-3 lg:block">
+                  {sortedAccounts.slice(0, 3).map(({ account: a, value }) => (
+                    <div
+                      key={a.id}
+                      className="flex items-center justify-between rounded-xl border border-gray-100 dark:border-[#262626] bg-[#fbfcfc] dark:bg-[#141414] p-3.5 transition-colors hover:border-gray-200"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="grid h-10 w-10 place-items-center rounded-lg border border-gray-200 dark:border-[#262626]/60 bg-white dark:bg-[#0a0a0a] text-gray-600 dark:text-gray-400 shadow-xs">
+                          <Landmark size={18} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-gray-900 dark:text-gray-100">{a.name}</p>
+                          <p className="text-[11px] text-gray-400">
+                            {a.account_type}
+                            {a.account_number_last4 ? ` •••• ${a.account_number_last4}` : ""}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="numeric text-sm font-bold text-gray-900 dark:text-gray-100">
+                        {formatMoney(value, displayCurrency, locale)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          <Link
+            href="/accounts"
+            className="mt-4 hidden h-11 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 bg-white dark:bg-[#0a0a0a] text-xs font-medium text-gray-700 dark:text-gray-300 transition-colors hover:border-gray-400 dark:hover:border-[#4b5563] hover:bg-gray-50 dark:hover:bg-[#141414] lg:flex"
+          >
+            <Plus size={14} className="text-gray-500 dark:text-gray-400" />
+            <span>Link New Account</span>
+          </Link>
+        </div>
+
+        {/* Recent Budgets Card */}
+        <div className="flex min-w-0 flex-col justify-between p-0 lg:rounded-xl lg:border lg:border-[#eaecf0] dark:border-[#262626] lg:bg-white dark:bg-[#0a0a0a] lg:p-5 lg:shadow-[0_1px_3px_rgba(16,24,40,0.04)]">
+          <div>
+            <div className="flex items-center justify-between">
+              <h2 className="text-[15px] font-bold text-gray-900 dark:text-gray-100">
+                <span className="lg:hidden">Budget Health</span>
+                <span className="hidden lg:inline">Recent Budgets</span>
+              </h2>
+              <Clock size={14} className="shrink-0 text-gray-400 lg:hidden" aria-hidden />
+            </div>
+            <div className="mt-4 space-y-4">
+              {budgetRows.length === 0 ? (
+                <p className="py-6 text-center text-xs text-gray-400">No budgets set yet.</p>
+              ) : (
+                budgetRows.map((b) => (
+                  <div key={b.name}>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">{b.name}</span>
+                      <span className="numeric text-[11px] font-bold text-gray-900 dark:text-gray-100">
+                        {fmt(b.spent)}
+                        <span className="font-medium text-gray-400"> / {fmt(b.limit)}</span>
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-[#141414]">
+                        <div
+                          className={`grow-x h-full rounded-full ${b.pct >= 90 ? "bg-red-500" : "bg-blue-600"}`}
+                          style={{ width: `${Math.max(2, b.pct)}%` }}
+                        />
+                      </div>
+                      {b.pct >= 90 && (
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-500" aria-hidden />
+                      )}
+                    </div>
+                    <div className={`mt-1 ${b.pct >= 90 ? "" : "lg:text-right"}`}>
+                      <span
+                        className={`text-[10px] font-bold uppercase tracking-wider ${
+                          b.pct >= 90 ? "text-red-500" : "text-gray-400"
+                        }`}
+                      >
+                        {b.pct >= 90 ? "CRITICAL" : "ON TRACK"}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <Link
+            href="/profit-loss"
+            className="mt-4 border-t border-gray-100 dark:border-[#262626] py-3 text-center text-[10px] font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100 transition-colors hover:text-gray-600 lg:hidden"
+          >
+            View All Budgets
+          </Link>
+          <Link
+            href="/profit-loss"
+            className="mt-4 hidden items-center justify-center gap-1 pt-2 text-[11px] font-semibold text-gray-900 dark:text-gray-100 transition-colors hover:text-black lg:flex"
+          >
+            <span>Manage Budgets</span>
+            <ChevronRight size={13} />
+          </Link>
+        </div>
+      </section>
+
+      {lastUpdated && (
+        <footer className="mt-8 space-y-1 pb-2 text-center lg:hidden">
+          <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400">{lastUpdated}</p>
+          <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400">
+            Data secured by SpendFlow Finance API.
+          </p>
+        </footer>
+      )}
+
+      {/* Expense Detail Sheet */}
       <ExpenseDetailSheet
         row={selected}
         amount={selected ? fmt(convert(selected)) : ""}
@@ -854,8 +1367,7 @@ export default function HomePage() {
         onClose={() => setSelected(null)}
       />
 
-      {/* Custom range picker for the cash-flow filters. Applying a range
-          switches the chart to the custom window. */}
+      {/* Date Picker Modal */}
       <CalendarModal
         open={customOpen}
         onClose={() => setCustomOpen(false)}

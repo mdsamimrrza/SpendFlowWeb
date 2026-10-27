@@ -2180,10 +2180,10 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
           <button
             type="submit"
             disabled={saving}
-            className={`h-12 min-w-[170px] shrink-0 border px-5 text-sm font-bold uppercase tracking-[0.06em] text-white transition active:scale-[0.98] disabled:opacity-50 ${
+            className={`h-12 min-w-[170px] shrink-0 border px-5 text-sm font-bold uppercase tracking-[0.06em] transition active:scale-[0.98] disabled:opacity-50 ${
               flowType === "income"
-                ? "border-income bg-income hover:opacity-90"
-                : "border-primary bg-primary hover:opacity-90"
+                ? "border-income bg-income text-white hover:opacity-90"
+                : "border-primary bg-primary text-primary-ink hover:opacity-90"
             }`}
           >
             {saving
@@ -2284,8 +2284,10 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
                   setReviewOpen(false);
                   void performSave();
                 }}
-                className={`flex h-10 min-w-[96px] items-center justify-center px-4 text-xs font-bold uppercase tracking-[0.08em] text-white transition disabled:opacity-50 ${
-                  flowType === "income" ? "bg-income hover:opacity-90" : "bg-primary hover:opacity-90"
+                className={`flex h-10 min-w-[96px] items-center justify-center px-4 text-xs font-bold uppercase tracking-[0.08em] transition disabled:opacity-50 ${
+                  flowType === "income"
+                    ? "bg-income text-white hover:opacity-90"
+                    : "bg-primary text-primary-ink hover:opacity-90"
                 }`}
               >
                 {saving ? t("updating") : t("done")}

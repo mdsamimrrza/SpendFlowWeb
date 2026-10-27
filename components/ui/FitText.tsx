@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 
 interface FitTextProps {
   children: ReactNode;
@@ -25,7 +25,10 @@ export function FitText({ children, basePx, minPx = 13, className = "", title }:
   const textRef = useRef<HTMLSpanElement>(null);
   const wrapRef = useRef<HTMLSpanElement>(null);
 
-  useLayoutEffect(() => {
+  // useLayoutEffect on the client (no paint flicker); useEffect on the server
+  // so a server-rendered shell never trips React's SSR warning.
+  const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
+  useIsoLayoutEffect(() => {
     const el = textRef.current;
     const wrap = wrapRef.current;
     if (!el || !wrap) return;

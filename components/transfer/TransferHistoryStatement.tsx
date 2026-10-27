@@ -161,7 +161,7 @@ export function TransferHistoryStatement({ inject }: TransferHistoryPageProps) {
       <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="caps !text-primary-strong">{t("registerEyebrow")}</p>
-          <h1 className="mt-0.5 text-xl font-bold tracking-[-0.02em] text-text sm:text-2xl">
+          <h1 className="mt-0.5 text-[26px] font-bold tracking-tight text-text">
             {t("transferLog")}
           </h1>
         </div>

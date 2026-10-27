@@ -9,22 +9,29 @@ import { createPortal } from "react-dom";
 import {
   Activity,
   ArrowDownLeft,
+  ArrowDownRight,
   ArrowUpRight,
   Award,
   Calendar,
   ChevronRight,
+  Home,
   Inbox,
+  Lightbulb,
   PieChart,
   Sparkles,
   Target,
+  TrendingDown,
+  TrendingUp,
   Wallet,
   X,
+  Zap,
 } from "lucide-react";
 import { useAuth } from "@/store/AuthContext";
 import { useLanguage } from "@/store/LanguageContext";
 import { usePrivacy } from "@/store/PrivacyContext";
 import { useRowConverter, useBudget } from "@/hooks/useRates";
 import { subscribeToExpenseChanges } from "@/hooks/useExpenses";
+import { FitText } from "@/components/ui/FitText";
 import { listExpenses } from "@/services/expenses";
 import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
 import type { TranslationKey } from "@/constants/i18n/dictionaries";
@@ -650,31 +657,6 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
             ? tr(t("triFlowInsightHealthy"), { a: fmt(stats.net), r: String(savingsRate) })
             : tr(t("triFlowInsightTracking"), { a: fmt(stats.spent), n: String(stats.expenseCount) });
 
-  // KPI delta chip vs the previous window. Direction-of-goodness depends on
-  // the metric: more spending is bad, more income / net is good. No prior
-  // data or an exact tie renders as a quiet neutral pill.
-  const kpiDelta = (pct: number | null, abs: number, goodWhenUp: boolean) => {
-    if (pct == null || pct === 0) {
-      return (
-        <span
-          className="numeric inline-flex h-6 items-center rounded-full px-2 text-[11px] font-semibold text-faint"
-          style={{ backgroundColor: "var(--sf-track)" }}
-        >
-          {pct == null ? t("anNoPrev") : "0%"}
-        </span>
-      );
-    }
-    return (
-      <span title={`${abs >= 0 ? "+" : "−"}${fmt(Math.abs(abs))} · ${t("anVsPrev")}`}>
-        <DeltaChip text={`${Math.abs(pct)}%`} positive={(abs > 0) === goodWhenUp} />
-      </span>
-    );
-  };
-  const deltas = {
-    income: pctDelta(stats.income, prevStats.income),
-    spent: pctDelta(stats.spent, prevStats.spent),
-    net: pctDelta(stats.net, prevStats.net),
-  };
 
   // Calendar navigation: never past the current month.
   const nowCal = new Date();
@@ -700,12 +682,11 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
   }
 
   return (
-    <main className="mx-auto w-full max-w-[1200px] px-4 pb-28 pt-4 sm:px-6">
+    <main className="-mt-2 mx-auto w-full max-w-[1200px]">
       {/* ── 1. MASTHEAD (unboxed): identity left, period selector right ── */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
         <div className="min-w-0">
-          <p className="caps-faint">{t("anKicker")}</p>
-          <h1 className="mt-0.5 text-[22px] font-bold leading-tight tracking-[-0.02em] text-text sm:text-[26px]">
+          <h1 className="text-[26px] font-bold tracking-tight text-text">
             {t("anTitle")}
           </h1>
         </div>
@@ -720,8 +701,9 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
             />
           )}
           <FloatingSelect
-            className="relative z-50"
-            icon={<Calendar size={14} className="shrink-0 text-primary" aria-hidden />}
+            ghost
+            className="relative z-50 sm:w-[220px]"
+            icon={<Calendar size={14} className="shrink-0 text-gray-500" aria-hidden />}
             label={period === "month" ? customRangeLabel : t(PERIODS.find((p) => p.key === period)?.labelKey ?? "anThisCycle")}
             open={periodOpen}
             onToggle={() => setPeriodOpen((v) => !v)}
@@ -763,65 +745,67 @@ export function AnalyticsStatement({ inject }: { inject?: AnalyticsInject }) {
 
       {!error && rows.length > 0 && (
         <>
-          {/* ── 2. KPI ROW: the overview's approved StatCard, delta chips in
-              the caption slot ── */}
-          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <StatCard
-              icon={ArrowDownLeft}
-              tone="beige"
-              label={t("homeInflow")}
-              value={fmt(stats.income)}
-              caption={
-                <>
-                  {kpiDelta(deltas.income.pct, deltas.income.abs, true)}
-                  <span className="truncate">
-                    {savingsRate != null ? tr(t("anSavingsRatePill"), { r: String(savingsRate) }) : "\u00A0"}
-                  </span>
-                </>
+          {/* ── 1b. TRI-FLOW: the APK Income, Expense & Budget card ── */}
+          <section aria-label={t("triFlowTitle")} className="mt-3">
+            <TriFlowCard
+              t={t}
+              fmt={fmt}
+              income={stats.income}
+              spent={stats.spent}
+              net={stats.net}
+              incomeCount={Math.max(0, stats.entries - stats.expenseCount)}
+              expenseCount={stats.expenseCount}
+              budget={budget}
+              savingsRateNum={
+                stats.income > 0 ? Math.max(-100, Math.round(((stats.income - stats.spent) / stats.income) * 100)) : 0
               }
+              expenseToIncome={stats.income > 0 ? Math.round((stats.spent / stats.income) * 100) : 0}
+              utilization={budget != null && budget > 0 ? Math.round((stats.spent / budget) * 100) : 0}
             />
-            <StatCard
-              icon={ArrowUpRight}
-              tone="rose"
-              label={t("homeOutflow")}
-              value={fmt(stats.spent)}
-              caption={
-                <>
-                  {kpiDelta(deltas.spent.pct, deltas.spent.abs, false)}
-                  <span className="truncate">
-                    {t("homeAvgDaily")}: {fmt(avgPerDay)}
-                  </span>
-                </>
-              }
-            />
+          </section>
+
+          {/* ── 2. KPI ROW: the APK's four tiles ── */}
+          <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
             <StatCard
               icon={Wallet}
-              tone="sage"
-              label={t("cfNet")}
-              value={
-                <span>
-                  <span className="mr-0.5 text-[0.6em] text-faint">{stats.net < 0 ? "−" : "+"}</span>
-                  {fmt(Math.abs(stats.net))}
+              tone="blue"
+              label={t("anKpiTotalModalTitle")}
+              value={fmt(stats.spent)}
+              caption={
+                <span className="truncate">
+                  {stats.expenseCount} {t("expense")} · {Math.max(0, stats.entries - stats.expenseCount)}{" "}
+                  {t("income")}
                 </span>
               }
+            />
+            <StatCard
+              icon={Activity}
+              tone="sage"
+              label={t("anKpiVelocityModalTitle")}
+              value={fmt(avgPerDay)}
+              caption={<span className="truncate">{t("anBurnPerDay")}</span>}
+            />
+            <StatCard
+              icon={Home}
+              tone="rose"
+              label={t("anPeakExpense")}
+              value={fmt(largest[0]?.value ?? 0)}
               caption={
-                <>
-                  {kpiDelta(deltas.net.pct, deltas.net.abs, true)}
-                  <span className="truncate">
-                    {budgetSet
-                      ? overBudget
-                        ? tr(t("anBudgetOver"), { over: fmt(stats.spent - (budget ?? 0)), total: fmt(budget ?? 0) })
-                        : tr(t("anBudgetLeft"), { left: fmt((budget ?? 0) - stats.spent), total: fmt(budget ?? 0) })
-                      : "\u00A0"}
-                  </span>
-                </>
+                <span className="truncate">
+                  {largest[0]?.row.description?.trim() ||
+                    largest[0]?.row.categories?.name ||
+                    t("anPeakSub")}
+                </span>
               }
             />
+            <StatCard
+              icon={Sparkles}
+              tone="beige"
+              label={t("anAvgTicket")}
+              value={fmt(stats.expenseCount > 0 ? stats.spent / stats.expenseCount : 0)}
+              caption={<span className="truncate">{t("anPerExpense")}</span>}
+            />
           </div>
-          <p className="mt-2 text-[12px] leading-[18px] text-faint">
-            {triFlowInsight}
-            {!budgetSet && <span> · {t("triFlowNotSet")}</span>}
-          </p>
 
           {/* ── 3. DASHCARD GRID: flow | donut, monthly bars | largest,
               calendar | health ── */}
@@ -1064,7 +1048,7 @@ function CenterModal({
       role="presentation"
     >
       <div
-        className="max-h-[85vh] w-full overflow-y-auto rounded-2xl border border-border bg-surface p-5 shadow-pop"
+        className="max-h-[85vh] w-full overflow-y-auto rounded-xl border border-border bg-surface p-5 shadow-pop"
         style={{ maxWidth }}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
@@ -1199,5 +1183,242 @@ function HealthBand({
         </div>
       </div>
     </DashCard>
+  );
+}
+
+/* ── Tri-flow card - the APK IncomeExpenseBudgetCard (recovered from
+   git 8dacad1; tokens now render it in the Ledger Console palette). ── */
+function TriFlowCard({
+  t,
+  fmt,
+  income,
+  spent,
+  net,
+  incomeCount,
+  expenseCount,
+  budget,
+  savingsRateNum,
+  expenseToIncome,
+  utilization,
+}: {
+  t: (k: TranslationKey) => string;
+  fmt: (n: number) => string;
+  income: number;
+  spent: number;
+  net: number;
+  incomeCount: number;
+  expenseCount: number;
+  budget: number | null;
+  savingsRateNum: number;
+  expenseToIncome: number;
+  utilization: number;
+}) {
+  const healthy = net >= 0;
+  const overBudget = budget != null && budget > 0 && spent > budget;
+  const nearBudget = budget != null && budget > 0 && utilization >= 85 && !overBudget;
+  const budgetSet = budget != null && budget > 0;
+
+  const insight = overBudget && !healthy
+    ? tr(t("triFlowInsightCritical"), { a: fmt(spent - (budget ?? 0)), b: fmt(Math.abs(net)) })
+    : overBudget && healthy
+      ? tr(t("triFlowInsightOverPositive"), { a: fmt(spent - (budget ?? 0)), b: fmt(net) })
+      : income > 0 && !healthy
+        ? tr(t("triFlowInsightDeficit"), { a: fmt(Math.abs(net)) })
+        : income > 0 && healthy
+          ? tr(t("triFlowInsightHealthy"), { a: fmt(net), r: String(savingsRateNum) })
+          : tr(t("triFlowInsightTracking"), { a: fmt(spent), n: String(expenseCount) });
+
+  return (
+    <section className="space-y-4 rounded-xl border border-border bg-surface p-4">
+      {/* header */}
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <span
+            className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-lg"
+            style={{ backgroundColor: "var(--sf-icon-chip)" }}
+            aria-hidden
+          >
+            <PieChart size={18} className="text-primary" />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-base font-extrabold tracking-[-0.2px] text-text">{t("triFlowTitle")}</p>
+            <p className="truncate text-[11px] text-text-muted">{t("triFlowSub")}</p>
+          </div>
+        </div>
+        {income > 0 && (
+          <span
+            className="shrink-0 rounded-lg border px-2 py-[3px] text-[10.5px] font-extrabold"
+            style={{
+              backgroundColor: healthy ? "var(--sf-tint-success)" : "var(--sf-tint-danger)",
+              borderColor: healthy ? "var(--sf-income)" : "var(--sf-hue-red)",
+              color: healthy ? "var(--sf-income)" : "var(--sf-hue-red)",
+            }}
+          >
+            {healthy ? `+${savingsRateNum}% ${t("triFlowSaved")}` : t("triFlowDeficit")}
+          </span>
+        )}
+      </div>
+
+      {/* telemetry tiles */}
+      <div className="grid grid-cols-1 gap-2.5 min-[390px]:grid-cols-3">
+        <div
+          className="min-w-0 space-y-1 rounded-lg border p-2.5"
+          style={{ backgroundColor: "var(--sf-tile-income-bg)", borderColor: "var(--sf-tile-income-border)" }}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[11px] font-semibold" style={{ color: "var(--sf-income)" }}>
+              {t("triFlowIncomeTile")}
+            </p>
+            <ArrowDownRight size={14} aria-hidden style={{ color: "var(--sf-income)" }} />
+          </div>
+          <p className="numeric min-w-0 text-base font-extrabold" style={{ color: "var(--sf-income)" }} title={t("triFlowIncomeTile")}>
+            <FitText basePx={16} minPx={9} title={t("triFlowIncomeTile")}>
+              {fmt(income)}
+            </FitText>
+          </p>
+          <p className="text-[10.5px] text-text-muted">
+            {incomeCount} {incomeCount === 1 ? t("anEntrySingularWord") : t("anEntriesWord")}
+          </p>
+        </div>
+        <div
+          className="min-w-0 space-y-1 rounded-lg border p-2.5"
+          style={{ backgroundColor: "var(--sf-tile-expense-bg)", borderColor: "var(--sf-tile-expense-border)" }}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[11px] font-semibold text-danger">{t("triFlowExpenseTile")}</p>
+            <ArrowUpRight size={14} className="text-danger" aria-hidden />
+          </div>
+          <p className="numeric min-w-0 text-base font-extrabold text-text" title={t("triFlowExpenseTile")}>
+            <FitText basePx={16} minPx={9} title={t("triFlowExpenseTile")}>
+              {fmt(spent)}
+            </FitText>
+          </p>
+          <p className="text-[10.5px] text-text-muted">
+            {expenseCount} {expenseCount === 1 ? t("anTxSingularEntry") : t("anTxPluralEntries")}
+          </p>
+        </div>
+        <div
+          className="min-w-0 space-y-1 rounded-lg border p-2.5"
+          style={{
+            backgroundColor: "var(--sf-surface-elevated)",
+            borderColor: overBudget ? "var(--sf-danger)" : "var(--sf-border)",
+          }}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[11px] font-semibold text-text-muted">{t("triFlowBudgetTile")}</p>
+            <Target size={14} className="shrink-0 text-primary" aria-hidden />
+          </div>
+          <p className="numeric min-w-0 text-base font-extrabold text-text" title={t("triFlowBudgetTile")}>
+            <FitText basePx={16} minPx={9} title={t("triFlowBudgetTile")}>
+              {budgetSet ? fmt(budget ?? 0) : t("triFlowNotSet")}
+            </FitText>
+          </p>
+          <p className="text-[10.5px] text-text-muted">
+            {budgetSet ? `${utilization}% ${t("triFlowUsed")}` : t("anTapSettings")}
+          </p>
+        </div>
+      </div>
+
+      {/* comparative bars */}
+      <div className="space-y-3 pt-1">
+        {income > 0 && (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-3">
+              <p className="min-w-0 text-xs font-bold text-text">{t("triFlowConsumption")}</p>
+              <p
+                className="numeric shrink-0 text-xs font-extrabold"
+                style={{ color: expenseToIncome > 100 ? "var(--sf-danger)" : "var(--sf-primary)" }}
+              >
+                {expenseToIncome}% {t("triFlowSpent")} ({fmt(spent)})
+              </p>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full" style={{ backgroundColor: "var(--sf-track)" }}>
+              <div
+                className="h-full rounded-full transition-all"
+                style={{
+                  width: `${Math.min(100, expenseToIncome)}%`,
+                  backgroundColor:
+                    expenseToIncome > 100
+                      ? "var(--sf-danger)"
+                      : expenseToIncome > 80
+                        ? "var(--sf-warning)"
+                        : "var(--sf-income)",
+                }}
+              />
+            </div>
+          </div>
+        )}
+        {budgetSet ? (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-3">
+              <p className="min-w-0 text-xs font-bold text-text">{t("triFlowCeiling")}</p>
+              <p
+                className="numeric shrink-0 text-xs font-extrabold"
+                style={{
+                  color: overBudget ? "var(--sf-danger)" : nearBudget ? "var(--sf-warning)" : "var(--sf-primary)",
+                }}
+              >
+                {utilization}% ({fmt(Math.max(0, (budget ?? 0) - spent))} {t("triFlowRemaining")})
+              </p>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full" style={{ backgroundColor: "var(--sf-track)" }}>
+              <div
+                className="h-full rounded-full transition-all"
+                style={{
+                  width: `${Math.min(100, utilization)}%`,
+                  backgroundColor: overBudget ? "var(--sf-danger)" : nearBudget ? "var(--sf-warning)" : "var(--sf-primary)",
+                }}
+              />
+            </div>
+          </div>
+        ) : (
+          <Link
+            href="/profit-loss"
+            className="flex min-h-[44px] items-center justify-between gap-3 rounded-md px-2.5 py-2.5 transition active:scale-[0.99]"
+            style={{ backgroundColor: "var(--sf-surface-elevated)" }}
+          >
+            <span className="flex min-w-0 items-center gap-1.5 text-xs text-text-muted">
+              <Lightbulb size={13} className="shrink-0" aria-hidden />
+              <span className="truncate">{t("triFlowSetHint")}</span>
+            </span>
+            <span className="shrink-0 text-xs font-extrabold text-primary">{t("triFlowSetCta")}</span>
+          </Link>
+        )}
+      </div>
+
+      {/* smart insight pill */}
+      <div
+        className="flex items-center gap-2 rounded-lg p-2.5"
+        style={{
+          backgroundColor: overBudget
+            ? "var(--sf-tile-expense-bg)"
+            : income > 0 && healthy
+              ? "var(--sf-tile-income-bg)"
+              : "var(--sf-icon-chip)",
+        }}
+      >
+        {overBudget ? (
+          <TrendingUp size={16} className="shrink-0 text-danger" aria-hidden />
+        ) : income > 0 && healthy ? (
+          <TrendingDown size={16} className="shrink-0" style={{ color: "var(--sf-income)" }} aria-hidden />
+        ) : (
+          <Zap size={16} className="shrink-0 text-primary" aria-hidden />
+        )}
+        <p
+          className="min-w-0 text-[11.5px] leading-4"
+          style={{
+            color: overBudget
+              ? "var(--sf-danger)"
+              : income > 0 && !healthy
+                ? "var(--sf-danger)"
+                : income > 0
+                  ? "var(--sf-income)"
+                  : "var(--sf-text)",
+          }}
+        >
+          {insight}
+        </p>
+      </div>
+    </section>
   );
 }

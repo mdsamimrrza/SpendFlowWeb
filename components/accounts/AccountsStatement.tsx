@@ -172,7 +172,7 @@ export function AccountsStatement({ inject }: AccountsPageProps) {
       {/* Page header */}
       <header className="mb-4 flex flex-wrap items-center justify-between gap-3 sm:mb-5">
         <div className="min-w-0">
-          <h1 className="text-xl font-bold tracking-[-0.02em] text-text sm:text-2xl">
+          <h1 className="text-[26px] font-bold tracking-tight text-text">
             {t("accScreenTitle")}
           </h1>
           <p className="mt-0.5 text-[13px] text-faint">
@@ -195,7 +195,7 @@ export function AccountsStatement({ inject }: AccountsPageProps) {
         {/* Left column: total-liquid hero + account grid (2-up from sm) */}
         <div className="min-w-0 lg:col-span-2">
           {/* Total liquid balance hero */}
-          <section className="relative rounded-2xl border border-border bg-surface p-5 shadow-soft">
+          <section className="relative rounded-xl border border-border bg-surface p-5 shadow-soft">
             <span className="absolute right-4 top-4 z-10">
               <PrivacyEyeButton />
             </span>
@@ -254,7 +254,7 @@ export function AccountsStatement({ inject }: AccountsPageProps) {
             {loading ? (
               <div className="mt-2.5 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-[118px] w-full rounded-2xl" />
+                  <Skeleton key={i} className="h-[118px] w-full rounded-xl" />
                 ))}
               </div>
             ) : accounts.length === 0 ? (
@@ -282,7 +282,7 @@ export function AccountsStatement({ inject }: AccountsPageProps) {
                         setEditing(item);
                         setEditorOpen(true);
                       }}
-                      className={`flex w-full flex-col gap-3 rounded-2xl border bg-surface p-4 text-left shadow-soft transition hover:border-faint active:opacity-90 ${
+                      className={`flex w-full flex-col gap-3 rounded-xl border bg-surface p-4 text-left shadow-soft transition hover:border-faint active:opacity-90 ${
                         item.is_default ? "border-primary/40" : "border-border"
                       }`}
                     >
@@ -350,7 +350,7 @@ export function AccountsStatement({ inject }: AccountsPageProps) {
             the transfers strip flows beneath the accounts as before. */}
         <aside className="mt-5 min-w-0 space-y-4 lg:mt-0">
           {/* Quick links (desktop) */}
-          <section className="hidden rounded-2xl border border-border bg-surface p-2 shadow-soft lg:block">
+          <section className="hidden rounded-xl border border-border bg-surface p-2 shadow-soft lg:block">
             {(
               [
                 { icon: Plus, label: t("accAddAccount"), href: null as string | null, onClick: openAdd },

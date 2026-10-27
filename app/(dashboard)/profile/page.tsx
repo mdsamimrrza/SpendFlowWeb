@@ -318,7 +318,7 @@ export default function ProfilePage() {
     <main className="mx-auto w-full max-w-[880px]">
       <header className="mb-5">
         <p className="text-[13px] font-medium text-faint">{t("profileHolder")}</p>
-        <h1 className="mt-0.5 text-xl font-bold tracking-[-0.02em] text-text sm:text-2xl">
+        <h1 className="text-[26px] font-bold tracking-tight text-text">
           {t("rowProfileSecurity")}
         </h1>
       </header>

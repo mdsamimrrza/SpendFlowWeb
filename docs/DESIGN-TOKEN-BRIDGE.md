@@ -10,12 +10,28 @@ truth: `constants/theme.ts` in the mobile repo (tokens verified in audit, 2026-0
 > components' theme-invariant accent hues and component-level tints). See the Theme divergence note in
 > `FEATURE-PARITY.md`.
 
+> **CURRENT for the web (2026-10-25): "Ledger Console" re-theme (user-directed:
+> a neutral fintech-console reference – "keeping exact design, apply other
+> pages color theme").** The V5 token system was re-pointed value-for-value so
+> every page inherits the new shell/overview look with zero layout change.
+> Light = canvas `#F8F9FA` + white cards + hairline `#EAECF0` borders +
+> gray-900 `#111827` ink and action fills (`--sf-primary`), flat neutral
+> shadow `0 1px 3px rgb(16 24 40 / 0.05)`; dark = graphite `#080B10` + slate
+> panels `#10151D` / `#171E29` + mint `#A8D5C0`. Status hues: income/positive
+> = blue `#2563EB`, success = emerald `#059669`, expense series = red
+> `#EF4444` (clay `#E3A08A` in dark), danger = rose `#E11D48`, warning =
+> amber `#D97706`. The pastel chip quartet became neutral/blue/amber/rose
+> tints; every component-level literal (`--sf-set-*`, `--sf-studio-*`,
+> `--sf-bin-*`, `--sf-bull-*`, `--sf-tint-*`, `--sf-tile-*`) was re-tinted to
+> the same family, and the warm shadow cast `rgb(64 58 40 / …)` is retired
+> everywhere (`.panel`, `shadow-soft/pop`, `.sf-lift`, `.sf-auth-master`).
+
 > **SUPERSEDED for the web (2026-10-13): "SpendFlow V5 Sage Ledger" redesign
 > (user-directed: reference image of a cream/sage pastel dashboard – "same
 > exact design, restructure redesign complete exact").** Warm pastel
 > identity: light = cream `#F1EEE5` + sage `#5E7E5B` + white-warm cards
-> `#FDFCF9` with soft diffuse shadows; dark = moss-black `#161A12` + lifted
-> olive `#1F251A` + pale sage `#A9C2A0`. Pastel accent quartet for chips and
+> `#FDFCF9` with soft diffuse shadows; dark = near-black `#080B10` + charcoal
+> panels `#10151D` / `#171E29` + mint `#A8D5C0`. Pastel accent quartet for chips and
 > charts: sage / warm beige `#D9BC8C` / dusty blue `#92A9BD` / rosewood
 > `#C4785A`. Charts: income = sage green, expense series = rosewood
 > (`--sf-expense-series`, clay `#DC9178` in dark). Type: DM Sans for the UI

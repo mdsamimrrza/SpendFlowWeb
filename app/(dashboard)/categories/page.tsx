@@ -99,10 +99,10 @@ export default function CategoriesPage() {
       {/* ── Page header ── */}
       <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[13px] font-medium text-faint">{t("rowCategoriesBudgetsDesc")}</p>
-          <h1 className="mt-0.5 text-xl font-bold tracking-[-0.02em] text-text sm:text-2xl">
+          <h1 className="text-[26px] font-bold tracking-tight text-text">
             {t("rowCategoriesBudgets")}
           </h1>
+          <p className="mt-1 text-xs text-text-muted">{t("rowCategoriesBudgetsDesc")}</p>
         </div>
         <button
           onClick={openNew}

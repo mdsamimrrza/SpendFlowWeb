@@ -48,14 +48,24 @@ function row(date: string, amount: number, description: string, category: Cat, t
   };
 }
 
+/* Today-relative dates so the default "This Month" (billing cycle) window
+   always contains the mock statement — fixed dates silently aged out. */
+function daysAgo(n: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 const inject: ExportInject = {
   rows: [
-    row("2026-09-14", 850, "Morning coffee", CATS.food),
-    row("2026-09-13", 12500, "Weekly groceries", CATS.groceries),
-    row("2026-09-11", 15000, "September rent", CATS.rent),
-    row("2026-09-09", 1500, "Electricity top-up", CATS.bills),
-    row("2026-09-05", 320, "Bus fare", CATS.transport),
-    row("2026-09-01", 95000, "September salary", CATS.salary, "income"),
+    row(daysAgo(20), 95000, "Monthly salary", CATS.salary, "income"),
+    row(daysAgo(18), 15000, "Monthly rent", CATS.rent),
+    row(daysAgo(14), 12500, "Weekly groceries", CATS.groceries),
+    row(daysAgo(11), 850, "Morning coffee", CATS.food),
+    row(daysAgo(9), 1500, "Electricity top-up", CATS.bills),
+    row(daysAgo(6), 320, "Bus fare", CATS.transport),
+    row(daysAgo(4), 8050, "Vegetables & staples", CATS.groceries),
+    row(daysAgo(1), 5600, "Dinner out", CATS.food),
   ] as ExportInject["rows"],
 };
 

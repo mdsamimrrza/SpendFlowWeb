@@ -54,8 +54,8 @@ const config: Config = {
         "2xl": "24px",
       },
       boxShadow: {
-        soft: "0 1px 2px rgb(64 58 40 / 0.04), 0 10px 28px -8px rgb(64 58 40 / 0.1)",
-        pop: "0 4px 14px rgb(64 58 40 / 0.08), 0 24px 48px -12px rgb(64 58 40 / 0.22)",
+        soft: "0 1px 3px rgb(16 24 40 / 0.05)",
+        pop: "0 4px 14px rgb(16 24 40 / 0.08), 0 24px 48px -12px rgb(16 24 40 / 0.22)",
       },
       fontFamily: {
         sans: [

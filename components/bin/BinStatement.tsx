@@ -182,7 +182,7 @@ export default function BinStatement({ inject }: BinStatementProps) {
       {/* Masthead */}
       <header className="mb-4 flex items-end justify-between gap-3 pt-1 sm:mb-5">
         <div>
-          <h1 className="flex items-baseline gap-2 text-xl font-bold tracking-[-0.02em] text-text sm:text-2xl">
+          <h1 className="flex items-baseline gap-2 text-[26px] font-bold tracking-tight text-text">
             {t("bin_title")}
             {items.length > 0 && (
               <span className="text-[13px] font-semibold text-faint">
@@ -190,6 +190,7 @@ export default function BinStatement({ inject }: BinStatementProps) {
               </span>
             )}
           </h1>
+          <p className="mt-1 text-xs text-text-muted">{t("binSubtitle")}</p>
         </div>
         <button
           onClick={() => setEmptyConfirmOpen(true)}

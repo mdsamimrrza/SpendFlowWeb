@@ -657,7 +657,7 @@ export default function ProfitLossPage() {
         </button>
         <div className="min-w-0">
           <p className="truncate text-[13px] font-medium text-faint">{t("pl_subtitle")}</p>
-          <h1 className="mt-0.5 truncate text-xl font-bold tracking-[-0.02em] text-text sm:text-2xl">
+          <h1 className="truncate text-[26px] font-bold tracking-tight text-text">
             {t("pl_title")}
           </h1>
         </div>
@@ -1347,7 +1347,7 @@ function CycleSettingsModal({
         role="dialog"
         aria-modal="true"
         aria-label={t("plCycleSettingsTitle")}
-        className="sf-pop max-h-[90vh] w-full max-w-[420px] overflow-y-auto rounded-2xl border border-border bg-surface p-5 shadow-soft"
+        className="sf-pop max-h-[90vh] w-full max-w-[420px] overflow-y-auto rounded-xl border border-border bg-surface p-5 shadow-soft"
       >
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2.5">
@@ -1514,7 +1514,7 @@ function CycleConfirmDialog({
         role="alertdialog"
         aria-modal="true"
         aria-label={t("plCycleConfirmTitle")}
-        className="sf-pop w-full max-w-[420px] rounded-2xl border border-border bg-surface p-5 shadow-soft"
+        className="sf-pop w-full max-w-[420px] rounded-xl border border-border bg-surface p-5 shadow-soft"
       >
         <div className="flex items-center gap-2.5">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-brass-tint">

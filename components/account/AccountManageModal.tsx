@@ -529,7 +529,7 @@ export function AccountManageModal({
               }`}
               aria-hidden
             >
-              {isDefault && <Check size={14} className="text-white" />}
+              {isDefault && <Check size={14} className="text-primary-ink" />}
             </span>
             <span className="min-w-0 flex-1">
               <span className="block text-[13px] font-bold text-text">{t("accSetDefault")}</span>

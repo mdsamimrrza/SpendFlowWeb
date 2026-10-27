@@ -114,7 +114,7 @@ export function StatCard({
         <span aria-hidden className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${tones[tone]}`}>
           <Icon size={16} />
         </span>
-        <span className="min-w-0 truncate text-[12.5px] font-semibold text-text-muted">
+        <span className="min-w-0 text-[11px] font-bold uppercase leading-tight tracking-wider text-text-muted">
           {label}
         </span>
       </div>

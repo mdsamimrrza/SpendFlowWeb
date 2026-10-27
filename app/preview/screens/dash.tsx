@@ -1,463 +1,579 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import {
   ArrowDownLeft,
   ArrowUpRight,
-  CalendarDays,
-  PiggyBank,
+  Banknote,
+  Calendar,
+  ChevronDown,
+  ChevronRight,
+  CreditCard,
+  Download,
+  Landmark,
+  MoreHorizontal,
+  Plus,
+  Search,
+  SlidersHorizontal,
+  TrendingUp,
   Wallet,
 } from "lucide-react";
 import { AppShell } from "@/components/shell/AppShell";
-import { AccountsStrip } from "@/components/dash/AccountsStrip";
-import { Upcoming } from "@/components/dash/Upcoming";
-import { BillsDue } from "@/components/dash/BillsDue";
-import { Feed } from "@/components/dash/Feed";
-import { MixCard } from "@/components/dash/MixCard";
-import {
-  cardPillClass,
-  DashCard,
-  DeltaChip,
-  RangeChip,
-  StatCard,
-} from "@/components/dash/primitives";
-import { BalanceCard } from "@/components/dash/BalanceCard";
-import { CashFlowCard } from "@/components/dash/CashFlowCard";
-import { HeatGrid } from "@/components/graphs/HeatGrid";
-import { TodayRateLine } from "@/components/ui/TodayRateLine";
-import type { FlowPoint } from "@/components/graphs/FlowChart";
-import type { ExpenseRow } from "@/services/expenses";
-import type { RecurringRuleRow } from "@/services/recurring";
-import type { BankAccountRow } from "@/services/bankAccounts";
+import { CashFlowSplineChart } from "@/components/dash/CashFlowSplineChart";
 
-/**
- * Static design preview of the de-boxed "Sage Ledger" home dashboard (mock
- * data, no auth, no network) – hero safe-to-spend number, ruled sections
- * instead of cards, cash-flow chart with the 1D/1W/1M/Cycle/1Y/Custom
- * filters. Composes the real AppShell + overview components with injected
- * data so the layout can be screenshotted without an account.
- */
-const fmt = (n: number) =>
-  `NPR ${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(n)}`;
-const axisFmt = (n: number) =>
-  new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(n);
-
-const now_ = new Date();
-const cycleLabel = "Oct 1 – Oct 31";
-function iso(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-const pace = {
-  daysTotal: 30,
-  daysElapsed: 14,
-  spentPct: 0.061,
-};
-
-/* ── Deterministic mocks ── */
-const CATS = [
-  { name: "Food & Dining", color: "#EF6C00" },
-  { name: "Groceries", color: "#2E7D32" },
-  { name: "Transport", color: "#0277BD" },
-  { name: "Shopping", color: "#BA68C8" },
-  { name: "Bills & Utilities", color: "#FBC02D" },
+const CHART_POINTS = [
+  { label: "May 18", income: 0, expense: 420 },
+  { label: "May 19", income: 10, expense: 220 },
+  { label: "May 20", income: 1220, expense: 760 },
+  { label: "May 21", income: 40, expense: 380 },
+  { label: "May 22", income: 10, expense: 210 },
+  { label: "May 23", income: 2360, expense: 1100 },
+  { label: "May 24", income: 80, expense: 60 },
 ];
-const METHODS = ["Cash", "Card", "eSewa", "Khalti", "Bank Transfer"];
 
-/* Two entries a day across the last 14 days + a salary a week back. */
-const mockRows: ExpenseRow[] = (() => {
-  const out: ExpenseRow[] = [];
-  let n = 0;
-  out.push({
-    id: "s1",
-    type: "income",
-    amount: 617000,
-    currency: "NPR",
-    date: iso(new Date(now_.getFullYear(), now_.getMonth(), now_.getDate() - 7)),
-    time: "10:00",
-    payment_method: "Bank Transfer",
-    description: "Monthly salary",
-    categories: { id: "cs", name: "Salary", icon: "briefcase", color: "#2E7D32", type: "expense" },
-    bank_accounts: { id: "b1", name: "Nabil Bank", icon: "bank", account_type: "bank" },
-  } as unknown as ExpenseRow);
-  for (let back = 13; back >= 0; back--) {
-    const d = new Date(now_);
-    d.setDate(now_.getDate() - back);
-    for (let i = 0; i < 2; i++) {
-      const cat = CATS[(back + i) % CATS.length];
-      out.push({
-        id: `r${n++}`,
-        type: "expense",
-        amount: Math.round(200 + ((back * 7 + i * 13) % 29) * 120),
-        currency: "NPR",
-        date: iso(d),
-        time: `${String(8 + ((back + i) % 12)).padStart(2, "0")}:${String(i * 30).padStart(2, "0")}`,
-        payment_method: METHODS[(back + i) % METHODS.length],
-        description: `${cat.name} run`,
-        categories: { id: `c${cat.name}`, name: cat.name, color: cat.color, type: "expense" },
-      } as unknown as ExpenseRow);
-    }
-  }
-  return out.sort((a, b) => (a.date < b.date ? 1 : -1));
-})();
+const DEFAULT_CATEGORIES = [
+  { name: "Housing", amount: "$1200", pct: 82, color: "#18181b" },
+  { name: "Food & Dining", amount: "$450", pct: 36, color: "#64748b" },
+  { name: "Transport", amount: "$280", pct: 22, color: "#94a3b8" },
+  { name: "Entertainment", amount: "$120", pct: 12, color: "#cbd5e1" },
+  { name: "Utilities", amount: "$95", pct: 8, color: "#e2e8f0" },
+];
 
-const byDay = new Map<string, number>();
-for (const r of mockRows) {
-  if (r.type !== "expense") continue;
-  byDay.set(r.date, (byDay.get(r.date) ?? 0) + r.amount);
-}
-const byCat = new Map<string, { value: number; color: string }>();
-for (const r of mockRows) {
-  if (r.type !== "expense" || !r.categories) continue;
-  const s = byCat.get(r.categories.name) ?? { value: 0, color: r.categories.color };
-  s.value += r.amount;
-  byCat.set(r.categories.name, s);
-}
-const slices = Array.from(byCat.entries())
-  .map(([label, s]) => ({ label, value: s.value, color: s.color }))
-  .sort((a, b) => b.value - a.value);
-const spent = mockRows.reduce((s, r) => s + (r.type === "income" ? 0 : r.amount), 0);
-const income = mockRows.reduce((s, r) => s + (r.type === "income" ? r.amount : 0), 0);
-const spendByDay: Record<string, number> = {};
-for (const [k, v] of byDay) spendByDay[k] = v;
-
-/* Overdue bill + upcoming payments (relative to today). */
-function relDate(days: number) {
-  const d = new Date(now_);
-  d.setDate(now_.getDate() + days);
-  return iso(d);
-}
-const mockDue = [
+const DEFAULT_TRANSACTIONS = [
   {
-    id: "due1",
-    is_active: true,
-    next_due_date: relDate(-2),
-    amount: 15000,
-    currency: "NPR",
-    description: "Internet bill",
-    categories: { name: "Bills & Utilities", color: "#FBC02D" },
+    id: "tx-1",
+    name: "Whole Foods Market",
+    method: "Card Payment",
+    date: "2024-05-24",
+    category: "Groceries",
+    status: "completed",
+    amount: "-$142.50",
+    isIncome: false,
   },
-] as unknown as RecurringRuleRow[];
-const mockUpcoming = [
-  { id: "u1", is_active: true, next_due_date: relDate(4), amount: 120000, currency: "NPR", description: "Room rent", categories: { name: "Rent", color: "#5E7E5B" } },
-  { id: "u2", is_active: true, next_due_date: relDate(8), amount: 499, currency: "NPR", description: "Netflix", categories: { name: "Subscriptions", color: "#B3593E" } },
-  { id: "u3", is_active: true, next_due_date: relDate(15), amount: 25000, currency: "NPR", description: "Gym membership", categories: { name: "Health", color: "#5B7D9C" } },
-] as unknown as RecurringRuleRow[];
+  {
+    id: "tx-2",
+    name: "Apple Store",
+    method: "Card Payment",
+    date: "2024-05-23",
+    category: "Electronics",
+    status: "completed",
+    amount: "-$1,299.00",
+    isIncome: false,
+  },
+  {
+    id: "tx-3",
+    name: "Freelance Payment",
+    method: "Direct Deposit",
+    date: "2024-05-23",
+    category: "Income",
+    status: "completed",
+    amount: "+$2,500.00",
+    isIncome: true,
+  },
+  {
+    id: "tx-4",
+    name: "Starbucks Coffee",
+    method: "Card Payment",
+    date: "2024-05-22",
+    category: "Dining",
+    status: "completed",
+    amount: "-$12.40",
+    isIncome: false,
+  },
+  {
+    id: "tx-5",
+    name: "Netflix Subscription",
+    method: "Card Payment",
+    date: "2024-05-21",
+    category: "Entertainment",
+    status: "pending",
+    amount: "-$19.99",
+    isIncome: false,
+  },
+];
 
-const mockAccounts = [
-  { id: "a1", name: "Nabil Bank", account_type: "bank", currency: "NPR", current_balance: 186400, initial_balance: 186400, color: "#10B981", account_number_last4: "4821", is_default: true },
-  { id: "a2", name: "eSewa", account_type: "wallet", currency: "NPR", current_balance: 12480, initial_balance: 12480, color: "#38BDF8", account_number_last4: null, is_default: false },
-  { id: "a3", name: "Cash wallet", account_type: "cash", currency: "NPR", current_balance: 16000, initial_balance: 16000, color: "#F59E0B", account_number_last4: null, is_default: false },
-  { id: "a4", name: "Khalti", account_type: "wallet", currency: "NPR", current_balance: 8200, initial_balance: 8200, color: "#8B5CF6", account_number_last4: null, is_default: false },
-  { id: "a5", name: "Wise USD", account_type: "bank", currency: "USD", current_balance: 420, initial_balance: 420, color: "#22D3EE", account_number_last4: "7734", is_default: false },
-  { id: "a6", name: "Michai savings", account_type: "savings", currency: "NPR", current_balance: 25000, initial_balance: 25000, color: "#A3E635", account_number_last4: null, is_default: false },
-] as unknown as BankAccountRow[];
-const mockBalances = new Map(
-  mockAccounts.map((a) => [a.id, (a as unknown as { current_balance: number }).current_balance]),
-);
-const mockTotal = 248500;
+export function DashScreen() {
+  const [txSearch, setTxSearch] = useState("");
 
-/* ── Cash-flow chart mocks: 1D / 1W / 1M / Cycle / 1Y / Custom ── */
-const cycleFlow: FlowPoint[] = (() => {
-  const incBy = new Map<string, number>();
-  const expBy = new Map<string, number>();
-  for (const r of mockRows) {
-    if (r.type === "income") incBy.set(r.date, (incBy.get(r.date) ?? 0) + r.amount);
-    else expBy.set(r.date, (expBy.get(r.date) ?? 0) + r.amount);
-  }
-  const out: FlowPoint[] = [];
-  for (let d = new Date(now_.getFullYear(), now_.getMonth(), 1); iso(d) <= iso(now_); d.setDate(d.getDate() + 1)) {
-    const key = iso(d);
-    out.push({ label: String(d.getDate()), income: incBy.get(key) ?? 0, expense: expBy.get(key) ?? 0 });
-  }
-  return out;
-})();
-
-/* 1D – today by hour (deterministic mock: morning tea, lunch, taxi). */
-const hourFlow: FlowPoint[] = (() => {
-  const spendAt: Record<number, number> = { 7: 180, 9: 420, 10: 1250, 12: 860, 15: 260 };
-  const lastH = Math.max(1, now_.getHours());
-  const out: FlowPoint[] = [];
-  for (let h = 0; h <= lastH; h++) {
-    const hourLabel = new Intl.DateTimeFormat("en", { hour: "numeric", hour12: true })
-      .format(new Date(now_.getFullYear(), now_.getMonth(), now_.getDate(), h))
-      .replace(/\s/g, "")
-      .toLowerCase();
-    out.push({ label: hourLabel, income: h === 9 ? 5000 : 0, expense: spendAt[h] ?? 0 });
-  }
-  return out;
-})();
-
-/* 1W / 1M / custom – synthetic daily buckets. */
-const dailyFlow = (days: number, labels: (d: Date, i: number) => string): FlowPoint[] => {
-  const out: FlowPoint[] = [];
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(now_.getFullYear(), now_.getMonth(), now_.getDate() - i);
-    out.push({
-      label: labels(d, days - 1 - i),
-      income: i === 3 ? 48500 : i === 10 ? 6200 : 0,
-      expense: Math.round(400 + 320 * Math.abs(Math.sin(i * 2.7)) + (i % 7 === 5 ? 1900 : 0)),
-    });
-  }
-  return out;
-};
-const weekFlow = dailyFlow(7, (d) => new Intl.DateTimeFormat("en", { weekday: "short" }).format(d));
-const monthBackFlow = dailyFlow(
-  Math.round((now_.getTime() - new Date(now_.getFullYear(), now_.getMonth() - 1, 1).getTime()) / 86400000) + 1,
-  (d, i) =>
-    d.getDate() === 1 || i === 0 ? `${d.getDate()} ${d.toLocaleString("en", { month: "short" })}` : String(d.getDate()),
-);
-const customFlow = dailyFlow(14, (d, i) =>
-  d.getDate() === 1 || i === 0 ? `${d.getDate()} ${d.toLocaleString("en", { month: "short" })}` : String(d.getDate()),
-);
-
-/* 1-year buckets: current month real, older months synthetic. */
-function monthFlow(months: number): FlowPoint[] {
-  const out: FlowPoint[] = [];
-  for (let back = months - 1; back >= 0; back--) {
-    const d = new Date(now_.getFullYear(), now_.getMonth() - back, 1);
-    const label = d.toLocaleString("en", { month: "short" });
-    if (back === 0) {
-      out.push({
-        label,
-        income: cycleFlow.reduce((s, p) => s + p.income, 0),
-        expense: cycleFlow.reduce((s, p) => s + p.expense, 0),
-      });
-    } else {
-      out.push({
-        label,
-        income: Math.round(44000 + ((back * 37) % 9) * 900),
-        expense: Math.round(29000 + ((back * 53) % 7) * 800),
-      });
-    }
-  }
-  return out;
-}
-
-export default function PreviewDashPage() {
-  // Rail calendar month (mirrors the real page's local view state).
-  const [calYm, setCalYm] = useState(() => {
-    const n = new Date();
-    return { y: n.getFullYear(), m: n.getMonth() };
-  });
-  const [range, setRange] = useState<"1d" | "1w" | "1m" | "cycle" | "1y" | "custom">("cycle");
-  const canNextMonth =
-    calYm.y * 12 + calYm.m < new Date().getFullYear() * 12 + new Date().getMonth();
-
-  const points =
-    range === "1d"
-      ? hourFlow
-      : range === "1w"
-        ? weekFlow
-        : range === "1m"
-          ? monthBackFlow
-          : range === "custom"
-            ? customFlow
-            : range === "cycle"
-              ? cycleFlow
-              : monthFlow(12);
-  const flowIn = points.reduce((s, p) => s + p.income, 0);
-  const flowOut = points.reduce((s, p) => s + p.expense, 0);
-  const activeBuckets = points.filter((p) => p.income > 0 || p.expense > 0).length;
-  const fmtDay = (d: Date) =>
-    new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(d);
-  const flowWindow =
-    range === "1d"
-      ? fmtDay(now_)
-      : range === "cycle"
-        ? cycleLabel
-        : range === "1y"
-          ? `${points[0]?.label} – ${points[points.length - 1]?.label}`
-          : range === "custom"
-            ? "Feb 1 – Feb 14"
-            : range === "1m"
-              ? `${fmtDay(new Date(now_.getFullYear(), now_.getMonth() - 1, 1))} – ${fmtDay(now_)}`
-              : `${fmtDay(new Date(now_.getFullYear(), now_.getMonth(), now_.getDate() - 6))} – ${fmtDay(now_)}`;
-  const flowDelta = {
-    text: range === "1d" ? "-12%" : "+114%",
-    positive: range !== "1d",
-    label:
-      range === "1d"
-        ? "vs yesterday"
-        : range === "1w"
-          ? "vs prev week"
-          : range === "1m"
-            ? "vs prev month"
-            : range === "cycle"
-              ? "vs prev cycle"
-              : range === "custom"
-                ? "vs prev period"
-                : "vs prev year",
-  };
-  const flowInsight =
-    range === "1d"
-      ? `Avg ${fmt(flowOut / Math.max(1, now_.getHours() + 1))} an hour`
-      : `Avg ${fmt(flowOut / points.length)} a day · ${activeBuckets} active days`;
-  const todayTotal = byDay.get(iso(new Date())) ?? 850;
-  const budget = 900000;
-  const net = income - spent;
-  const netText = `${net >= 0 ? "+" : "-"}${fmt(Math.abs(net))}`;
+  const filteredTransactions = DEFAULT_TRANSACTIONS.filter(
+    (tx) =>
+      tx.name.toLowerCase().includes(txSearch.toLowerCase()) ||
+      tx.category.toLowerCase().includes(txSearch.toLowerCase()) ||
+      tx.date.includes(txSearch),
+  );
 
   return (
     <AppShell>
-      <div className="mx-auto w-full max-w-[1100px]">
-        <header className="rise flex flex-wrap items-end justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[12.5px] font-medium text-faint">
-              {new Intl.DateTimeFormat("en", { weekday: "long", month: "long", day: "numeric" }).format(new Date())}
+      <div className="w-full max-w-[1340px] text-gray-900">
+        {/* ===== Page Header ===== */}
+        <div className="flex flex-wrap items-end justify-between gap-4 pb-6">
+          <div>
+            <h1 className="text-[26px] font-bold tracking-tight text-gray-900">Financial Overview</h1>
+            <p className="mt-1 text-xs text-gray-500">
+              Welcome back, Alex. Here's what's happening with your money.
             </p>
-            <h1 className="mt-0.5 truncate text-[22px] font-bold tracking-tight text-text sm:text-2xl">
-              Good morning, Sam
-            </h1>
           </div>
-        </header>
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            <button
+              type="button"
+              className="flex h-9 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3.5 text-xs font-medium text-gray-700 shadow-xs transition-colors hover:bg-gray-50"
+            >
+              <Calendar size={13} className="text-gray-500" />
+              <span>Last 7 days</span>
+              <ChevronDown size={13} className="text-gray-400" />
+            </button>
+            <button
+              type="button"
+              aria-label="Export overview"
+              className="grid h-9 w-9 place-items-center rounded-lg border border-gray-200 bg-white text-gray-600 shadow-xs transition-colors hover:bg-gray-50"
+            >
+              <Download size={14} />
+            </button>
+            <Link
+              href="/expense/new"
+              className="flex h-9 items-center gap-2 rounded-lg bg-[#111827] px-4 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-black"
+            >
+              <Plus size={14} />
+              <span>Add Transaction</span>
+            </Link>
+          </div>
+        </div>
 
-        {/* Hero – the cycle statement card */}
-        <div className="rise mt-6" style={{ animationDelay: "40ms" }}>
-          <BalanceCard
-            cycleLabel={cycleLabel}
-            net={netText}
-            netDelta={
-              <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold text-white">
-                +12,400
-                <span className="font-medium text-white/70">vs prev cycle</span>
+        {/* ===== 4 Metric Cards ===== */}
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Total Balance */}
+          <div className="rounded-xl border border-[#eaecf0] bg-white p-5 shadow-[0_1px_3px_rgba(16,24,40,0.04)]">
+            <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-gray-500">
+              <span>Total Balance</span>
+              <span className="text-gray-400">
+                <Wallet size={16} />
               </span>
-            }
-            income={fmt(income).replace(/^[^\d]*/, "")}
-            expense={fmt(spent).replace(/^[^\d]*/, "")}
-            safe={fmt(Math.max(0, budget - spent)).replace(/^[^\d]*/, "")}
-            safeCaption={`${Math.round(pace.spentPct * 100)}% of ${fmt(budget)}`}
-            budget={{
-              amount: fmt(budget),
-              pct: pace.spentPct,
-              left: fmt(Math.max(0, budget - spent)),
-            }}
-          />
-        </div>
+            </div>
+            <p className="numeric mt-3 text-[26px] font-bold tracking-tight text-gray-900">
+              $12,845.50
+            </p>
+            <div className="mt-2 flex items-center gap-1.5 text-xs">
+              <span className="font-semibold text-emerald-600">↗ +2.5%</span>
+              <span className="text-[11px] text-gray-400">vs last period</span>
+            </div>
+          </div>
 
-        <div className="mt-4">
-          <TodayRateLine
-            live={{ income, expense: spent }}
-            frozen={{ income: income - 1200, expense: spent + 800 }}
-            fmt={fmt}
-          />
-        </div>
+          {/* Monthly Income */}
+          <div className="rounded-xl border border-[#eaecf0] bg-white p-5 shadow-[0_1px_3px_rgba(16,24,40,0.04)]">
+            <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-gray-500">
+              <span>Monthly Income</span>
+              <span className="text-gray-400">
+                <Banknote size={16} />
+              </span>
+            </div>
+            <p className="numeric mt-3 text-[26px] font-bold tracking-tight text-gray-900">
+              $5,200.00
+            </p>
+            <div className="mt-2 flex items-center gap-1.5 text-xs">
+              <span className="font-semibold text-emerald-600">↗ +12.3%</span>
+              <span className="text-[11px] text-gray-400">vs last period</span>
+            </div>
+          </div>
 
-        <div className="mt-4">
-          <BillsDue injected={{ rules: mockDue, overdueDays: [2] }} />
-        </div>
+          {/* Monthly Expenses */}
+          <div className="rounded-xl border border-[#eaecf0] bg-white p-5 shadow-[0_1px_3px_rgba(16,24,40,0.04)]">
+            <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-gray-500">
+              <span>Monthly Expenses</span>
+              <span className="text-gray-400">
+                <CreditCard size={16} />
+              </span>
+            </div>
+            <p className="numeric mt-3 text-[26px] font-bold tracking-tight text-gray-900">
+              $3,412.80
+            </p>
+            <div className="mt-2 flex items-center gap-1.5 text-xs">
+              <span className="font-semibold text-rose-600">↘ -4.2%</span>
+              <span className="text-[11px] text-gray-400">vs last period</span>
+            </div>
+          </div>
 
-        {/* Cash flow + spending calendar */}
-        <div className="mt-4 grid gap-3 sm:gap-4 lg:grid-cols-3">
-          <DashCard
-            title="Cash flow"
-            className="flex flex-col lg:col-span-2"
-            bodyClassName="flex min-h-0 flex-1 flex-col"
-            action={
-              <div role="group" aria-label="Cash flow" className="flex items-center rounded-full border border-border bg-surface p-0.5">
-                <RangeChip active={range === "1d"} label="1D" onClick={() => setRange("1d")} />
-                <RangeChip active={range === "1w"} label="1W" onClick={() => setRange("1w")} />
-                <RangeChip active={range === "1m"} label="1M" onClick={() => setRange("1m")} />
-                <RangeChip active={range === "cycle"} label="Cycle" onClick={() => setRange("cycle")} />
-                <RangeChip active={range === "1y"} label="1Y" onClick={() => setRange("1y")} />
-                <button
-                  type="button"
-                  aria-pressed={range === "custom"}
-                  aria-label="Custom range"
-                  onClick={() => setRange("custom")}
-                  className={`flex h-7 items-center rounded-full px-2 transition-colors ${
-                    range === "custom"
-                      ? "bg-[var(--sf-primary-light)] text-primary-strong"
-                      : "text-text-muted hover:text-text"
+          {/* Net Savings */}
+          <div className="rounded-xl border border-[#eaecf0] bg-white p-5 shadow-[0_1px_3px_rgba(16,24,40,0.04)]">
+            <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-gray-500">
+              <span>Net Savings</span>
+              <span className="text-gray-400">
+                <TrendingUp size={16} />
+              </span>
+            </div>
+            <p className="numeric mt-3 text-[26px] font-bold tracking-tight text-gray-900">
+              $1,787.20
+            </p>
+            <div className="mt-2 flex items-center gap-1.5 text-xs">
+              <span className="font-semibold text-emerald-600">↗ +8.1%</span>
+              <span className="text-[11px] text-gray-400">vs last period</span>
+            </div>
+          </div>
+        </section>
+
+        {/* ===== Middle Section: Cash Flow Trends + Spending by Category ===== */}
+        <section className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1.9fr)_minmax(310px,1fr)]">
+          {/* Cash Flow Trends Card */}
+          <div className="min-w-0 rounded-xl border border-[#eaecf0] bg-white p-5 shadow-[0_1px_3px_rgba(16,24,40,0.04)]">
+            <CashFlowSplineChart points={CHART_POINTS} />
+          </div>
+
+          {/* Spending by Category Card */}
+          <div className="flex flex-col justify-between rounded-xl border border-[#eaecf0] bg-white p-5 shadow-[0_1px_3px_rgba(16,24,40,0.04)]">
+            <div>
+              <h2 className="text-[15px] font-bold text-gray-900">Spending by Category</h2>
+              <p className="mt-0.5 text-[11px] text-gray-400">Your biggest expenses this week</p>
+
+              <div className="mt-6 space-y-4">
+                {DEFAULT_CATEGORIES.map((cat) => (
+                  <div key={cat.name}>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-medium text-gray-800">{cat.name}</span>
+                      <span className="font-semibold text-gray-900">{cat.amount}</span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ width: `${cat.pct}%`, backgroundColor: cat.color }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <Link
+              href="/analytics"
+              className="mt-6 flex items-center justify-center gap-1 text-[11px] font-semibold text-gray-900 transition-colors hover:text-black"
+            >
+              <span>View All Insights</span>
+              <ChevronRight size={13} />
+            </Link>
+          </div>
+        </section>
+
+        {/* ===== Bottom Section: Recent Transactions ===== */}
+        <section className="-mx-5 mt-6 overflow-hidden rounded-none border-y border-[#eaecf0] bg-white px-5 py-5 lg:mx-0 lg:rounded-xl lg:border-x lg:shadow-[0_1px_3px_rgba(16,24,40,0.04)]">
+          {/* Mobile header */}
+          <div className="mb-1 flex items-center justify-between pb-3 lg:hidden">
+            <h2 className="text-[15px] font-bold text-gray-900">Recent Transactions</h2>
+            <Link
+              href="/history"
+              className="text-[10px] font-bold uppercase tracking-wider text-gray-500 transition-colors hover:text-gray-900"
+            >
+              VIEW ALL
+            </Link>
+          </div>
+          {/* Desktop header */}
+          <div className="hidden flex-wrap items-center justify-between gap-3 pb-4 lg:flex">
+            <div>
+              <h2 className="text-[15px] font-bold text-gray-900">Recent Transactions</h2>
+              <p className="mt-0.5 text-[11px] text-gray-400">Review your latest financial activity</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="relative flex items-center">
+                <Search size={13} className="absolute left-2.5 text-gray-400" />
+                <input
+                  type="text"
+                  value={txSearch}
+                  onChange={(e) => setTxSearch(e.target.value)}
+                  placeholder="Filter transactions..."
+                  className="h-8 w-52 rounded-lg border border-gray-200 bg-white pl-8 pr-2.5 text-xs text-gray-700 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
+                />
+              </div>
+              <button
+                type="button"
+                className="flex h-8 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-xs font-medium text-gray-700 shadow-xs transition-colors hover:bg-gray-50"
+              >
+                <SlidersHorizontal size={12} className="text-gray-500" />
+                <span>Filter</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Mobile: card rows */}
+          <div className="divide-y divide-gray-50 lg:hidden">
+            {filteredTransactions.map((tx) => (
+              <div key={tx.id} className="flex items-center gap-3 py-3.5">
+                <span
+                  className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${
+                    tx.isIncome ? "bg-blue-50 text-blue-600" : "bg-gray-100 text-gray-500"
                   }`}
                 >
-                  <CalendarDays size={13} aria-hidden />
-                </button>
+                  {tx.isIncome ? <ArrowUpRight size={16} /> : <ArrowDownLeft size={16} />}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13px] font-semibold text-gray-900">{tx.name}</span>
+                  <span className="mt-0.5 block truncate text-[10px] text-gray-400">
+                    {tx.date} · {tx.category}
+                  </span>
+                </span>
+                <span className="flex shrink-0 flex-col items-end gap-1">
+                  <span className={`numeric text-[13px] font-bold ${tx.isIncome ? "text-blue-600" : "text-gray-900"}`}>
+                    {tx.amount}
+                  </span>
+                  {tx.status === "completed" ? (
+                    <span className="flex items-center gap-1 text-[10px] font-medium text-blue-600">
+                      <span className="h-1.5 w-1.5 rounded-full bg-blue-600" aria-hidden />
+                      completed
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-[10px] font-medium text-gray-400">
+                      <span className="h-1.5 w-1.5 rounded-full bg-gray-400" aria-hidden />
+                      pending
+                    </span>
+                  )}
+                </span>
               </div>
-            }
-          >
-            <CashFlowCard
-              key={range}
-              design="ratio"
-              points={points}
-              totals={{ income: flowIn, expense: flowOut }}
-              delta={flowDelta}
-              windowLabel={flowWindow}
-              insight={flowInsight}
-              format={fmt}
-              tickFormat={axisFmt}
-              labels={{ income: "Income", expense: "Expense", empty: "No entries in this range yet" }}
-            />
-          </DashCard>
-
-          <DashCard title="Spending calendar">
-            <HeatGrid
-              year={calYm.y}
-              month={calYm.m}
-              spend={spendByDay}
-              formatted={fmt}
-              locale="en"
-              onPrevMonth={() =>
-                setCalYm(({ y, m }) => (m === 0 ? { y: y - 1, m: 11 } : { y, m: m - 1 }))
-              }
-              onNextMonth={() =>
-                setCalYm(({ y, m }) => (m === 11 ? { y: y + 1, m: 0 } : { y, m: m + 1 }))
-              }
-              canNextMonth={canNextMonth}
-              onDayTap={() => {}}
-              totalLabel="Month total"
-            />
-          </DashCard>
-        </div>
-
-        {/* Recent | Upcoming / Accounts | Mix (mix under upcoming) - the 2x2 block */}
-        <div className="mt-4 grid gap-3 sm:gap-4 lg:grid-cols-2">
-          <DashCard
-            title="Recent activity"
-            className="lg:col-start-1 lg:row-start-1 lg:row-span-3"
-            action={<span className={cardPillClass}>View all</span>}
-          >
-            <Feed
-              rows={mockRows}
-              amountFor={(r) => fmt(r.amount)}
-              dayNetFor={(grp) => {
-                const net = grp.reduce((s, r) => s + (r.type === "income" ? r.amount : -r.amount), 0);
-                return {
-                  text: `${net >= 0 ? "+" : "−"}${fmt(Math.abs(net)).replace(/^[^\d]*/, "")}`,
-                  positive: net >= 0,
-                };
-              }}
-              locale="en"
-              onOpen={() => {}}
-              max={6}
-              labels={{ today: "Today", yesterday: "Yesterday" }}
-            />
-          </DashCard>
-
-          <DashCard
-            title="Upcoming"
-            className="self-start lg:col-start-2 lg:row-start-1"
-            action={<span className={cardPillClass}>View all</span>}
-          >
-            <Upcoming injected={{ rules: mockUpcoming }} />
-          </DashCard>
-
-          <DashCard
-            title="Spending mix"
-            className="self-start lg:col-start-2 lg:row-start-3"
-            bodyClassName="flex h-full flex-col justify-center"
-            action={<span className={cardPillClass}>Analytics</span>}
-          >
-            <MixCard slices={slices} format={fmt} otherLabel="Other" />
-          </DashCard>
-
-          <div className="self-start lg:col-start-2 lg:row-start-2">
-            <AccountsStrip
-              injected={{ accounts: mockAccounts, balances: mockBalances, total: mockTotal }}
-            />
+            ))}
           </div>
-        </div>
+          {/* Mobile LOAD MORE */}
+          <button
+            type="button"
+            className="flex w-full items-center justify-center gap-2 border-t border-gray-100 py-3.5 text-center text-[10px] font-bold uppercase tracking-wider text-gray-400 transition-colors hover:text-gray-700 lg:hidden"
+          >
+            LOAD MORE
+            <MoreHorizontal size={13} aria-hidden />
+          </button>
+
+          {/* Desktop: table */}
+          <div className="hidden scroll-x overflow-x-auto lg:block">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b border-gray-100 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                  <th className="py-3 pr-4 font-semibold">Entity / Merchant</th>
+                  <th className="py-3 px-4 font-semibold">Date</th>
+                  <th className="py-3 px-4 font-semibold">Category</th>
+                  <th className="py-3 px-4 font-semibold">Status</th>
+                  <th className="py-3 pl-4 text-right font-semibold">Amount</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {filteredTransactions.map((tx) => (
+                  <tr
+                    key={tx.id}
+                    className="cursor-pointer text-xs transition-colors hover:bg-gray-50/70"
+                  >
+                    <td className="py-3.5 pr-4">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`grid h-8 w-8 place-items-center rounded-lg ${
+                            tx.isIncome ? "bg-blue-50 text-blue-600" : "bg-gray-100 text-gray-500"
+                          }`}
+                        >
+                          {tx.isIncome ? <ArrowUpRight size={15} /> : <ArrowDownLeft size={15} />}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900">{tx.name}</p>
+                          <p className="text-[10px] text-gray-400">{tx.method}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 text-gray-500">{tx.date}</td>
+                    <td className="py-3.5 px-4">
+                      <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[10px] font-medium text-gray-600">
+                        {tx.category}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      {tx.status === "completed" ? (
+                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600">
+                          <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
+                          completed
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-400">
+                          <span className="h-1.5 w-1.5 rounded-full bg-gray-400" />
+                          pending
+                        </span>
+                      )}
+                    </td>
+                    <td
+                      className={`numeric py-3.5 pl-4 text-right font-bold ${
+                        tx.isIncome ? "text-blue-600" : "text-gray-900"
+                      }`}
+                    >
+                      {tx.amount}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <Link
+            href="/history"
+            className="hidden border-t border-gray-100 py-3.5 text-center text-xs font-semibold text-gray-500 transition-colors hover:text-gray-900 lg:block"
+          >
+            View All Transactions &nbsp;›
+          </Link>
+        </section>
+
+        {/* ===== Bottom Row: Linked Accounts + Budget Health ===== */}
+        <section className="mt-6 grid gap-5 lg:grid-cols-2">
+          {/* Linked Accounts */}
+          <div className="p-0 lg:rounded-xl lg:border lg:border-[#eaecf0] lg:bg-white lg:p-5 lg:shadow-[0_1px_3px_rgba(16,24,40,0.04)]">
+            <div className="flex items-center justify-between">
+              <h2 className="text-[15px] font-bold text-gray-900">Linked Accounts</h2>
+              <Link
+                href="/accounts"
+                aria-label="Add account"
+                className="grid h-7 w-7 place-items-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+              >
+                <Plus size={15} />
+              </Link>
+            </div>
+
+            {/* Mobile: horizontal swipe cards */}
+            <div className="-mx-5 mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-2 lg:hidden">
+              <div className="min-w-[175px] snap-start rounded-xl border border-[#eef0f2] bg-[#f7f8f9] p-4">
+                <div
+                  className="mb-3 grid h-10 w-10 place-items-center rounded-xl text-white"
+                  style={{ backgroundColor: "#2563eb" }}
+                >
+                  <CreditCard size={18} />
+                </div>
+                <p className="text-sm font-bold text-gray-900">Checking</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">CHASE</p>
+                <p className="mt-4 text-[9px] font-bold uppercase tracking-widest text-gray-400">AVAILABLE BALANCE</p>
+                <p className="numeric mt-1 text-lg font-bold text-gray-900">$8,420.00</p>
+              </div>
+              <div className="min-w-[175px] snap-start rounded-xl border border-[#eef0f2] bg-[#f7f8f9] p-4">
+                <div
+                  className="mb-3 grid h-10 w-10 place-items-center rounded-xl text-white"
+                  style={{ backgroundColor: "#374151" }}
+                >
+                  <CreditCard size={18} />
+                </div>
+                <p className="text-sm font-bold text-gray-900">Savings</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">ALLY</p>
+                <p className="mt-4 text-[9px] font-bold uppercase tracking-widest text-gray-400">AVAILABLE BALANCE</p>
+                <p className="numeric mt-1 text-lg font-bold text-gray-900">$4,425.50</p>
+              </div>
+            </div>
+
+            {/* Desktop: vertical list */}
+            <div className="mt-4 hidden space-y-3 lg:block">
+              <div className="flex items-center justify-between rounded-xl border border-gray-100 bg-[#fbfcfc] p-3.5 transition-colors hover:border-gray-200">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-10 w-10 place-items-center rounded-lg border border-gray-200/60 bg-white text-gray-600 shadow-xs">
+                    <Landmark size={18} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-gray-900">Primary Checking</p>
+                    <p className="text-[11px] text-gray-400">Chase Bank •••• 4291</p>
+                  </div>
+                </div>
+                <span className="numeric text-sm font-bold text-gray-900">$8,420.00</span>
+              </div>
+              <div className="flex items-center justify-between rounded-xl border border-gray-100 bg-[#fbfcfc] p-3.5 transition-colors hover:border-gray-200">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-10 w-10 place-items-center rounded-lg border border-gray-200/60 bg-white text-gray-600 shadow-xs">
+                    <Landmark size={18} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-gray-900">Savings Account</p>
+                    <p className="text-[11px] text-gray-400">Ally Bank •••• 8832</p>
+                  </div>
+                </div>
+                <span className="numeric text-sm font-bold text-gray-900">$4,425.50</span>
+              </div>
+            </div>
+
+            <Link
+              href="/accounts"
+              className="mt-4 hidden h-11 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 bg-white text-xs font-medium text-gray-700 transition-colors hover:border-gray-400 hover:bg-gray-50 lg:flex"
+            >
+              <Plus size={14} className="text-gray-500" />
+              <span>Link New Account</span>
+            </Link>
+          </div>
+
+          {/* Budget Health */}
+          <div className="p-0 lg:rounded-xl lg:border lg:border-[#eaecf0] lg:bg-white lg:p-5 lg:shadow-[0_1px_3px_rgba(16,24,40,0.04)]">
+            <div className="flex items-center justify-between">
+              <h2 className="text-[15px] font-bold text-gray-900">
+                <span className="lg:hidden">Budget Health</span>
+                <span className="hidden lg:inline">Recent Budgets</span>
+              </h2>
+            </div>
+            <div className="mt-4 space-y-4">
+              {/* Groceries */}
+              <div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-gray-900">Groceries</span>
+                  <span className="numeric text-[11px] font-medium text-gray-500">$480 / $600</span>
+                </div>
+                <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                  <div className="h-full rounded-full bg-blue-600" style={{ width: "80%" }} />
+                </div>
+                <div className="mt-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">ON TRACK</span>
+                </div>
+              </div>
+
+              {/* Travel */}
+              <div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-gray-900">Travel</span>
+                  <span className="numeric text-[11px] font-medium text-gray-500">$950 / $1000</span>
+                </div>
+                <div className="mt-2 flex items-center gap-2">
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
+                    <div className="h-full rounded-full bg-red-500" style={{ width: "95%" }} />
+                  </div>
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-500 lg:hidden" aria-hidden />
+                </div>
+                <div className="mt-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-red-500">CRITICAL</span>
+                </div>
+              </div>
+
+              {/* Dining Out - desktop only */}
+              <div className="hidden lg:block">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-gray-900">Dining Out</span>
+                  <span className="numeric text-[11px] font-medium text-gray-500">$120 / $300</span>
+                </div>
+                <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                  <div className="h-full rounded-full bg-[#18181b]" style={{ width: "40%" }} />
+                </div>
+                <div className="mt-1 text-right">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">ON TRACK</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Mobile: VIEW ALL BUDGETS */}
+            <Link
+              href="/profit-loss"
+              className="mt-4 block border-t border-gray-100 py-3 text-center text-[10px] font-bold uppercase tracking-wider text-gray-900 transition-colors hover:text-gray-600 lg:hidden"
+            >
+              VIEW ALL BUDGETS
+            </Link>
+            {/* Desktop: Manage Budgets */}
+            <Link
+              href="/profit-loss"
+              className="mt-4 hidden items-center justify-center gap-1 pt-2 text-[11px] font-semibold text-gray-900 transition-colors hover:text-black lg:flex"
+            >
+              <span>Manage Budgets</span>
+              <ChevronRight size={13} />
+            </Link>
+          </div>
+        </section>
+
+        {/* Sync Footer - mobile only */}
+        <footer className="mt-8 space-y-1 pb-4 text-center lg:hidden">
+          <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400">Last synced: Today at 09:42 AM.</p>
+          <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400">Data secured by SpendFlow Finance API.</p>
+        </footer>
+        {/* Sync Footer - desktop only */}
+        <footer className="mt-8 hidden pb-4 text-center text-[11px] text-gray-400 lg:block">
+          Last synced: Today at 09:42 AM. Data provided by SpendFlow Finance API.
+        </footer>
       </div>
     </AppShell>
   );
 }
+
+export default DashScreen;

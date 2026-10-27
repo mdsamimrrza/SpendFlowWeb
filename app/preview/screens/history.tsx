@@ -7,6 +7,7 @@
  * Not linked from navigation.
  */
 import { AppShell } from "@/components/shell/AppShell";
+import { Suspense } from "react";
 import { HistoryRegister } from "@/components/history/HistoryRegister";
 import type { ExpenseRow } from "@/services/expenses";
 
@@ -102,7 +103,7 @@ const rows = buildRows();
 export default function PreviewHistoryPage() {
   return (
     <AppShell>
-      <HistoryRegister inject={{ rows }} />
+      <Suspense><HistoryRegister inject={{ rows }} /></Suspense>
     </AppShell>
   );
 }

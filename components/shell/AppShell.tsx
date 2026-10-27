@@ -3,30 +3,30 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  ArrowLeftRight,
-  BarChart3,
-  Coins,
-  Download,
+  Bell,
   Eye,
   EyeOff,
-  Home,
+  FileText,
+  Landmark,
+  LayoutGrid,
   LogOut,
   Menu,
   Moon,
   PieChart,
-  Plus,
+  PlusCircle,
   Repeat,
-  ScrollText,
+  Search,
   Settings as SettingsIcon,
   Sun,
   SunMoon,
-  Tags,
-  Trash2,
+  Tag,
+  TrendingUp,
+  UserRound,
   Wallet,
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import type { TranslationKey } from "@/constants/i18n/dictionaries";
+import { flushSync } from "react-dom";
 import { useAuth } from "@/store/AuthContext";
 import { useLanguage } from "@/store/LanguageContext";
 import { usePrivacy } from "@/store/PrivacyContext";
@@ -34,46 +34,47 @@ import { useTheme } from "@/store/ThemeContext";
 import { isAllowedAvatarUrl } from "@/services/auth";
 import { ConfirmDialog } from "@/components/ui/Modal";
 import { AlertBell } from "@/components/AlertBell";
-import { PrivacyEyeButton } from "@/components/ui/PrivacyEyeButton";
-import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { SpendFlowSeal } from "@/components/ui/SpendFlowSeal";
+
+type NavItem = { href: string; label: string; Icon: typeof LayoutGrid };
 
 /**
- * V5 "Sage Ledger" shell (2026-10-13 redesign): a floating sage icon rail
- * carries navigation from lg up – it expands on hover to reveal item names
- * (the long tail renders inline; collapsed it keeps its fly-out menu) –
- * under a slim cream command bar. Below lg a hamburger in the brand bar
- * opens the same sidebar as a labeled sage drawer (privacy + theme toggles
- * ride at its foot), and a floating dock's raised center button adds a
- * transaction.
+ * Theme flip with the View Transitions circular reveal: the new theme
+ * floods the screen from the toggle as a smooth expanding circle (water-
+ * flow feel). Falls back to an instant switch when the API or motion is
+ * unavailable.
  */
+function themeReveal(apply: () => void, origin?: { x: number; y: number }) {
+  const doc = document as Document & {
+    startViewTransition?: (cb: () => void) => { ready: Promise<void> };
+  };
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!doc.startViewTransition || reduced) {
+    apply();
+    return;
+  }
+  const transition = doc.startViewTransition(() => flushSync(apply));
+  void transition.ready.then(() => {
+    const x = origin?.x ?? window.innerWidth / 2;
+    const y = origin?.y ?? 0;
+    const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
+    document.documentElement.animate(
+      { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+      { duration: 650, easing: "cubic-bezier(0.4, 0, 0.2, 1)", pseudoElement: "::view-transition-new(root)" },
+    );
+  });
+}
 
-type NavItem = { href: string; labelKey: TranslationKey; Icon: typeof Home };
-
-const RAIL_PRIMARY: NavItem[] = [
-  { href: "/overview", labelKey: "home", Icon: Home },
-  { href: "/history", labelKey: "history", Icon: ScrollText },
-  { href: "/analytics", labelKey: "analytics", Icon: BarChart3 },
-  { href: "/accounts", labelKey: "accounts", Icon: Wallet },
-  { href: "/transfer", labelKey: "transferTitle", Icon: ArrowLeftRight },
-  { href: "/recurring", labelKey: "recurring", Icon: Repeat },
+const NAV_ITEMS: NavItem[] = [
+  { href: "/overview", label: "Overview", Icon: LayoutGrid },
+  { href: "/history", label: "Transactions", Icon: FileText },
+  { href: "/expense/new", label: "Add Transaction", Icon: PlusCircle },
+  { href: "/analytics", label: "Analytics", Icon: TrendingUp },
+  { href: "/accounts", label: "Accounts", Icon: Landmark },
+  { href: "/profit-loss", label: "Budgets", Icon: PieChart },
+  { href: "/recurring", label: "Recurring Transactions", Icon: Repeat },
+  { href: "/categories", label: "Categories", Icon: Tag },
 ];
-
-const RAIL_MENU: NavItem[] = [
-  { href: "/profit-loss", labelKey: "pl_title", Icon: PieChart },
-  { href: "/categories", labelKey: "navCategories", Icon: Tags },
-  { href: "/bullion", labelKey: "bullionTitle", Icon: Coins },
-  { href: "/export", labelKey: "exportImportTitle", Icon: Download },
-  { href: "/bin", labelKey: "settings_bin", Icon: Trash2 },
-];
-
-const DOCK: NavItem[] = [
-  { href: "/overview", labelKey: "home", Icon: Home },
-  { href: "/history", labelKey: "history", Icon: ScrollText },
-  { href: "/analytics", labelKey: "analytics", Icon: BarChart3 },
-];
-
-/** The hamburger drawer's list: everything the lg+ rail can reach. */
-const NAV_DRAWER: NavItem[] = [...RAIL_PRIMARY, ...RAIL_MENU];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -81,7 +82,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { profile, signOut } = useAuth();
   const { t } = useLanguage();
   const { isPrivacyMode, toggle: togglePrivacy } = usePrivacy();
-  const { preference, setPreference } = useTheme();
+  const { preference, isDark, setPreference } = useTheme();
 
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false); // avatar menu
@@ -131,15 +132,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   const memberInitials = () => {
-    const name = profile?.display_name || profile?.email || "SF";
+    const name = profile?.display_name || profile?.email || "AJ";
     const parts = name
       .trim()
       .split(/[\s@._-]+/)
       .filter(Boolean);
-    return `${parts[0]?.[0] ?? "S"}${parts[1]?.[0] ?? ""}`.toUpperCase();
+    return `${parts[0]?.[0] ?? "A"}${parts[1]?.[0] ?? "J"}`.toUpperCase();
   };
-
-  const memberName = profile?.display_name || profile?.email || null;
 
   const themeNext = preference === "light" ? "dark" : preference === "dark" ? "system" : "light";
 
@@ -150,43 +149,39 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         aria-expanded={menuOpen}
         aria-haspopup="menu"
         aria-label={profile ? memberInitials() : t("signOut")}
-        className={`flex h-9 items-center rounded-full transition-colors ${
-          menuOpen ? "ring-2 ring-[var(--sf-primary)]" : ""
-        }`}
+        className="flex h-9 w-9 items-center justify-center rounded-full transition-transform active:scale-95"
       >
         {profile?.avatar_url && isAllowedAvatarUrl(profile.avatar_url) ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={profile.avatar_url}
             alt=""
-            className="h-8 w-8 rounded-full border border-border object-cover"
+            className="h-9 w-9 rounded-full border border-gray-200 dark:border-[#262626] object-cover"
           />
         ) : (
-          <span className="grid h-8 w-8 place-items-center rounded-full bg-[var(--sf-primary-light)] text-[10.5px] font-bold text-primary-strong">
+          <div className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-tr from-teal-500 to-emerald-400 text-[11px] font-bold text-white shadow-sm ring-1 ring-emerald-200">
             {memberInitials()}
-          </span>
+          </div>
         )}
       </button>
       {menuOpen && (
         <div
           role="menu"
-          className="sf-pop panel absolute right-0 top-[calc(100%+8px)] z-50 w-60 p-1.5 shadow-pop"
+          className="panel absolute right-0 top-[calc(100%+8px)] z-50 w-60 rounded-xl border border-gray-200 dark:border-[#262626] bg-white dark:bg-[#0a0a0a] p-1.5 shadow-lg"
         >
-          {profile && (
-            <div className="border-b border-border px-3 pb-2.5 pt-2">
-              <p className="truncate text-sm font-semibold text-text">
-                {profile.display_name ?? "Member"}
-              </p>
-              <p className="truncate text-xs text-faint">{profile.email}</p>
-            </div>
-          )}
+          <div className="border-b border-gray-100 dark:border-[#262626] px-3 pb-2.5 pt-2">
+            <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
+              {profile?.display_name || profile?.email || "User"}
+            </p>
+            <p className="truncate text-xs text-gray-500 dark:text-gray-400">{profile?.email || "alex@spendflow.app"}</p>
+          </div>
           <Link
             href="/profile"
             role="menuitem"
             onClick={() => setMenuOpen(false)}
-            className="mt-1 flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium text-text transition-colors hover:bg-surface-elevated"
+            className="mt-1 flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors hover:bg-gray-50 dark:hover:bg-[#141414]"
           >
-            <SettingsIcon size={15} className="text-text-muted" />
+            <SettingsIcon size={15} className="text-gray-400" />
             {t("rowProfileSecurity")}
           </Link>
           <button
@@ -195,19 +190,37 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               togglePrivacy();
               setMenuOpen(false);
             }}
-            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium text-text transition-colors hover:bg-surface-elevated"
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors hover:bg-gray-50 dark:hover:bg-[#141414]"
           >
             {isPrivacyMode ? (
-              <EyeOff size={15} className="text-text-muted" aria-hidden />
+              <EyeOff size={15} className="text-gray-400" aria-hidden />
             ) : (
-              <Eye size={15} className="text-text-muted" aria-hidden />
+              <Eye size={15} className="text-gray-400" aria-hidden />
             )}
             {isPrivacyMode ? t("dockShowAmounts") : t("dockHideAmounts")}
           </button>
           <button
             role="menuitem"
+            onClick={(e) => {
+              const r = e.currentTarget.getBoundingClientRect();
+              themeReveal(() => setPreference(isDark ? "light" : "dark"), {
+                x: r.left + r.width / 2,
+                y: r.top + r.height / 2,
+              });
+            }}
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors hover:bg-gray-50 dark:hover:bg-[#141414]"
+          >
+            {isDark ? (
+              <Sun size={15} className="text-gray-400" aria-hidden />
+            ) : (
+              <Moon size={15} className="text-gray-400" aria-hidden />
+            )}
+            {isDark ? "Light Theme" : "Dark Theme"}
+          </button>
+          <button
+            role="menuitem"
             onClick={() => setConfirmSignOut(true)}
-            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium text-danger transition-colors hover:bg-rust-tint"
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-rose-600 transition-colors hover:bg-rose-50"
           >
             <LogOut size={15} />
             {t("signOut")}
@@ -218,192 +231,216 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className="min-h-screen overflow-x-clip bg-background">
-      {/* ===== Sage icon rail (lg+) – below the header, expands on hover ===== */}
-      <aside className="group/rail fixed bottom-3 left-3 top-[68px] z-40 hidden w-[68px] flex-col items-center overflow-hidden rounded-[24px] bg-[var(--sf-rail)] py-3 shadow-soft transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:w-[236px] lg:flex">
-        <nav aria-label={t("spendFlow")} className="scroll-x flex w-full flex-1 flex-col items-center gap-1 overflow-y-auto">
-          {RAIL_PRIMARY.map(({ href, labelKey, Icon }) => (
-            <RailRow
-              key={href}
-              href={href}
-              label={t(labelKey)}
-              Icon={Icon}
-              active={isActive(href)}
-            />
-          ))}
+    <div className="min-h-screen overflow-x-clip bg-[#f8f9fa] dark:bg-[#000000] text-gray-900 dark:text-gray-100">
+      {/* ===== Left Fixed Sidebar (lg+) ===== */}
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[240px] flex-col border-r border-[#eaecf0] dark:border-[#262626] bg-white dark:bg-[#0a0a0a] py-6 lg:flex">
+        {/* Brand Header */}
+        <Link href="/overview" className="mb-6 flex items-center gap-3 px-6" aria-label="SpendFlow">
+          <SpendFlowSeal size={32} />
+          <span className="text-[18px] font-bold tracking-tight text-gray-900 dark:text-gray-100">SpendFlow</span>
+        </Link>
 
-          {/* Group divider (Supabase-style sections) */}
-          <div
-            aria-hidden
-            className="my-1 h-px w-8 shrink-0 bg-white/20 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/rail:w-full"
-          />
-
-          {RAIL_MENU.map(({ href, labelKey, Icon }) => (
-            <RailRow
-              key={href}
-              href={href}
-              label={t(labelKey)}
-              Icon={Icon}
-              active={isActive(href)}
-            />
-          ))}
+        {/* Navigation list */}
+        <nav aria-label="SpendFlow" className="flex w-full flex-1 flex-col gap-1 px-3">
+          {NAV_ITEMS.map(({ href, label, Icon }) => {
+            const active = isActive(href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                aria-current={active ? "page" : undefined}
+                className={`flex h-10 w-full items-center gap-3 rounded-lg px-3.5 text-[13px] transition-colors ${
+                  active
+                    ? "bg-[#f0f2f5] dark:bg-[#141414] font-semibold text-gray-900 dark:text-gray-100"
+                    : "font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#141414] hover:text-gray-900 dark:hover:text-gray-100"
+                }`}
+              >
+                <Icon size={18} className={active ? "text-gray-800 dark:text-gray-100" : "text-gray-400"} />
+                <span>{label}</span>
+              </Link>
+            );
+          })}
         </nav>
 
-        <div className="mt-auto flex w-full flex-col items-center gap-1">
-          <RailRow
+        {/* Bottom Navigation Links */}
+        <div className="border-t border-[#eaecf0] dark:border-[#262626] px-3 pt-3 flex flex-col gap-1">
+          <Link
+            href="/notifications"
+            className={`flex h-10 w-full items-center gap-3 rounded-lg px-3.5 text-[13px] transition-colors ${
+              isActive("/notifications")
+                ? "bg-[#f0f2f5] dark:bg-[#141414] font-semibold text-gray-900 dark:text-gray-100"
+                : "font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#141414] hover:text-gray-900 dark:hover:text-gray-100"
+            }`}
+          >
+            <Bell size={18} className={isActive("/notifications") ? "text-gray-800 dark:text-gray-100" : "text-gray-400"} />
+            <span>Notifications</span>
+          </Link>
+          <Link
             href="/settings"
-            label={t("settings")}
-            Icon={SettingsIcon}
-            active={isActive("/settings")}
-          />
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/rail:w-full group-hover/rail:justify-start group-hover/rail:gap-3 group-hover/rail:px-3">
-            {avatar}
-            <span
-              aria-hidden
-              className="-translate-x-1 invisible min-w-0 max-w-0 flex-1 overflow-hidden whitespace-nowrap opacity-0 text-[13px] font-medium text-[var(--sf-rail-ink)] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/rail:visible group-hover/rail:max-w-[170px] group-hover/rail:translate-x-0 group-hover/rail:opacity-100"
-            >
-              {memberName}
-            </span>
-          </div>
+            className={`flex h-10 w-full items-center gap-3 rounded-lg px-3.5 text-[13px] transition-colors ${
+              isActive("/settings")
+                ? "bg-[#f0f2f5] dark:bg-[#141414] font-semibold text-gray-900 dark:text-gray-100"
+                : "font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#141414] hover:text-gray-900 dark:hover:text-gray-100"
+            }`}
+          >
+            <SettingsIcon size={18} className={isActive("/settings") ? "text-gray-800 dark:text-gray-100" : "text-gray-400"} />
+            <span>Settings</span>
+          </Link>
+          <Link
+            href="/profile"
+            className={`flex h-10 w-full items-center gap-3 rounded-lg px-3.5 text-[13px] transition-colors ${
+              isActive("/profile")
+                ? "bg-[#f0f2f5] dark:bg-[#141414] font-semibold text-gray-900 dark:text-gray-100"
+                : "font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#141414] hover:text-gray-900 dark:hover:text-gray-100"
+            }`}
+          >
+            <UserRound size={18} className={isActive("/profile") ? "text-gray-800 dark:text-gray-100" : "text-gray-400"} />
+            <span>Profile</span>
+          </Link>
         </div>
       </aside>
 
-      {/* ===== Command bar – full width, logo at left (Supabase-style) ===== */}
-      <div className="glass sticky top-0 z-30 border-b border-border">
-        <header className="mx-auto flex h-14 w-full max-w-[1440px] items-center gap-2 px-4 sm:gap-3 sm:px-6">
-          {/* Hamburger – opens the sage nav drawer (below lg) */}
-          <button
-            type="button"
-            onClick={() => setDrawerOpen(true)}
-            aria-label={t("dockMore")}
-            aria-expanded={drawerOpen}
-            aria-haspopup="dialog"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-text-muted transition-colors hover:bg-surface-elevated hover:text-text lg:hidden"
-          >
-            <Menu size={19} aria-hidden />
-          </button>
-
-          <Link
-            href="/overview"
-            className="flex shrink-0 items-center gap-2"
-            aria-label={t("spendFlow")}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/icons/brand-light.png"
-              alt=""
-              width={26}
-              height={26}
-              className="h-[26px] w-[26px] rounded-md ring-1 ring-border dark:hidden"
-            />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/icons/brand-dark.png"
-              alt=""
-              width={26}
-              height={26}
-              className="hidden h-[26px] w-[26px] rounded-md ring-1 ring-border dark:block"
-            />
-            <span className="text-[15px] font-bold tracking-tight text-text">
-              {t("spendFlow")}
-            </span>
-          </Link>
-
-          <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
-            <AlertBell buttonClassName="h-9 w-9 rounded-full hover:bg-surface-elevated" />
-            <PrivacyEyeButton className="h-9 w-9 rounded-full" />
-            <ThemeToggle className="hidden h-9 w-9 rounded-full sm:flex" />
-            <Link
-              href="/expense/new"
-              aria-label={t("addTransaction")}
-              className="hidden h-9 shrink-0 items-center gap-1.5 rounded-full bg-primary px-3.5 text-[13px] font-semibold text-primary-ink transition-colors hover:bg-primary-strong active:scale-[0.98] lg:flex"
+      {/* ===== Top Header Bar ===== */}
+      <div className="sticky top-0 z-30 border-b border-[#eaecf0] dark:border-[#262626] bg-white dark:bg-[#0a0a0a] lg:ml-[240px] lg:w-[calc(100%-240px)]">
+        <header className="flex h-16 w-full items-center justify-between px-6">
+          {/* Left: Hamburger (mobile) + Breadcrumb */}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(true)}
+              aria-label="Open menu"
+              className="-ml-2 grid h-9 w-9 shrink-0 place-items-center rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#141414] lg:hidden"
             >
-              <Plus size={15} />
-              {t("addTransaction")}
+              <Menu size={19} />
+            </button>
+            {/* App icon beside the hamburger (mobile header brand mark) */}
+            <Link
+              href="/overview"
+              aria-label="SpendFlow"
+              className="lg:hidden"
+            >
+              <SpendFlowSeal size={32} />
             </Link>
-            {avatar}
+
+          </div>
+
+          {/* Right: Search, Notification Bell, User info + Avatar */}
+          <div className="flex items-center gap-3 sm:gap-4">
+            <form
+              className="relative hidden items-center sm:flex"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const q = String(new FormData(e.currentTarget).get("q") ?? "").trim();
+                if (q) router.push(`/history?q=${encodeURIComponent(q)}`);
+              }}
+            >
+              <Search size={14} className="absolute left-3 text-gray-400" />
+              <input
+                name="q"
+                type="search"
+                placeholder="Search transactions..."
+                className="h-9 w-60 rounded-md border border-gray-200 dark:border-[#262626] bg-[#fbfcfc] dark:bg-[#141414] pl-9 pr-3 text-xs text-gray-700 dark:text-gray-300 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-gray-400 dark:focus:border-gray-500 focus:outline-none"
+              />
+            </form>
+
+            <button
+              type="button"
+              aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+              onClick={(e) => {
+                const r = e.currentTarget.getBoundingClientRect();
+                themeReveal(() => setPreference(isDark ? "light" : "dark"), {
+                  x: r.left + r.width / 2,
+                  y: r.top + r.height / 2,
+                });
+              }}
+              className="relative grid h-9 w-9 place-items-center rounded-full text-gray-500 dark:text-gray-400 transition-colors hover:bg-gray-100 dark:hover:bg-[#141414] hover:text-gray-900 dark:hover:text-gray-100"
+            >
+              {isDark ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <AlertBell buttonClassName="relative grid h-9 w-9 place-items-center rounded-full text-gray-500 dark:text-gray-400 transition-colors hover:bg-gray-100 dark:hover:bg-[#141414] hover:text-gray-900 dark:hover:text-gray-100" />
+
+            <div className="flex items-center gap-3 pl-1 sm:pl-2">
+              <div className="hidden text-right sm:block">
+                <p className="text-xs font-semibold leading-tight text-gray-900 dark:text-gray-100">
+                  {profile?.display_name || profile?.email || "User"}
+                </p>
+                <p className="text-[10px] leading-tight text-gray-400">Pro Member</p>
+              </div>
+              {avatar}
+            </div>
           </div>
         </header>
       </div>
 
-      {/* ===== Content ===== */}
-      <main className="mx-auto w-full max-w-[1440px] px-4 pb-36 pt-4 sm:px-6 sm:pt-5 lg:pb-12 lg:pl-[104px]">
+      {/* ===== Main Content Area ===== */}
+      <main className="min-h-[calc(100vh-64px)] bg-[#f8f9fa] dark:bg-[#000000] p-5 pb-28 sm:p-6 sm:pb-28 lg:ml-[240px] lg:w-[calc(100%-240px)] lg:p-8 lg:pb-8">
         {children}
       </main>
 
       {/* ===== Floating dock (phones + tablets below md) ===== */}
       {!pathname.startsWith("/expense/") && (
         <nav
-          aria-label={t("spendFlow")}
+          aria-label="Navigation"
           className="fixed inset-x-3 bottom-3 z-40 lg:hidden"
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         >
-          <div className="glass mx-auto grid h-16 max-w-md grid-cols-5 items-center rounded-2xl border border-border shadow-pop">
-            {DOCK.slice(0, 2).map(({ href, labelKey, Icon }) => (
-              <DockTab key={href} href={href} label={t(labelKey)} active={isActive(href)}>
+          <div className="mx-auto flex h-16 max-w-md items-center justify-around rounded-2xl border border-gray-200 dark:border-[#262626] bg-white dark:bg-[#0a0a0a]/95 dark:bg-[#0a0a0a]/95 px-2 shadow-lg backdrop-blur-md">
+            {NAV_ITEMS.slice(0, 2).map(({ href, label, Icon }) => (
+              <DockTab key={href} href={href} label={label} active={isActive(href)}>
                 <Icon size={19} aria-hidden />
               </DockTab>
             ))}
             <div className="grid place-items-center">
               <Link
                 href="/expense/new"
-                aria-label={t("addTransaction")}
-                className="grid h-14 w-14 -translate-y-4 place-items-center rounded-2xl bg-primary text-primary-ink shadow-pop transition-transform active:scale-95"
+                aria-label="Add transaction"
+                className="grid h-12 w-12 -translate-y-3 place-items-center rounded-xl bg-primary text-primary-ink shadow-md transition-transform active:scale-95"
               >
-                <Plus size={22} aria-hidden />
+                <PlusCircle size={22} aria-hidden />
               </Link>
             </div>
-            {DOCK.slice(2).map(({ href, labelKey, Icon }) => (
-              <DockTab key={href} href={href} label={t(labelKey)} active={isActive(href)}>
+            {[
+              { href: "/analytics", label: "Analytics", Icon: TrendingUp },
+              { href: "/settings", label: "Settings", Icon: SettingsIcon },
+            ].map(({ href, label, Icon }) => (
+              <DockTab key={href} href={href} label={label} active={isActive(href)}>
                 <Icon size={19} aria-hidden />
               </DockTab>
             ))}
-            <DockTab href="/settings" label={t("settings")} active={isActive("/settings")}>
-              <SettingsIcon size={19} aria-hidden />
-            </DockTab>
           </div>
         </nav>
       )}
 
-      {/* ===== Sage nav drawer (hamburger / dock More, below lg) ===== */}
+      {/* ===== Mobile nav drawer (hamburger) ===== */}
       {drawerOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label={t("spendFlow")}>
+        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
           <button
             aria-label="Close"
             tabIndex={-1}
             onClick={() => setDrawerOpen(false)}
-            className="absolute inset-0 cursor-default bg-[rgb(32_28_16/0.55)]"
+            className="absolute inset-0 cursor-default bg-black/40 backdrop-blur-xs"
           />
           <div
-            className="sf-drawer absolute inset-y-0 left-0 flex w-[286px] max-w-[86vw] flex-col rounded-r-[24px] bg-[var(--sf-rail)] shadow-pop"
+            className="absolute inset-y-0 left-0 flex w-[280px] max-w-[86vw] flex-col bg-white dark:bg-[#0a0a0a] shadow-2xl"
             style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
           >
-            <div className="flex items-center gap-2.5 px-3 pb-2 pt-4">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--sf-rail-active-bg)]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/icons/brand-light.png"
-                  alt=""
-                  width={26}
-                  height={26}
-                  className="h-[26px] w-[26px] rounded-lg"
-                />
-              </span>
-              <span className="min-w-0 flex-1 truncate text-[15px] font-bold text-[var(--sf-rail-active-bg)]">
-                {t("spendFlow")}
+            <div className="flex items-center gap-3 border-b border-gray-100 dark:border-[#262626] px-5 py-4">
+              <SpendFlowSeal size={32} />
+              <span className="min-w-0 flex-1 truncate text-[17px] font-bold text-gray-900 dark:text-gray-100">
+                SpendFlow
               </span>
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}
                 aria-label="Close"
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-[var(--sf-rail-ink)] transition-colors hover:bg-white/15 hover:text-[var(--sf-rail-active-bg)]"
+                className="grid h-8 w-8 place-items-center rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#141414]"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <nav aria-label={t("spendFlow")} className="flex-1 overflow-y-auto px-3 pb-2">
-              {RAIL_PRIMARY.map(({ href, labelKey, Icon }) => {
+            <nav aria-label="SpendFlow" className="flex-1 overflow-y-auto px-3 py-3">
+              {NAV_ITEMS.map(({ href, label, Icon }) => {
                 const active = isActive(href);
                 return (
                   <Link
@@ -411,100 +448,54 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     href={href}
                     aria-current={active ? "page" : undefined}
                     onClick={() => setDrawerOpen(false)}
-                    className={`mt-0.5 flex h-11 items-center gap-3 rounded-xl px-3 text-[13.5px] transition-colors ${
+                    className={`mt-1 flex h-10 items-center gap-3 rounded-lg px-3.5 text-[13px] transition-colors ${
                       active
-                        ? "bg-[var(--sf-rail-active-bg)] font-semibold text-[var(--sf-rail-active-ink)]"
-                        : "font-medium text-[var(--sf-rail-ink)] hover:bg-white/15 hover:text-[var(--sf-rail-active-bg)]"
+                        ? "bg-[#f0f2f5] dark:bg-[#141414] font-semibold text-gray-900 dark:text-gray-100"
+                        : "font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#141414] hover:text-gray-900 dark:hover:text-gray-100"
                     }`}
                   >
-                    <Icon size={17} aria-hidden />
-                    {t(labelKey)}
+                    <Icon size={18} className={active ? "text-gray-800 dark:text-gray-100" : "text-gray-400"} />
+                    <span>{label}</span>
                   </Link>
                 );
               })}
-              <div aria-hidden className="my-2 border-t border-white/20" />
-              {RAIL_MENU.map(({ href, labelKey, Icon }) => {
-                const active = isActive(href);
-                return (
-                  <Link
-                    key={href}
-                    href={href}
-                    aria-current={active ? "page" : undefined}
-                    onClick={() => setDrawerOpen(false)}
-                    className={`mt-0.5 flex h-11 items-center gap-3 rounded-xl px-3 text-[13.5px] transition-colors ${
-                      active
-                        ? "bg-[var(--sf-rail-active-bg)] font-semibold text-[var(--sf-rail-active-ink)]"
-                        : "font-medium text-[var(--sf-rail-ink)] hover:bg-white/15 hover:text-[var(--sf-rail-active-bg)]"
-                    }`}
-                  >
-                    <Icon size={17} aria-hidden />
-                    {t(labelKey)}
-                  </Link>
-                );
-              })}
-              <div aria-hidden className="my-2 border-t border-white/20" />
-              <Link
-                href="/settings"
-                aria-current={isActive("/settings") ? "page" : undefined}
-                onClick={() => setDrawerOpen(false)}
-                className={`flex h-11 items-center gap-3 rounded-xl px-3 text-[13.5px] transition-colors ${
-                  isActive("/settings")
-                    ? "bg-[var(--sf-rail-active-bg)] font-semibold text-[var(--sf-rail-active-ink)]"
-                    : "font-medium text-[var(--sf-rail-ink)] hover:bg-white/15 hover:text-[var(--sf-rail-active-bg)]"
-                }`}
-              >
-                <SettingsIcon size={17} aria-hidden />
-                {t("settings")}
-              </Link>
-              {profile && (
-                <Link
-                  href="/profile"
-                  onClick={() => setDrawerOpen(false)}
-                  className="mt-0.5 flex h-14 items-center gap-3 rounded-xl px-3 text-[13.5px] font-medium text-[var(--sf-rail-ink)] transition-colors hover:bg-white/15 hover:text-[var(--sf-rail-active-bg)]"
-                >
-                  {profile.avatar_url && isAllowedAvatarUrl(profile.avatar_url) ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={profile.avatar_url}
-                      alt=""
-                      className="h-8 w-8 rounded-full border border-white/40 object-cover"
-                    />
-                  ) : (
-                    <span className="grid h-8 w-8 place-items-center rounded-full bg-[var(--sf-rail-active-bg)] text-[10.5px] font-bold text-[var(--sf-rail-active-ink)]">
-                      {memberInitials()}
-                    </span>
-                  )}
-                  <span className="min-w-0 flex-1 truncate">{memberName}</span>
-                </Link>
-              )}
             </nav>
 
-            <div className="flex flex-col gap-0.5 border-t border-white/20 px-3 py-3">
+            <div className="border-t border-gray-100 dark:border-[#262626] p-3 flex flex-col gap-1">
+              <Link
+                href="/notifications"
+                onClick={() => setDrawerOpen(false)}
+                className="flex h-10 items-center gap-3 rounded-lg px-3.5 text-[13px] font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#141414]"
+              >
+                <Bell size={18} className="text-gray-400" />
+                <span>Notifications</span>
+              </Link>
+              <Link
+                href="/settings"
+                onClick={() => setDrawerOpen(false)}
+                className="flex h-10 items-center gap-3 rounded-lg px-3.5 text-[13px] font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#141414]"
+              >
+                <SettingsIcon size={18} className="text-gray-400" />
+                <span>Settings</span>
+              </Link>
+              <Link
+                href="/profile"
+                onClick={() => setDrawerOpen(false)}
+                className="flex h-10 items-center gap-3 rounded-lg px-3.5 text-[13px] font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#141414]"
+              >
+                <UserRound size={18} className="text-gray-400" />
+                <span>Profile</span>
+              </Link>
               <button
                 type="button"
-                onClick={togglePrivacy}
-                className="flex h-10 items-center gap-3 rounded-xl px-3 text-[13px] font-medium text-[var(--sf-rail-ink)] transition-colors hover:bg-white/15 hover:text-[var(--sf-rail-active-bg)]"
+                onClick={() => {
+                  togglePrivacy();
+                  setDrawerOpen(false);
+                }}
+                className="flex h-10 w-full items-center gap-3 rounded-lg px-3.5 text-[13px] font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#141414]"
               >
-                {isPrivacyMode ? <EyeOff size={16} aria-hidden /> : <Eye size={16} aria-hidden />}
-                {isPrivacyMode ? t("dockShowAmounts") : t("dockHideAmounts")}
-              </button>
-              <button
-                type="button"
-                onClick={() => setPreference(themeNext)}
-                className="flex h-10 items-center gap-3 rounded-xl px-3 text-[13px] font-medium text-[var(--sf-rail-ink)] transition-colors hover:bg-white/15 hover:text-[var(--sf-rail-active-bg)]"
-              >
-                {preference === "light" ? (
-                  <Sun size={16} aria-hidden />
-                ) : preference === "dark" ? (
-                  <Moon size={16} aria-hidden />
-                ) : (
-                  <SunMoon size={16} aria-hidden />
-                )}
-                {preference === "light"
-                  ? t("themeLight")
-                  : preference === "dark"
-                    ? t("themeDark")
-                    : t("themeSystem")}
+                {isPrivacyMode ? <EyeOff size={18} className="text-gray-400" /> : <Eye size={18} className="text-gray-400" />}
+                <span>{isPrivacyMode ? "Show Amounts" : "Hide Amounts"}</span>
               </button>
             </div>
           </div>
@@ -540,50 +531,11 @@ function DockTab({
       href={href}
       aria-current={active ? "page" : undefined}
       className={`flex h-full flex-col items-center justify-center gap-1 text-[10px] font-medium leading-none transition-colors ${
-        active ? "text-primary" : "text-text-muted"
+        active ? "text-gray-900 dark:text-gray-100 font-semibold" : "text-gray-400"
       }`}
     >
       {children}
-      {label}
-    </Link>
-  );
-}
-
-/**
- * One rail row (Supabase-style): a centered icon tile when the rail is
- * collapsed; on hover-expand the tile stretches full-width and the name
- * slides out beside the icon.
- */
-function RailRow({
-  href,
-  label,
-  Icon,
-  active,
-}: {
-  href: string;
-  label: string;
-  Icon: typeof Home;
-  active: boolean;
-}) {
-  return (
-    <Link
-      href={href}
-      title={label}
-      aria-current={active ? "page" : undefined}
-      aria-label={label}
-      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/rail:w-full group-hover/rail:justify-start group-hover/rail:gap-3 group-hover/rail:px-3 ${
-        active
-          ? "bg-[var(--sf-rail-active-bg)] text-[var(--sf-rail-active-ink)]"
-          : "text-[var(--sf-rail-ink)] hover:bg-white/15 hover:text-[var(--sf-rail-active-bg)]"
-      }`}
-    >
-      <Icon size={19} aria-hidden className="shrink-0" />
-      <span
-        aria-hidden
-        className="-translate-x-1 invisible max-w-0 overflow-hidden whitespace-nowrap text-[13.5px] font-medium opacity-0 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/rail:visible group-hover/rail:max-w-[170px] group-hover/rail:translate-x-0 group-hover/rail:opacity-100"
-      >
-        {label}
-      </span>
+      <span>{label}</span>
     </Link>
   );
 }

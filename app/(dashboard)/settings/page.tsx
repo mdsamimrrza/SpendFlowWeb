@@ -85,11 +85,8 @@ export default function SettingsPage() {
   const [signingOut, setSigningOut] = useState(false);
   const [categoryCount, setCategoryCount] = useState(0);
 
-  // Mobile: displayName falls back to the email local-part, then the
-  // seeded sample account; email falls back to the sample address.
   const preferredCurrency = profile?.preferred_currency ?? "NPR";
-  const displayName =
-    profile?.display_name || profile?.email?.split("@")[0] || "Samim Reza";
+  const displayName = profile?.display_name || profile?.email?.split("@")[0] || "User";
   const initials = displayName.slice(0, 2).toUpperCase();
 
   useEffect(() => {
@@ -143,10 +140,10 @@ export default function SettingsPage() {
   };
 
   return (
-    <main className="mx-auto w-full max-w-[480px] md:max-w-[560px] lg:max-w-[1060px]">
+    <main className="-mt-3 mx-auto w-full max-w-[480px] md:max-w-[560px] lg:max-w-[1060px]">
       {/* Header - privacy eye & theme flip live in the shell topbar */}
       <header className="mb-5 mt-1">
-        <h1 className="mt-0.5 text-xl font-bold tracking-[-0.02em] text-text sm:text-2xl">
+        <h1 className="text-[26px] font-bold tracking-tight text-text">
           {t("settings")}
         </h1>
       </header>

@@ -7,6 +7,9 @@ import {
   FileSpreadsheet,
   FileText,
   Printer,
+  ShieldCheck,
+  TrendingDown,
+  TrendingUp,
   Upload,
   X,
 } from "lucide-react";
@@ -26,7 +29,8 @@ import {
 } from "@/services/export";
 import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
 import type { TranslationKey } from "@/constants/i18n/dictionaries";
-import { formatMoney, todayISO, isValidISODate, toISODate, getCycleWindow } from "@/utils/format";
+import { formatMoney, formatShortDate, todayISO, isValidISODate, toISODate, getCycleWindow } from "@/utils/format";
+import { FitText } from "@/components/ui/FitText";
 
 type Period = "today" | "week" | "month" | "year" | "all";
 
@@ -388,82 +392,112 @@ export function ExportStatement({ inject }: ExportPageProps) {
     }
   };
 
+  const rangeLabel = `${formatShortDate(range.from, locale)} – ${formatShortDate(range.to, locale)}`;
+
   return (
-    <main className="mx-auto w-full max-w-[560px] space-y-5 pb-6">
-      {/* ── 1. HEADER ── */}
-      <header className="flex items-end justify-between gap-3 pt-1">
-        <div>
-          <p className="text-[13px] font-medium text-faint">{t("expKicker")}</p>
-          <h1 className="mt-0.5 text-xl font-bold tracking-[-0.02em] text-text sm:text-2xl">
+    <main className="mx-auto w-full max-w-[600px] space-y-5 p-0.5 pb-6 lg:max-w-[980px]">
+      {/* ── CONSOLE MASTHEAD – chip pinned right at every width ── */}
+      <header className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="caps text-faint">{t("expKicker")}</p>
+          <h1 className="truncate text-[26px] font-extrabold leading-tight tracking-tight text-text">
             {t("expCenter")}
           </h1>
+          <p className="mt-0.5 truncate text-[12.5px] font-medium text-text-muted">
+            <span className="numeric">{periodLabel}</span> ·{" "}
+            {t("expTransactionsIncluded").replace("{count}", String(scoped.length))}
+          </p>
         </div>
         <Link
           href="/settings"
           aria-label={t("close")}
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-border bg-surface text-text-muted transition-colors hover:bg-surface-elevated hover:text-text"
+          className="mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border bg-surface text-text-muted transition hover:border-text-muted hover:text-text active:opacity-70"
         >
-          <X size={17} aria-hidden />
+          <X size={16} aria-hidden />
         </Link>
       </header>
 
-      {/* ── 2. PERIOD SELECTOR - segmented control ── */}
-      <div className="space-y-2">
-        <p className="caps">{t("expSelectPeriod")}</p>
-        <div
-          className="scroll-x flex rounded-lg border border-border bg-surface-elevated p-0.5"
-          role="group"
-          aria-label={t("expSelectPeriod")}
-        >
-          {PERIODS.map((p) => {
-            const active = period === p.value;
-            return (
-              <button
-                key={p.value}
-                onClick={() => setPeriod(p.value)}
-                aria-pressed={active}
-                className={`h-9 min-h-[36px] shrink-0 whitespace-nowrap rounded-md px-3 text-[13px] font-semibold transition active:scale-[0.97] ${
-                  active ? "flex-1 bg-primary text-primary-ink" : "flex-1 text-text-muted hover:text-text"
-                }`}
-              >
-                {t(p.labelKey)}
-              </button>
-            );
-          })}
-        </div>
+      {/* ── PERIOD SELECTOR - segmented control ── */}
+      <div
+        className="scroll-x flex rounded-lg border border-border bg-surface-elevated p-0.5"
+        role="group"
+        aria-label={t("expSelectPeriod")}
+      >
+        {PERIODS.map((p) => {
+          const active = period === p.value;
+          return (
+            <button
+              key={p.value}
+              onClick={() => setPeriod(p.value)}
+              aria-pressed={active}
+              className={`h-9 min-h-[36px] shrink-0 whitespace-nowrap rounded-md px-3 text-[13px] font-semibold transition active:scale-[0.97] ${
+                active ? "flex-1 bg-primary text-primary-ink" : "flex-1 text-text-muted hover:text-text"
+              }`}
+            >
+              {t(p.labelKey)}
+            </button>
+          );
+        })}
       </div>
 
-      {/* ── 3. STATEMENT PREVIEW CARD ── */}
-      <section className="rounded-xl border border-border bg-surface p-5 shadow-soft">
-        <div className="flex items-center justify-between gap-2">
-          <span className="caps truncate">
-            {t("expSummary").replace("{period}", periodLabel)}
-          </span>
-          <span className="shrink-0 text-[11px] font-medium text-faint">
-            {t("expTransactionsIncluded").replace("{count}", String(scoped.length))}
-          </span>
+      {/* ── STATEMENT STAT ROW – net hero full-width on phones, 3-up on desktop ── */}
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        <div className="panel col-span-2 rounded-xl p-4 lg:col-span-1">
+          <div className="flex items-center justify-between">
+            <p className="caps text-faint">{t("cfNet")}</p>
+            <span
+              className={`grid h-7 w-7 place-items-center rounded-lg ${total >= 0 ? "bg-income/10 text-income" : "bg-danger/10 text-danger"}`}
+              aria-hidden
+            >
+              <ShieldCheck size={14} />
+            </span>
+          </div>
+          <FitText
+            basePx={19}
+            minPx={14}
+            className={`figures mt-2 font-extrabold leading-none ${total >= 0 ? "text-text" : "text-danger"}`}
+            title={fmt(total)}
+          >
+            {fmt(total)}
+          </FitText>
+          <p className="numeric mt-1.5 truncate text-[10.5px] font-semibold text-faint">{rangeLabel}</p>
         </div>
-        <p
-          className={`figures-display mt-1 truncate py-0.5 text-[32px] leading-9 ${
-            total >= 0 ? "text-text" : "text-danger"
-          }`}
-        >
-          {fmt(total)}
-        </p>
-        <p className="text-xs text-text-muted">{displayCurrency}</p>
-        {/* Period shape - net signed figure above, inflow/outflow split below */}
-        <div className="mt-3 flex items-center gap-2 border-t border-border pt-3 text-xs font-semibold">
-          <span className="numeric shrink-0 whitespace-nowrap text-income">+{fmt(incomeTotal)}</span>
-          <span className="shrink-0 text-faint">/</span>
-          <span className="numeric shrink-0 whitespace-nowrap text-danger">-{fmt(expenseTotal)}</span>
-          <span className="rule-after" />
-          <span className="caps-faint hidden truncate sm:inline">{t("expVerifiedRecord")}</span>
+        <div className="panel rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <p className="caps text-faint">{t("flowIncome")}</p>
+            <span className="grid h-7 w-7 place-items-center rounded-lg bg-income/10 text-income" aria-hidden>
+              <TrendingUp size={14} />
+            </span>
+          </div>
+          <p className="numeric mt-2 text-[17px] font-extrabold leading-none text-income lg:text-[20px]">+{fmt(incomeTotal)}</p>
+          <p className="mt-1.5 truncate text-[11px] font-semibold text-text-muted">{displayCurrency}</p>
+        </div>
+        <div className="panel rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <p className="caps text-faint">{t("flowExpenses")}</p>
+            <span className="grid h-7 w-7 place-items-center rounded-lg bg-danger/10 text-danger" aria-hidden>
+              <TrendingDown size={14} />
+            </span>
+          </div>
+          <p className="numeric mt-2 text-[17px] font-extrabold leading-none text-danger lg:text-[20px]">−{fmt(expenseTotal)}</p>
+          <p className="mt-1.5 truncate text-[11px] font-semibold text-text-muted">{displayCurrency}</p>
         </div>
       </section>
 
-      {/* ── 4. EXPORT ACTION ROWS ── */}
-      <div className="space-y-2">
-        <p className="caps">{t("expGenerate")}</p>
+      {/* ── VERIFIED RECORD STRIP ── */}
+      <div className="panel flex items-center gap-2.5 rounded-xl px-4 py-3">
+        <ShieldCheck size={16} className="shrink-0 text-income" aria-hidden />
+        <span className="min-w-0 truncate text-xs font-semibold text-text-muted">{t("expVerifiedRecord")}</span>
+        <span className="rule-after" aria-hidden />
+        <span className="numeric shrink-0 text-[11px] font-bold text-faint">
+          {t("expSummary").replace("{period}", periodLabel)}
+        </span>
+      </div>
+
+      {/* ── GENERATE + IMPORT: two columns on desktop ── */}
+      <div className="space-y-5 lg:grid lg:grid-cols-12 lg:gap-4 lg:space-y-0">
+        <div className="space-y-2 lg:col-span-7">
+          <p className="caps">{t("expGenerate")}</p>
 
         {/* PDF Statement (primary) */}
         <button
@@ -472,20 +506,22 @@ export function ExportStatement({ inject }: ExportPageProps) {
           className="flex w-full items-center justify-between gap-3 rounded-xl bg-primary p-4 text-left transition-colors hover:bg-primary-strong active:scale-[0.99] disabled:opacity-70"
         >
           <span className="flex min-w-0 items-center gap-3">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-white/15 text-white">
-              {busy === "pdf" ? <BusyRing /> : <Printer size={21} aria-hidden />}
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-white/15 text-primary-ink dark:bg-black/10">
+              {busy === "pdf" ? <BusyRing tone="text-primary-ink" /> : <Printer size={21} aria-hidden />}
             </span>
             <span className="min-w-0">
               <span className="flex items-center gap-1.5">
-                <span className="text-[15px] font-bold text-white">{t("expPdfTitle")}</span>
-                <span className="rounded-md bg-white px-1.5 py-px text-[10px] font-bold text-primary">
+                <span className="text-[15px] font-bold text-primary-ink">{t("expPdfTitle")}</span>
+                <span className="rounded-md bg-white px-1.5 py-px text-[10px] font-bold text-gray-900">
                   {t("expRecommended")}
                 </span>
               </span>
-              <span className="block truncate text-xs text-white/80">{t("expPdfSub")}</span>
+              <span className="block truncate text-xs text-white/80 dark:text-black/70">
+                {t("expPdfSub")}
+              </span>
             </span>
           </span>
-          <ArrowDownToLine size={19} className="shrink-0 text-white" aria-hidden />
+          <ArrowDownToLine size={19} className="shrink-0 text-primary-ink" aria-hidden />
         </button>
 
         {/* Excel XLSX */}
@@ -525,32 +561,37 @@ export function ExportStatement({ inject }: ExportPageProps) {
         </button>
       </div>
 
-      {/* ── 5. IMPORT SECTION ── */}
-      <div className="space-y-2 pt-1">
-        <p className="caps">{t("expBackupTitle")}</p>
-        <label className="flex min-h-[48px] cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-surface-elevated px-4 py-3 transition-colors hover:border-primary">
-          {busy === "import" ? (
-            <BusyRing tone="text-primary" />
-          ) : (
-            <Upload size={16} className="text-primary" aria-hidden />
-          )}
-          <span className="text-[13px] font-semibold text-primary">{t("expImportCsv")}</span>
-          <input
-            type="file"
-            accept=".csv,text/csv"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) void onImportCsv(f);
-              e.target.value = "";
-            }}
-          />
-        </label>
-        {importResult && (
-          <p className="rounded-lg bg-[var(--sf-primary-light)] px-3 py-2 text-xs font-semibold text-income">
-            {importResult}
-          </p>
-        )}
+        {/* ── IMPORT SECTION ── */}
+        <div className="space-y-2 lg:col-span-5">
+          <p className="caps">{t("expBackupTitle")}</p>
+          <div className="panel rounded-xl p-4">
+            <label className="flex min-h-[148px] cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-surface-elevated px-4 py-6 text-center transition-colors hover:border-primary">
+              {busy === "import" ? (
+                <BusyRing tone="text-primary" />
+              ) : (
+                <span className="grid h-11 w-11 place-items-center rounded-lg bg-[var(--sf-primary-light)] text-primary">
+                  <Upload size={18} aria-hidden />
+                </span>
+              )}
+              <span className="text-[13px] font-semibold text-primary">{t("expImportCsv")}</span>
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void onImportCsv(f);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+            {importResult && (
+              <p className="mt-3 rounded-lg bg-[var(--sf-primary-light)] px-3 py-2 text-xs font-semibold text-income">
+                {importResult}
+              </p>
+            )}
+          </div>
+        </div>
       </div>
 
       <p className="text-center text-[10.5px] text-faint">

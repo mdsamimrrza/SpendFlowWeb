@@ -17,6 +17,8 @@ export function FloatingSelect({
   onToggle,
   children,
   pill = false,
+  /** Soft gray console pill (overview header style). */
+  ghost = false,
   menuClassName = "",
 }: {
   className?: string;
@@ -27,6 +29,8 @@ export function FloatingSelect({
   children: ReactNode;
   /** Rounded-full trigger (toolbar pill style). */
   pill?: boolean;
+  /** Soft gray console pill (overview header style). */
+  ghost?: boolean;
   /** Extra classes for the popover list (e.g. scrollable max-h). */
   menuClassName?: string;
 }) {
@@ -37,13 +41,13 @@ export function FloatingSelect({
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={onToggle}
-        className={`flex min-h-[44px] w-full items-center justify-between gap-1 ${pill ? "rounded-full" : "rounded-lg"} border bg-input px-3.5 py-2.5 transition-colors ${
-          open ? "border-primary" : "border-border"
-        }`}
+        className={`flex ${ghost ? "min-h-[40px] px-3" : "min-h-[44px] px-3.5"} w-full items-center justify-between gap-1 ${pill ? "rounded-full" : "rounded-lg"} border py-2 transition-colors ${
+          ghost ? "border-gray-200 dark:border-[#262626]/70 bg-[#f7f8f9] dark:bg-[#141414]" : "bg-input"
+        } ${open ? "border-primary" : ghost ? "hover:border-gray-300" : "border-border"}`}
       >
         <span className="flex min-w-0 flex-1 items-center gap-1.5">
           {icon}
-          <span className="truncate text-[13px] font-bold text-text">{label}</span>
+          <span className={`truncate text-[13px] ${ghost ? "font-medium text-gray-700 dark:text-gray-300" : "font-bold text-text"}`}>{label}</span>
         </span>
         <ChevronDown
           size={13}

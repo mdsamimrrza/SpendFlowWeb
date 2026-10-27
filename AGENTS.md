@@ -124,20 +124,31 @@ needs an update too.
 - **Mobile canonical tokens** live in `docs/DESIGN-TOKEN-BRIDGE.md` (mirror of mobile
   `constants/theme.ts`): light = warm parchment `#EDEAE0` + teal `#0F5C4D`; dark = deep slate
   `#0B0F19` + indigo `#818CF8`. **The web client deliberately diverged**, most recently to the
-  "V5 Sage Ledger" identity (2026-10-13, user-directed redesign from a cream/sage pastel
-  reference image – recorded in `docs/FEATURE-PARITY.md`): light = warm cream `#F1EEE5` +
-  sage `#5E7E5B` + white-warm cards `#FDFCF9` with soft diffuse shadows; dark = moss-black
-  `#161A12` + lifted olive `#1F251A` + pale sage `#A9C2A0`; pastel accent quartet (sage /
-  warm beige / dusty blue / rosewood) for icon chips and charts; `text-primary-ink` on every
-  primary fill; UI face DM Sans via `--font-sans`, money figures Geist Mono via `--font-money` (the `.numeric` utility; 2026-10-15, matching the Master Admin project).
-  Cards are 20px-radius panels with hairline warm borders + soft shadows; desktop navigation
-  rides a floating sage rail (`--sf-rail*`). Earlier skins (V2 neutral, V3 "Tihar" marigold,
-  V4 "Meridian" cobalt) are superseded; their token names survive so components keep consuming
+  "Ledger Console" identity (2026-10-25, user-directed re-theme to a neutral fintech-console
+  reference – recorded in `docs/FEATURE-PARITY.md`): light = `#F8F9FA` canvas + white cards +
+  `#EAECF0` hairline borders + gray-900 `#111827` ink and action fills with flat neutral
+  shadows; dark = TRUE BLACK `#000000` canvas + `#0A0A0A`/`#141414` surfaces + `#262626`
+  hairlines + white `#FFFFFF` primary/action fills with black ink-on-primary (2026-10-26
+  user-directed true-dark re-theme — the graphite+slate+mint dark is retired; semantic
+  status hues stay, dark-tuned: income `#60A5FA`, success `#34D399`, danger `#F87171`,
+  warning `#FBBF24`); light income/positive-state = blue `#2563EB`, success = emerald `#059669`, danger = rose
+  `#E11D48`, warning = amber `#D97706`; `text-primary-ink` on every primary fill; UI face
+  DM Sans via `--font-sans`, money figures Geist Mono via `--font-money` (the `.numeric`
+  utility; 2026-10-15, matching the Master Admin project). Cards are 12px-radius panels
+  (`.panel` / `rounded-xl`) on hairline neutral borders with the flat `0 1px 3px` shadow;
+  every page opens with the console masthead (26px bold title + muted subtitle + right-side
+  actions: bordered secondary, `bg-primary` dark primary); the desktop shell is a fixed white
+  sidebar and the `--sf-rail*` tokens mirror it. Earlier skins (V2 neutral, V3 "Tihar" marigold, V4 "Meridian" cobalt,
+  V5 "Sage Ledger") are superseded; their token names survive so components keep consuming
   semantic vars.
   Do not change either palette without a user decision. All components consume tokens via Tailwind
-  CSS variables – no raw hex in components.
-- Chart series rule (web Sage Ledger): income always `income` (sage green); expense series
-  theme-conditional (rosewood light / clay dark) via the single `--sf-expense-series` variable.
+  CSS variables – no raw hex in components (the new shell + overview page are the user-directed
+  reference implementation and are intentionally hardcoded; do not copy their hexes into other
+  components – token consumers re-theme through `app/globals.css`).
+- Chart series rule (web Ledger Console): income always `income` (blue in both themes —
+  `#2563EB` light / `#60A5FA` dark; the dark mint income series was retired 2026-10-26);
+  expense series theme-conditional (red light / red dark) via the single `--sf-expense-series`
+  variable.
 - **Lucide icons only – never render emoji or text glyphs as icons.** Every icon in the web UI is a
   `lucide-react` component. The shared DB stores category/account icons as emoji (mobile writes
   them), so they must be resolved through `components/ui/Glyph.tsx` (`categoryGlyph` /

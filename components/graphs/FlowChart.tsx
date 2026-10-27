@@ -11,7 +11,7 @@ export interface FlowPoint {
 
 /**
  * Cash-flow chart, professional duet: one line for income, one for expense,
- * straight segments with point dots – the shape on screen is the shape of
+ * smooth cubic curves with point dots – the shape on screen is the shape of
  * the data. Right-hand value gutter with gridlines and an end-value tag per
  * series; crosshair (pointer/touch) tags both values and the bucket; when
  * `onHover` is given the card renders the bucket readout itself and the
@@ -108,8 +108,34 @@ export function FlowChart({
   const slot = inner / n;
   const x = (i: number) => slot * i + slot / 2;
 
-  const pathOf = (key: "income" | "expense") =>
-    points.map((p, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(2)} ${y(p[key]).toFixed(2)}`).join(" ");
+  const pathOf = (key: "income" | "expense") => {
+    const coordinates = points.map((p, i) => ({ x: x(i), y: y(p[key]) }));
+    if (coordinates.length < 2) return "";
+
+    const clampY = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
+    let path = `M${coordinates[0].x.toFixed(2)} ${coordinates[0].y.toFixed(2)}`;
+    for (let i = 0; i < coordinates.length - 1; i += 1) {
+      const current = coordinates[i];
+      const next = coordinates[i + 1];
+      const previous = coordinates[i - 1] ?? current;
+      const following = coordinates[i + 2] ?? next;
+      // Catmull-Rom control points, clamped to the segment's own y-span –
+      // otherwise a clamped spike → zero run swings the curve past the
+      // baseline (cash can't render negative when every value is ≥ 0).
+      const lo = Math.min(current.y, next.y);
+      const hi = Math.max(current.y, next.y);
+      const controlBefore = {
+        x: current.x + (next.x - previous.x) / 6,
+        y: clampY(current.y + (next.y - previous.y) / 6, lo, hi),
+      };
+      const controlAfter = {
+        x: next.x - (following.x - current.x) / 6,
+        y: clampY(next.y - (following.y - current.y) / 6, lo, hi),
+      };
+      path += ` C${controlBefore.x.toFixed(2)} ${controlBefore.y.toFixed(2)},${controlAfter.x.toFixed(2)} ${controlAfter.y.toFixed(2)},${next.x.toFixed(2)} ${next.y.toFixed(2)}`;
+    }
+    return path;
+  };
   const incomePath = pathOf("income");
   const expensePath = pathOf("expense");
   const dotIdx = n <= 16 ? points.map((_, i) => i) : [0, n - 1];
@@ -193,11 +219,11 @@ export function FlowChart({
       {legend && (
         <div className="mb-2 flex items-center gap-4 px-1 text-[11.5px] font-medium text-text-muted">
           <span className="inline-flex items-center gap-1.5">
-            <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: "var(--sf-income)" }} />
+            <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: "#3b95e8" }} />
             {labels.income}
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: "var(--sf-expense-series)" }} />
+            <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: "#ef5263" }} />
             {labels.expense}
           </span>
         </div>
@@ -205,6 +231,16 @@ export function FlowChart({
       <div ref={wrapRef} className="relative min-h-[200px] flex-1">
         {width > 0 && (
           <svg width={width} height={H} className="overflow-visible">
+            <defs>
+              <linearGradient id="income-area" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stopColor="#3b95e8" stopOpacity="0.24" />
+                <stop offset="100%" stopColor="#3b95e8" stopOpacity="0" />
+              </linearGradient>
+              <linearGradient id="expense-area" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stopColor="#ef5263" stopOpacity="0.18" />
+                <stop offset="100%" stopColor="#ef5263" stopOpacity="0" />
+              </linearGradient>
+            </defs>
             {/* Gridlines + axis labels in the right gutter. */}
             {gridTicks.map((v) => (
               <g key={v}>
@@ -218,9 +254,19 @@ export function FlowChart({
 
             {/* Series. */}
             <path
+              d={`${incomePath} L${x(n - 1).toFixed(2)} ${plotBottom.toFixed(2)} L${x(0).toFixed(2)} ${plotBottom.toFixed(2)} Z`}
+              fill="url(#income-area)"
+              stroke="none"
+            />
+            <path
+              d={`${expensePath} L${x(n - 1).toFixed(2)} ${plotBottom.toFixed(2)} L${x(0).toFixed(2)} ${plotBottom.toFixed(2)} Z`}
+              fill="url(#expense-area)"
+              stroke="none"
+            />
+            <path
               d={expensePath}
               fill="none"
-              stroke="var(--sf-expense-series)"
+              stroke="#ef5263"
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -230,7 +276,7 @@ export function FlowChart({
             <path
               d={incomePath}
               fill="none"
-              stroke="var(--sf-income)"
+              stroke="#3b95e8"
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -242,8 +288,8 @@ export function FlowChart({
             <g className="chart-fade">
               {dotIdx.map((i) => (
                 <g key={i}>
-                  <circle cx={x(i)} cy={y(points[i].expense)} r="2.5" fill="var(--sf-surface)" stroke="var(--sf-expense-series)" strokeWidth="1.5" />
-                  <circle cx={x(i)} cy={y(points[i].income)} r="2.5" fill="var(--sf-surface)" stroke="var(--sf-income)" strokeWidth="1.5" />
+                  <circle cx={x(i)} cy={y(points[i].expense)} r="2.5" fill="var(--sf-surface)" stroke="#ef5263" strokeWidth="1.5" />
+                  <circle cx={x(i)} cy={y(points[i].income)} r="2.5" fill="var(--sf-surface)" stroke="#3b95e8" strokeWidth="1.5" />
                 </g>
               ))}
             </g>
@@ -253,7 +299,7 @@ export function FlowChart({
             <g className="chart-fade">
               {endTags.incY != null && (
                 <>
-                  <circle cx={x(n - 1)} cy={y(points[n - 1].income)} r="3" fill="var(--sf-income)" stroke="var(--sf-surface)" strokeWidth="1.5" />
+                  <circle cx={x(n - 1)} cy={y(points[n - 1].income)} r="3" fill="#3b95e8" stroke="var(--sf-surface)" strokeWidth="1.5" />
                   <rect x={inner + 2} y={endTags.incY} width={tagW} height={16} rx={4} fill="var(--sf-income)" />
                   <text
                     x={inner + 2 + tagW / 2}
@@ -267,7 +313,7 @@ export function FlowChart({
               )}
               {endTags.expY != null && (
                 <>
-                  <circle cx={x(n - 1)} cy={y(points[n - 1].expense)} r="3" fill="var(--sf-expense-series)" stroke="var(--sf-surface)" strokeWidth="1.5" />
+                  <circle cx={x(n - 1)} cy={y(points[n - 1].expense)} r="3" fill="#ef5263" stroke="var(--sf-surface)" strokeWidth="1.5" />
                   <rect x={inner + 2} y={endTags.expY} width={tagW} height={16} rx={4} fill="var(--sf-expense-series)" />
                   <text
                     x={inner + 2 + tagW / 2}

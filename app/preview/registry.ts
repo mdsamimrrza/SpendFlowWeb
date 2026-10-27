@@ -15,7 +15,6 @@ import CycleReport from "./screens/cycle-report";
 import Dash from "./screens/dash";
 import Expense from "./screens/expense";
 import Export from "./screens/export";
-import FlowVariants from "./screens/flow-variants";
 import History from "./screens/history";
 import Profile from "./screens/profile";
 import ProfitLoss from "./screens/profit-loss";
@@ -35,7 +34,6 @@ export const SCREENS: Record<string, ComponentType> = {
   dash: Dash,
   expense: Expense,
   export: Export,
-  "flow-variants": FlowVariants,
   history: History,
   profile: Profile,
   "profit-loss": ProfitLoss,

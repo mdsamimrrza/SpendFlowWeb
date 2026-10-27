@@ -11,6 +11,7 @@ import { resolveReceiptUrl, resolveReceiptDownloadUrl } from "@/services/receipt
 import { accountGlyph, categoryGlyph } from "@/components/ui/Glyph";
 import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
 import type { ExpenseRow } from "@/services/expenses";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 
 interface ExpenseDetailSheetProps {
   row: ExpenseRow | null;
@@ -29,6 +30,7 @@ interface ExpenseDetailSheetProps {
 export function ExpenseDetailSheet({ row, amount, displayCurrency, onClose }: ExpenseDetailSheetProps) {
   const { t, locale } = useLanguage();
   const { mask } = usePrivacy();
+  useBodyScrollLock(!!row);
   // Private bucket: resolve the stored path to a 1 h signed URL on display
   // (never persisted – mobile useReceiptUrl parity, docs/SECURITY.md).
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);

@@ -561,12 +561,12 @@ export function RecurringRegister({
         <Skeleton className="h-8 w-40" />
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="min-w-0 space-y-4 lg:col-span-2">
-            <Skeleton className="h-[120px] w-full rounded-2xl" />
-            <Skeleton className="h-[260px] w-full rounded-2xl" />
+            <Skeleton className="h-[120px] w-full rounded-xl" />
+            <Skeleton className="h-[260px] w-full rounded-xl" />
           </div>
           <div className="hidden min-w-0 space-y-4 lg:col-span-1 lg:block">
-            <Skeleton className="h-[150px] w-full rounded-2xl" />
-            <Skeleton className="h-[220px] w-full rounded-2xl" />
+            <Skeleton className="h-[150px] w-full rounded-xl" />
+            <Skeleton className="h-[220px] w-full rounded-xl" />
           </div>
         </div>
       </main>
@@ -577,9 +577,12 @@ export function RecurringRegister({
     <main className="mx-auto w-full max-w-[1200px]">
       {/* Page header - the shell topbar already carries the theme/avatar cluster */}
       <header className="mb-4 flex flex-wrap items-center justify-between gap-3 sm:mb-5">
-        <h1 className="text-xl font-bold tracking-[-0.02em] text-text sm:text-2xl">
-          {t("recurring")}
-        </h1>
+        <div className="min-w-0">
+          <h1 className="text-[26px] font-bold tracking-tight text-text">
+            {t("recurring")}
+          </h1>
+          <p className="mt-1 text-xs text-text-muted">{t("recSubtitle")}</p>
+        </div>
         <button
           type="button"
           onClick={() => openCreateModal()}
@@ -595,7 +598,7 @@ export function RecurringRegister({
             stacked flow stays: hero, then the register. */}
         <div className="min-w-0 space-y-4 lg:order-2">
           {/* Total commitment hero */}
-          <section className="relative rounded-2xl border border-border bg-surface p-5 shadow-soft">
+          <section className="relative rounded-xl border border-border bg-surface p-5 shadow-soft">
             <span className="absolute right-4 top-4 z-10">
               <PrivacyEyeButton />
             </span>
@@ -612,7 +615,7 @@ export function RecurringRegister({
           </section>
 
           {/* Status counts (desktop) */}
-          <section className="hidden rounded-2xl border border-border bg-surface p-5 lg:block">
+          <section className="hidden rounded-xl border border-border bg-surface p-5 lg:block">
             <div className="grid grid-cols-3 divide-x divide-border">
               <div className="min-w-0 pr-3">
                 <p className="caps">{t("recActivePlans")}</p>
@@ -632,7 +635,7 @@ export function RecurringRegister({
           </section>
 
           {/* Next 30 days (desktop) */}
-          <section className="hidden rounded-2xl border border-border bg-surface p-5 lg:block">
+          <section className="hidden rounded-xl border border-border bg-surface p-5 lg:block">
             <p className="caps">{t("recUpcoming30")}</p>
             {upcoming.length === 0 ? (
               <p className="mt-2 text-xs text-text-muted">{t("recNothingUpcoming")}</p>
@@ -668,7 +671,7 @@ export function RecurringRegister({
         {/* Register column */}
         <div className="mt-4 min-w-0 lg:order-1 lg:col-span-2 lg:mt-0">
           {rules.length === 0 ? (
-            <section className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-surface p-6 text-center shadow-soft">
+            <section className="flex flex-col items-center gap-3 rounded-xl border border-border bg-surface p-6 text-center shadow-soft">
               <Sparkles size={32} className="text-primary" aria-hidden />
               <h2 className="text-base font-bold text-text">{t("recurring_no_rules_title")}</h2>
               <p className="max-w-sm text-[13px] leading-[18px] text-text-muted">
@@ -699,7 +702,7 @@ export function RecurringRegister({
               </div>
             </section>
           ) : (
-            <section className="overflow-hidden rounded-2xl border border-border bg-surface shadow-soft">
+            <section className="overflow-hidden rounded-xl border border-border bg-surface shadow-soft">
               {rules.map((rule, idx) => {
                 const Glyph = categoryGlyph(rule.categories?.icon);
                 const isDue = due(rule);
@@ -914,7 +917,7 @@ function DetailSheet({
   const priced = planAmount(Number(rule.amount) || 0, rule.currency);
 
   return (
-    <div className="mx-auto w-full max-w-[400px] space-y-4 rounded-2xl border border-border bg-surface p-5 shadow-soft">
+    <div className="mx-auto w-full max-w-[400px] space-y-4 rounded-xl border border-border bg-surface p-5 shadow-soft">
       {/* Header: icon + title + close */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 flex-1 items-center gap-3">
