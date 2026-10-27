@@ -50,6 +50,11 @@ export async function GET(request: NextRequest) {
   }
 
   if (!code) {
+    // Codeless requests are recovery links (implicit flow — tokens in the URL
+    // FRAGMENT, invisible to this server handler). The middleware rewrites
+    // them to /auth/callback/consume, the client page that reads the fragment
+    // and setSession()s. This branch is only a fallback if that rewrite is
+    // ever bypassed: a plain redirect would drop the fragment and dead-end.
     return NextResponse.redirect(`${origin}/sign-in?error=oauth`);
   }
 
@@ -60,9 +65,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/sign-in?error=oauth`);
   }
 
-  // Password-recovery codes land here too (services/auth.ts redirectTo is kept
-  // a bare allowlisted /auth/callback per docs/SUPABASE.md §7 – the flow type
-  // rides on GoTrue's own `type=recovery` param, not a nested query).
+  // OAuth codes land here from the Google PKCE flow. Password RECOVERY does
+  // not use ?code= — its tokens ride the URL fragment and are consumed by the
+  // client page this route rewrites to (see the !code branch above).
   if (searchParams.get("type") === "recovery") {
     return NextResponse.redirect(`${origin}/profile?recovery=1`);
   }

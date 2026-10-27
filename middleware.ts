@@ -16,7 +16,7 @@ const PUBLIC_PATHS = ["/", "/sign-in", "/sign-up", "/forgot-password", "/onboard
 // Route prefixes that actually exist under (dashboard)/ + expense/[id].
 // Unknown paths (typos, stale links, probes) must NOT bounce anonymous users
 // to /sign-in – they fall through so Next renders the custom 404 page.
-const APP_PATHS = ["/overview", "/history", "/accounts", "/categories", "/transfer", "/recurring", "/profit-loss", "/analytics", "/bullion", "/export", "/settings", "/profile", "/bin", "/expense"];
+const APP_PATHS = ["/overview", "/notifications", "/history", "/accounts", "/categories", "/transfer", "/recurring", "/profit-loss", "/analytics", "/bullion", "/export", "/settings", "/profile", "/bin", "/expense"];
 
 export async function middleware(request: NextRequest) {
   // NV-9 + rotation-drop fix (prior audit): collect cookie writes instead of
@@ -41,6 +41,17 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
+
+  // Password-recovery links (implicit flow) land on /auth/callback with the
+  // session tokens in the URL FRAGMENT — invisible to the server route, and
+  // Route Handlers cannot rewrite(). Intercept HERE (middleware rewrites are
+  // supported; the browser URL + fragment are preserved) and serve the client
+  // consumer page, which setSession()s and forwards to /profile?recovery=1.
+  // The OAuth ?code= path keeps its server exchange in /auth/callback/route.ts.
+  if (path === "/auth/callback" && !request.nextUrl.searchParams.get("code")) {
+    return NextResponse.rewrite(new URL("/auth/callback/consume", request.url));
+  }
+
   const isPublic =
     path === "/" ||
     PUBLIC_PATHS.some((p) => p !== "/" && (path === p || path.startsWith(`${p}/`)));
