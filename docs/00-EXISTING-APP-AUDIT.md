@@ -1,11 +1,11 @@
-# 00 — Existing App Audit (SpendFlow Mobile)
+# 00 – Existing App Audit (SpendFlow Mobile)
 
 > **This file is the source of truth for the web app.** Everything here was read directly from the
 > mobile repo (`C:\Users\samim_40uxmfb\Desktop\deplyed project\SpendFlow`, Expo SDK 57 / RN 0.86+ /
 > React 19, expo-router) and from its Supabase migrations (`supabase/migrations/`, 34 files).
 > Audit date: 2026-09-12. If the mobile app changes, update this file first.
 >
-> Schema was derived from the committed SQL migrations — the Supabase CLI is not installed on this
+> Schema was derived from the committed SQL migrations – the Supabase CLI is not installed on this
 > machine, so `supabase gen types typescript` has **not** been run yet (see SCHEMA.md).
 
 ---
@@ -18,7 +18,7 @@
 | Deep link scheme | `spendflow://` |
 | Backend | Supabase project ref **`stisbfahlhquaqhrifjh`** (same project the web app will use) |
 | Client env vars | `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_KEY` (anon/publishable), `EXPO_PUBLIC_GOOGLE_CLIENT_ID`, `EXPO_PUBLIC_EXCHANGE_RATE_API_URL`, `EXPO_PUBLIC_EXCHANGE_RATE_FALLBACK_API_URL` |
-| Server-only secrets | `.env.maintenance` (gitignored): `SUPABASE_SERVICE_ROLE_KEY`, `EXCHANGE_RATE_API_KEY`, `EXCHANGE_RATE_HOST_ACCESS_KEY` — never bundled into the client |
+| Server-only secrets | `.env.maintenance` (gitignored): `SUPABASE_SERVICE_ROLE_KEY`, `EXCHANGE_RATE_API_KEY`, `EXCHANGE_RATE_HOST_ACCESS_KEY` – never bundled into the client |
 
 ## 2. Navigation map (expo-router)
 
@@ -39,10 +39,10 @@ Auth routing: session → tabs; no session + onboarding incomplete → onboardin
 - Pull-to-refresh; per-row **snapshot-aware FX conversion** (each transaction converted at the rate of its own date via `useRateResolver`).
 
 ### History (ledger)
-- Search (300 ms debounce, server-side `ilike`), date-range filter via `CalendarModal`, category filter, sort — each via in-place floating popover menus.
+- Search (300 ms debounce, server-side `ilike`), date-range filter via `CalendarModal`, category filter, sort – each via in-place floating popover menus.
 - "Vault & Flow" summary card: total outflow / inflow / net cash flow, peak expense, All/Expense/Income switcher.
 - `SectionList` grouped by date with per-day totals; pagination (15/page).
-- Export modal: PDF / Excel (multi-sheet) / CSV — **generated entirely client-side** (expo-print + write-excel-file), no Supabase calls.
+- Export modal: PDF / Excel (multi-sheet) / CSV – **generated entirely client-side** (expo-print + write-excel-file), no Supabase calls.
 
 ### Analytics ("Financial Intelligence")
 - Period dropdown (Today/Week/Month/Year/Custom/All) + section focus (Overview / Categories / Habits / All).
@@ -51,15 +51,15 @@ Auth routing: session → tabs; no session + onboarding incomplete → onboardin
 - Habits: day-of-week rhythm (`FinancialInsights`), burn velocity / pacing forecast (`BudgetAnalyticsCard`).
 
 ### Recurring
-- Recurring **plans** (migration 20260915000000, verified live 2026-09-14): schedule-locked chains — due slots = `plan_start_date` + N × cycle; paying late never shifts the plan. Frequency daily/weekly/monthly/**custom** (`interval_days` 1–365). Billing `mode`: **pay_on_due** (default — a due card + explicit Mark Paid, never silent money) or **auto_charge** (posted by the generator).
-- Installment rows carry `expenses.recurring_due_date` (the slot key); dedup is `UNIQUE (recurring_rule_id, recurring_due_date)` — non-partial, so "Not paid — undo" HARD-deletes the row to free the slot.
+- Recurring **plans** (migration 20260915000000, verified live 2026-09-14): schedule-locked chains – due slots = `plan_start_date` + N × cycle; paying late never shifts the plan. Frequency daily/weekly/monthly/**custom** (`interval_days` 1–365). Billing `mode`: **pay_on_due** (default – a due card + explicit Mark Paid, never silent money) or **auto_charge** (posted by the generator).
+- Installment rows carry `expenses.recurring_due_date` (the slot key); dedup is `UNIQUE (recurring_rule_id, recurring_due_date)` – non-partial, so "Not paid – undo" HARD-deletes the row to free the slot.
 - `generateDueRecurringExpenses` books due slots of active **auto_charge** rules only (batch upsert `ignoreDuplicates`, forward-only `.lt()` chain advance, cap 100/run). Shared single-write payment surface: `markOccurrencePaid` (slot + cycle advance), `skipCurrentOccurrence` (advance, book nothing), `undoLatestOccurrencePayment` (most-recent slot only), `payPlanFromForm` (Add Expense "Pay from plan": books the open slot with the form's values and RE-ANCHORS the chain from the payment date; rule amount/currency self-correct).
-- Tab UI: rule rows show DUE badge / "Paid · on time/late Nd" proof derived from the latest occurrence; detail sheet = due banner + **Mark Paid / Skip this cycle**, paid proof + **Not paid — undo**, timeline strip (≤4 booked ✓, current ○ PENDING/NEXT, 2 dashed future). Form presets + billing-mode cards + Every-N-days with 7/14/28/30 chips.
-- Expense form: NO plan-creation control (removed in review — plans are created on the Recurring tab only). The form shows a dashed **"🔁 Pay from plan (N)"** pill under the amount hero; selecting auto-fills amount/category/currency/description/channel/date=today. Rule-linked rows in edit mode show "Part of a recurring plan · manage" and a three-way delete (this payment only / cancel plan too).
+- Tab UI: rule rows show DUE badge / "Paid · on time/late Nd" proof derived from the latest occurrence; detail sheet = due banner + **Mark Paid / Skip this cycle**, paid proof + **Not paid – undo**, timeline strip (≤4 booked ✓, current ○ PENDING/NEXT, 2 dashed future). Form presets + billing-mode cards + Every-N-days with 7/14/28/30 chips.
+- Expense form: NO plan-creation control (removed in review – plans are created on the Recurring tab only). The form shows a dashed **"🔁 Pay from plan (N)"** pill under the amount hero; selecting auto-fills amount/category/currency/description/channel/date=today. Rule-linked rows in edit mode show "Part of a recurring plan · manage" and a three-way delete (this payment only / cancel plan too).
 - Dashboard `BillsDueStrip`: active rules with an open un-booked slot (≤3 shown), one-tap Mark Paid, header `BILLS DUE · n` → Recurring tab.
 
 ### Settings
-- Currency picker (from `constants/app.ts` — 12 currencies: NPR, INR, USD, QAR, GBP, AED, SAR, MYR, KRW, JPY, AUD, CAD). **Changing display currency never rewrites the stored budget** — conversion is display-only.
+- Currency picker (from `constants/app.ts` – 12 currencies: NPR, INR, USD, QAR, GBP, AED, SAR, MYR, KRW, JPY, AUD, CAD). **Changing display currency never rewrites the stored budget** – conversion is display-only.
 - Budget & Reports → Profit & Loss; Categories & Budgets; Bank Accounts & Wallets; Gold & Silver Rates (live); App Lock (biometric switch); Notifications (milestone thresholds 25/50/75/90/100 % + alert-suppression reset); Theme (light/dark/system); Language (EN/HI/NE); Export Data; Sign Out (soft-lock vs full global revoke).
 
 ### Auth screen
@@ -92,7 +92,7 @@ Auth routing: session → tabs; no session + onboarding incomplete → onboardin
 
 ### Profit & Loss (`profit-loss`)
 - Date-range P&L with executive SVG chart (All/Income/Expense/Net views, tap-to-select month HUD, savings rate).
-- **Monthly budget inline editor — budget is stored ONCE in `users.monthly_budget` with its own `budget_currency`**; every past change is appended to `user_settings_history` (append-only, baseline row `1900-01-01`, UNIQUE `(user_id, effective_from)`) so past cycles are computed with the budget/days active at the time.
+- **Monthly budget inline editor – budget is stored ONCE in `users.monthly_budget` with its own `budget_currency`**; every past change is appended to `user_settings_history` (append-only, baseline row `1900-01-01`, UNIQUE `(user_id, effective_from)`) so past cycles are computed with the budget/days active at the time.
 - **Paycheck & Budget Cycle card**: `cycle_start_day` (1 = standard calendar month sentinel; 2–31 custom; 29–31 valid, never capped at 28), optional `cycle_end_day`; cycle logic in `utils/format.ts`.
 
 ### Categories (`categories`)
@@ -110,7 +110,7 @@ Auth routing: session → tabs; no session + onboarding incomplete → onboardin
 - **Theme**: `light | dark | system` (`ThemeContext`), all colors from `constants/theme.ts` (tokens table in DESIGN-TOKEN-BRIDGE.md). Light = warm parchment `#EDEAE0` bg + teal `#0F5C4D` primary; dark = deep slate `#0B0F19` + indigo `#818CF8`.
 - **Chart colors rule**: income series is always `theme.colors.income` (green); the expense series is theme-conditional (indigo in dark, rust in light).
 - **12-country currency system**: `CURRENCIES` + `CURRENCY_DETAILS` in `constants/app.ts`; QAR/AED/SAR are USD-pegged and never hit the FX API; NPR derives from INR × 1.6.
-- **Offline read-cache** (AsyncStorage, per user): expenses page 0, accounts, transfers, recurring rules, categories, profile, FX snapshot (6 h TTL), bullion history (24 h TTL), session-fixed bullion rates. **There is NO offline mutation queue** — all writes are online-only; `expenses.client_sync_id` column remains as a future hook (its unique index is intentionally dropped).
+- **Offline read-cache** (AsyncStorage, per user): expenses page 0, accounts, transfers, recurring rules, categories, profile, FX snapshot (6 h TTL), bullion history (24 h TTL), session-fixed bullion rates. **There is NO offline mutation queue** – all writes are online-only; `expenses.client_sync_id` column remains as a future hook (its unique index is intentionally dropped).
 - **Cache-paint pattern**: paint cached data instantly → network refresh → in-memory `notifyExpensesChanged()` listeners for cross-screen freshness. **30 s refresh throttle** on tab focus.
 - **Notifications**: budget milestones (25/50/75/90/100 %, AsyncStorage dedup + suppression reset), category thresholds (90/100 %), recurring-bill-due reminders; notification rows also inserted into `notifications` table; cross-device pushes via `device_tokens` + Expo push API.
 
@@ -120,7 +120,7 @@ Auth routing: session → tabs; no session + onboarding incomplete → onboardin
 2. **Sign-in methods**: email/password, Google OAuth, Apple (iOS only).
 3. **OAuth deep-link trust gate** (`AuthContext`): only the project's Supabase host or `spendflow://` callback URLs are accepted (login-CSRF defense).
 4. **Soft lock / biometric**: `lockToLogin()` keeps the valid session in a ref and drops to the login screen; biometric success restores it. Separate `SecurityContext` + `BiometricLockOverlay` auto-locks on background→foreground.
-5. **Profile bootstrap**: `ensureProfile` on every login — select/upsert `users` row, seeds default categories (9 expense + 6 income), resolves budget/cycle/currency (DB > auth metadata > device onboarding value), caches profile.
+5. **Profile bootstrap**: `ensureProfile` on every login – select/upsert `users` row, seeds default categories (9 expense + 6 income), resolves budget/cycle/currency (DB > auth metadata > device onboarding value), caches profile.
 6. **Email change**: OTP to current email (edge function) → `verifyOtp('email'|'magiclink')` → `updateUser({ email })`.
 7. **Password change**: verify-current via `signInWithPassword` → `updateUser({ password })`.
 8. **Account deletion** (`delete-account` edge function, fail-closed state machine): OTP-minted fresh session required (JWT `amr` must contain `otp`/`magiclink` ≤ 10 min old) → `users.deletion_pending = true` (blocks all client writes via triggers) → purge storage `{uid}/**` in `receipts` + `avatars` (verified via `count_user_storage` RPC) → transactional `delete_user_data` RPC → `admin.deleteUser` last.
@@ -131,19 +131,19 @@ Auth routing: session → tabs; no session + onboarding incomplete → onboardin
 | Client module | Tables | Storage | Edge functions |
 |---|---|---|---|
 | `services/auth.ts` | `users` | `avatars` (public) | `send-security-otp`, `delete-account` |
-| `services/expenses.ts` | `expenses` (joins `categories`, `bank_accounts`) | — | — |
-| `services/categories.ts` | `categories`, `category_budget_history`, `user_settings_history` | — | — |
-| `services/bankAccounts.ts` | `bank_accounts` | — | — |
-| `services/transfers.ts` | `transfers`, `bank_accounts` | — | — |
-| `services/recurring.ts` | `recurring_rules`, `expenses` | — | — |
-| `services/exchange.ts` | `exchange_rates` (read; legacy best-effort upsert no longer permitted by RLS) | — | — |
-| `services/nepalGold.ts` | `market_gold_rates` (read-only) | — | — |
-| `services/bullion.ts` | (via nepalGold) | — | `bullion-history` (anon-key headers) |
-| `services/receipts.ts` | — | `receipts` (private, signed URLs) | — |
-| `services/settingsHistory.ts` | `user_settings_history`, `category_budget_history` | — | — |
-| `services/notifications.ts` | `notifications` (insert) | — | — |
-| `services/pushNotifications.ts` | `device_tokens` | — | — (calls Expo push API directly) |
-| `services/export.ts`, `services/receiptOcr.ts` | none (pure client-side) | — | — |
+| `services/expenses.ts` | `expenses` (joins `categories`, `bank_accounts`) | – | – |
+| `services/categories.ts` | `categories`, `category_budget_history`, `user_settings_history` | – | – |
+| `services/bankAccounts.ts` | `bank_accounts` | – | – |
+| `services/transfers.ts` | `transfers`, `bank_accounts` | – | – |
+| `services/recurring.ts` | `recurring_rules`, `expenses` | – | – |
+| `services/exchange.ts` | `exchange_rates` (read; legacy best-effort upsert no longer permitted by RLS) | – | – |
+| `services/nepalGold.ts` | `market_gold_rates` (read-only) | – | – |
+| `services/bullion.ts` | (via nepalGold) | – | `bullion-history` (anon-key headers) |
+| `services/receipts.ts` | – | `receipts` (private, signed URLs) | – |
+| `services/settingsHistory.ts` | `user_settings_history`, `category_budget_history` | – | – |
+| `services/notifications.ts` | `notifications` (insert) | – | – |
+| `services/pushNotifications.ts` | `device_tokens` | – | – (calls Expo push API directly) |
+| `services/export.ts`, `services/receiptOcr.ts` | none (pure client-side) | – | – |
 
 **External APIs called from the client**: `api.gold-api.com` (spot gold/silver), `query1.finance.yahoo.com` (bullion history fallback, native only), `api.frankfurter.app` (historical FX), `open.er-api.com` / `api.exchangerate-api.com` (current FX), `exp.host` (push). Server-only: FENEGOSIDA API + byajdar mirror (edge function/cron).
 
@@ -163,9 +163,9 @@ Auth routing: session → tabs; no session + onboarding incomplete → onboardin
 Full column-level detail lives in **[SCHEMA.md](./SCHEMA.md)**. Headline facts:
 
 - **13 tables**: `users`, `categories`, `expenses`, `recurring_rules`, `bank_accounts`, `transfers`, `exchange_rates`, `market_gold_rates`, `user_settings_history`, `category_budget_history`, `device_tokens`, `notifications`, `security_otp_sends`.
-- **RLS enabled on every table**, all owner-scoped (`auth.uid() = user_id` or `= id`) except: `exchange_rates` and `market_gold_rates` (authenticated SELECT only — writes are service-role), and `security_otp_sends` (zero policies — service-role only).
+- **RLS enabled on every table**, all owner-scoped (`auth.uid() = user_id` or `= id`) except: `exchange_rates` and `market_gold_rates` (authenticated SELECT only – writes are service-role), and `security_otp_sends` (zero policies – service-role only).
 - **Client DELETE revoked**: `users` (no delete policy + REVOKE), both history tables (DELETE policies dropped + REVOKE). History tables are append-only; updates restricted to the baseline row / current month.
-- **Storage**: `receipts` — private, 4 MiB, image MIME allowlist, owner-folder policies, reads via signed URLs; `avatars` — public, 2 MiB, same allowlist. Both bucket settings are data (in `storage.buckets`), final state from migration 29.
+- **Storage**: `receipts` – private, 4 MiB, image MIME allowlist, owner-folder policies, reads via signed URLs; `avatars` – public, 2 MiB, same allowlist. Both bucket settings are data (in `storage.buckets`), final state from migration 29.
 - **Integrity triggers**: `validate_owned_references` (rejects cross-user FKs on expenses/rules/transfers/category-budget-history), `block_writes_during_deletion` (10 tables), `enforce_settings_history_dates` (baseline or current-month only), updated_at triggers.
 - **Known live drift** (recorded in migrations themselves): `recurring_rules.bank_account_id` was never applied live; `transfers_distinct_accounts` + fee CHECK had to be re-asserted in migration 34; migration 21's storage limits were superseded by migration 29.
 - **Realtime publication**: no tables added to `supabase_realtime`.
@@ -176,7 +176,7 @@ Full column-level detail lives in **[SCHEMA.md](./SCHEMA.md)**. Headline facts:
 | Mobile capability | Web disposition |
 |---|---|
 | Biometric app lock (Face ID / fingerprint, overlay + soft-lock login card) | Skip for v1 (WebAuthn later); plain session only |
-| Screenshot/recording blocking (`expo-screen-capture`) | No equivalent — skip; privacy masking mode stays |
+| Screenshot/recording blocking (`expo-screen-capture`) | No equivalent – skip; privacy masking mode stays |
 | Haptics everywhere | Drop; replace with visual feedback |
 | Local + push notifications (budget milestones, recurring due, cross-device) | In-app toasts/banners for v1; Web Push optional later |
 | Receipt OCR (on-device ML Kit) | Browser file input + optional client-side OCR later; no ML Kit |

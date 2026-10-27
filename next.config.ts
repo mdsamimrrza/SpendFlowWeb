@@ -17,15 +17,15 @@ const isDev = process.env.NODE_ENV === "development";
  * page (killing the static landing + /preview* surfaces and CDN caching), so this is
  * the documented non-nonce posture: 'unsafe-inline' is accepted for scripts/styles
  * (Next emits inline flight payloads; components use inline style attributes), while
- * the load-bearing controls — remote script lockdown (script-src 'self'), egress
- * lockdown (connect-src), clickjacking (frame-ancestors 'none'), base/form hijacks —
+ * the load-bearing controls – remote script lockdown (script-src 'self'), egress
+ * lockdown (connect-src), clickjacking (frame-ancestors 'none'), base/form hijacks –
  * are enforced. Add a host here when a new outbound API/feed is introduced.
  */
 const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
-  // Google OAuth profile photos (lh3–lh6) are a documented avatar_url shape —
+  // Google OAuth profile photos (lh3–lh6) are a documented avatar_url shape –
   // see isAllowedAvatarUrl in services/auth.ts for the render-side allowlist.
   `img-src 'self' data: blob: https://${supabaseHost} https://lh3.googleusercontent.com https://lh4.googleusercontent.com https://lh5.googleusercontent.com https://lh6.googleusercontent.com${isDev ? " http://localhost:3000 http://127.0.0.1:3000" : ""}`,
   // FX feeds: api.frankfurter.dev (ECB, replaces the retired .app host) and
@@ -60,13 +60,13 @@ const nextConfig: NextConfig = {
   // `next dev` (a shared .next caused "__webpack_modules__[moduleId] is not a
   // function" when a production build overwrote the dev server's chunks).
   // NEXT_DIST_DIR additionally lets a second dev instance (e.g. the screenshot
-  // QA harness) run with its own cache — two dev servers sharing one .next-dev
+  // QA harness) run with its own cache – two dev servers sharing one .next-dev
   // corrupt each other's webpack packs (intermittent 404/500 on hot routes).
   distDir:
     process.env.NEXT_DIST_DIR ??
     (process.env.NODE_ENV === "development" ? ".next-dev" : ".next"),
   // Next dev rejects cross-origin requests to /_next resources unless the host
-  // is allowlisted — without this, an ngrok tunnel renders the page unstyled
+  // is allowlisted – without this, an ngrok tunnel renders the page unstyled
   // (403 on CSS/JS chunks). Wildcard keeps it working across tunnel restarts.
   allowedDevOrigins: ["*.ngrok-free.dev", "*.ngrok.app"],
   images: {

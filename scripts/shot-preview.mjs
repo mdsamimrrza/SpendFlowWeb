@@ -1,6 +1,6 @@
 /**
  * Responsive screenshot + horizontal-overflow check for the design-preview
- * screens at /preview/<slug> (mock data, no auth — see app/preview/registry.ts).
+ * screens at /preview/<slug> (mock data, no auth – see app/preview/registry.ts).
  * Replaces the 16 per-screen shot-preview-<screen>.mjs clones, which were
  * byte-identical except the route and filename.
  *
@@ -27,8 +27,8 @@ const flags = Object.fromEntries(
 const slugs = argv.filter((a) => !a.startsWith("--"));
 
 const ALL = [
-  "accounts", "analytics", "bin", "bullion", "categories", "dash", "expense",
-  "export", "history", "profile", "profit-loss", "recurring", "settings",
+  "accounts", "analytics", "banknote", "bin", "bullion", "categories", "dash", "expense",
+  "export", "flow-variants", "history", "profile", "profit-loss", "recurring", "settings",
   "transfer", "transfer-log",
 ];
 const targets = slugs.length ? slugs : ALL;

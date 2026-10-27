@@ -65,7 +65,7 @@ for (const mode of ["light", "dark"]) {
   }
 }
 
-// 320 px stress pass (smallest common phone) — light only, overflow report.
+// 320 px stress pass (smallest common phone) – light only, overflow report.
 for (const route of ROUTES) {
   const page = await open("light", STRESS[0], route);
   const ov = await overflow(page);
@@ -76,9 +76,9 @@ for (const route of ROUTES) {
   await page.close();
 }
 
-// No-scroll pass — real phone viewports. 390 px wide is the repo's phone
+// No-scroll pass – real phone viewports. 390 px wide is the repo's phone
 // standard (AGENTS.md) and must fit without scrolling; 320×568 (iPhone SE 1)
-// is reported for information only — a 3-field form cannot fit 568 px height.
+// is reported for information only – a 3-field form cannot fit 568 px height.
 for (const [w, h] of [[390, 844], [390, 667], [320, 568]]) {
   for (const route of ROUTES) {
     const page = await browser.newPage({ viewport: { width: w, height: h } });
@@ -102,7 +102,7 @@ for (const [w, h] of [[390, 844], [390, 667], [320, 568]]) {
   }
 }
 
-// Forgot-password "sent" state — the reset Edge Function call is stubbed so
+// Forgot-password "sent" state – the reset Edge Function call is stubbed so
 // no real mail goes out; we only exercise the UI transition.
 for (const width of [390, 1280]) {
   const page = await open("light", width, "forgot-password");
@@ -121,7 +121,7 @@ for (const width of [390, 1280]) {
   await page.close();
 }
 
-// Favicon sync pass — the tab icon must follow the IN-APP theme toggle,
+// Favicon sync pass – the tab icon must follow the IN-APP theme toggle,
 // not just the OS preference: light → tab-light.png, one ThemeToggle click
 // (light→dark) → tab-dark.png.
 {

@@ -1,5 +1,5 @@
 /**
- * Bin (Google-Photos-style trash) — mobile services/bin.ts parity.
+ * Bin (Google-Photos-style trash) – mobile services/bin.ts parity.
  *
  * Deleting an expense or a recurring plan sets `deleted_at` instead of removing
  * the row; the item then lives here for BIN_RETENTION_DAYS days, showing its own
@@ -50,7 +50,7 @@ export function binDaysLeft(deletedAt: string, now: Date = new Date()): number {
 
 /**
  * Every restorable item: binned expenses + binned recurring plans, newest
- * deletion first. Rows that already passed the window are hidden — the cron
+ * deletion first. Rows that already passed the window are hidden – the cron
  * purge deletes them server-side, and we must never offer "Restore" for a row
  * whose data is about to vanish mid-tap.
  */
@@ -114,7 +114,7 @@ export async function restoreBinItem(
 }
 
 /**
- * "Delete forever" — removes the row now, skipping the remaining countdown,
+ * "Delete forever" – removes the row now, skipping the remaining countdown,
  * plus its private receipt file. Ownership is RLS-scoped; the user_id filter is
  * defense in depth.
  */

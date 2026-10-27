@@ -1,5 +1,5 @@
 /**
- * Single source of truth for the 12-currency system — mirrors mobile
+ * Single source of truth for the 12-currency system – mirrors mobile
  * constants/app.ts (see docs/00-EXISTING-APP-AUDIT.md §4). Never hardcode
  * currency option lists elsewhere; Settings/currency pickers derive from this.
  */
@@ -34,7 +34,7 @@ export const CURRENCIES: CurrencyCode[] = [
 ];
 
 /**
- * Public Android APK distribution — free hosting via GitHub Releases.
+ * Public Android APK distribution – free hosting via GitHub Releases.
  *
  * Uses the /releases/latest/download/ permalink so this URL always serves the
  * newest release with no code change needed per version. Convention: every

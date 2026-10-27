@@ -1,13 +1,15 @@
 "use client";
 
 /**
- * Bullion — 1:1 web mirror of mobile app/bullion.tsx: back-chip header with
- * privacy-eye + theme-flip, the two-market segmented switcher, the centered
- * last-updated pill, the 2×2 benchmark cards (gold/silver × tola/10g) with
- * metal-tinted selected states and day-over-day change, the synchronized
- * interactive spline chart (gridlines, y/x labels, gradient area, tap
- * tooltip, Period Low/High badges), the Instant Metal Valuation calculator,
- * and the Bullion Standards & Buyer Guide card.
+ * Bullion - V2 rebuild of the mobile app/bullion.tsx mirror: page header with
+ * privacy-eye + theme-flip, the two-market segmented switcher beside the
+ * last-updated pill, then on laptop a 2/3 + 1/3 grid - the 2×2 benchmark
+ * cards (gold/silver × tola/10g) with metal-tinted selected states and
+ * day-over-day change above the synchronized interactive spline chart
+ * (gridlines, y/x labels, gradient area, tap tooltip, Period Low/High
+ * badges) on the left, the Instant Metal Valuation calculator and the
+ * Bullion Standards & Buyer Guide card stacked on the right. Phones stack
+ * everything single-column.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -92,7 +94,7 @@ export function BullionStatement({ inject }: BullionPageProps) {
 
   // Mobile parity (app/bullion.tsx): Nepal is always the fixed primary
   // market (FENEGOSIDA official fix). The secondary market follows the
-  // profile currency from Settings — change it there and this board follows.
+  // profile currency from Settings – change it there and this board follows.
   // NPR users would get Nepal twice, so they fall back to India (IBJA).
   const secondaryCurrency = useMemo(() => {
     const preferred = (profile?.preferred_currency || "INR").toUpperCase();
@@ -202,7 +204,7 @@ export function BullionStatement({ inject }: BullionPageProps) {
         silver_10g: { label: silverLabel, unit: gram10Label, metal: "silver" as const, ...zero },
       };
     }
-    // Day-over-day change per benchmark — each card uses its OWN real series
+    // Day-over-day change per benchmark – each card uses its OWN real series
     // (mobile nepalChange/buildBullionMarketHistoryAll parity), never a
     // scaling of the tola delta.
     const delta = (key: BenchmarkKey) => {
@@ -266,77 +268,77 @@ export function BullionStatement({ inject }: BullionPageProps) {
   }, [official, currency]);
 
   return (
-    <main className="mx-auto w-full max-w-[560px] space-y-4 p-0.5">
-      {/* ── 1. TOP APP BAR ── */}
-      <div className="flex items-center justify-between pt-1">
+    <main className="mx-auto w-full max-w-[1200px] space-y-4 p-0.5">
+      {/* ── 1. PAGE HEADER ── */}
+      <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <button
             onClick={() => router.back()}
             aria-label="Back"
-            className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-full border border-border bg-surface text-text transition active:opacity-70"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-border bg-surface text-text transition-colors hover:border-faint active:opacity-70"
           >
-            <ChevronLeft size={20} aria-hidden />
+            <ChevronLeft size={18} aria-hidden />
           </button>
-          <h1 className="truncate text-[22px] font-extrabold leading-7 tracking-[-0.5px] text-text">
-            {t("bullion_title")}
-          </h1>
+          <div className="min-w-0">
+            <p className="text-[13px] font-medium text-faint">{t("bullionTitle")}</p>
+            <h1 className="mt-0.5 truncate text-[26px] font-bold tracking-tight text-text">
+              {t("bullion_title")}
+            </h1>
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <button
             onClick={toggle}
             aria-label={isPrivacyMode ? "Show balances" : "Hide balances"}
             aria-pressed={isPrivacyMode}
-            className={`grid h-10 w-10 place-items-center rounded-full bg-surface transition active:opacity-70 ${
-              isPrivacyMode ? "border border-primary" : "border border-border"
+            className={`grid h-9 w-9 place-items-center rounded-lg border bg-surface transition-colors active:opacity-70 ${
+              isPrivacyMode ? "border-primary text-primary" : "border-border text-text-muted hover:border-faint"
             }`}
           >
-            {isPrivacyMode ? (
-              <EyeOff size={24} className="text-primary" aria-hidden />
-            ) : (
-              <Eye size={24} className="text-text-muted" aria-hidden />
-            )}
+            {isPrivacyMode ? <EyeOff size={17} aria-hidden /> : <Eye size={17} aria-hidden />}
           </button>
           <button
             onClick={() => setPreference(isDark ? "light" : "dark")}
             aria-label="Toggle light/dark theme"
-            className="grid h-10 w-10 place-items-center rounded-full border border-border bg-surface transition active:opacity-70"
+            className="grid h-9 w-9 place-items-center rounded-lg border border-border bg-surface transition-colors hover:border-faint active:opacity-70"
           >
             {isDark ? (
-              <Sun size={20} className="text-hue-amber" aria-hidden />
+              <Sun size={16} className="text-brass" aria-hidden />
             ) : (
-              <Moon size={20} className="text-text" aria-hidden />
+              <Moon size={16} className="text-text" aria-hidden />
             )}
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* ── 2. MARKET SWITCHER ── */}
-      <div className="flex gap-1.5 rounded-[10px] border border-border bg-surface p-1">
-        {(
-          [
-            { id: "NP" as Market, currency: "NPR", label: t("bullion_market_nepal") },
-            { id: "SEC" as Market, currency: secondaryCurrency, label: secondaryLabel },
-          ] as const
-        ).map((m) => (
-          <button
-            key={m.id}
-            onClick={() => {
-              setMarket(m.id);
-              setSelectedIndex(null);
-            }}
-            className={`flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-md py-2 text-[13px] font-extrabold transition ${
-              market === m.id ? "bg-primary text-white" : "text-text-muted"
-            }`}
-          >
-            <CurrencyFlag currency={m.currency} size={14} />
-            <span className="truncate">{m.label}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* ── 3. LAST UPDATED PILL ── */}
-      <div className="flex items-center justify-center">
-        <span className="flex items-center gap-1.5 rounded-full border border-border bg-[var(--sf-bull-pill-bg)] px-3.5 py-[7px]">
+      {/* ── 2. MARKET SWITCHER + LAST UPDATED ── */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+        <div
+          role="tablist"
+          className="flex min-w-0 flex-1 gap-1 rounded-lg border border-border bg-surface-elevated p-1"
+        >
+          {(
+            [
+              { id: "NP" as Market, currency: "NPR", label: t("bullion_market_nepal") },
+              { id: "SEC" as Market, currency: secondaryCurrency, label: secondaryLabel },
+            ] as const
+          ).map((m) => (
+            <button
+              key={m.id}
+              onClick={() => {
+                setMarket(m.id);
+                setSelectedIndex(null);
+              }}
+              className={`flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-md py-2 text-[13px] font-semibold transition-colors ${
+                market === m.id ? "bg-primary text-primary-ink" : "text-text-muted hover:text-text"
+              }`}
+            >
+              <CurrencyFlag currency={m.currency} size={14} />
+              <span className="truncate">{m.label}</span>
+            </button>
+          ))}
+        </div>
+        <span className="inline-flex shrink-0 items-center justify-center gap-1.5 self-center rounded-lg border border-border bg-surface px-3 py-2 sm:self-auto">
           {loading ? (
             <span
               aria-hidden
@@ -351,14 +353,12 @@ export function BullionStatement({ inject }: BullionPageProps) {
         </span>
       </div>
 
-      {/* ── 4. 2×2 BENCHMARK CARDS ── */}
-      <div className="space-y-2.5">
-        {(["row1", "row2"] as const).map((row) => (
-          <div key={row} className="flex gap-2.5">
-            {(row === "row1"
-              ? (["gold_tola", "silver_tola"] as BenchmarkKey[])
-              : (["gold_10g", "silver_10g"] as BenchmarkKey[])
-            ).map((key) => {
+      {/* ── 3. DESKTOP GRID: benchmarks + chart left, calculator + guide right ── */}
+      <div className="space-y-4 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:items-start lg:gap-5 lg:space-y-0">
+        <div className="min-w-0 space-y-4">
+          {/* ── 4. 2×2 BENCHMARK CARDS ── */}
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+            {(["gold_tola", "silver_tola", "gold_10g", "silver_10g"] as BenchmarkKey[]).map((key) => {
               const b = benchmarks[key];
               const selected = selectedKey === key;
               const gold = b.metal === "gold";
@@ -369,49 +369,44 @@ export function BullionStatement({ inject }: BullionPageProps) {
                     setSelectedKey(key);
                     setSelectedIndex(null);
                   }}
-                  className={`flex-1 space-y-1.5 rounded-2xl border-2 p-3 text-left transition active:opacity-85 ${
+                  className={`space-y-1.5 rounded-xl border p-3.5 text-left transition-colors active:scale-[0.99] ${
                     selected
                       ? gold
                         ? "border-[var(--sf-bull-gold-line)] bg-[var(--sf-bull-gold-bg)]"
                         : "border-[var(--sf-bull-sil-line)] bg-[var(--sf-bull-sil-bg)]"
-                      : "border-border bg-surface"
+                      : "border-border bg-surface hover:border-faint"
                   }`}
                 >
                   <span className="flex items-center gap-2">
                     {gold ? (
-                      <Coins size={20} className="text-hue-amber" aria-hidden />
+                      <Coins size={18} className="shrink-0 text-brass" aria-hidden />
                     ) : (
-                      <CircleDollarSign size={20} className="text-faint" aria-hidden />
+                      <CircleDollarSign size={18} className="shrink-0 text-faint" aria-hidden />
                     )}
                     <span
-                      className={`min-w-0 truncate text-[12.5px] font-extrabold ${
-                        selected && gold
-                          ? "text-[var(--sf-bull-gold-ink)]"
-                          : selected
-                            ? "text-primary"
-                            : "text-text"
+                      className={`min-w-0 truncate text-[12.5px] font-semibold ${
+                        selected ? (gold ? "text-[var(--sf-bull-gold-ink)]" : "text-primary") : "text-text-muted"
                       }`}
                     >
                       {b.label}
                     </span>
                   </span>
                   <span className="block">
-                    <span className="text-base font-black text-text">
+                    <span className="figures block text-lg text-text">
                       {masked(b.price)}{" "}
-                      <span className="text-[11px] font-semibold text-text-muted">
-                        / {b.unit}
-                      </span>
+                      <span className="whitespace-nowrap text-[11px] font-medium text-text-muted">/ {b.unit}</span>
                     </span>
                     {b.change == null || b.pct == null ? (
-                      <span className="mt-0.5 block text-[11px] font-bold text-text-muted">
+                      <span className="mt-0.5 block text-[11px] font-medium text-text-muted">
                         {t("bullion_change_pending")}
                       </span>
                     ) : (
                       <span
-                        className="mt-0.5 block text-[11px] font-bold"
-                        style={{ color: b.change >= 0 ? "#10B981" : "#EF4444" }}
+                        className={`numeric mt-0.5 block text-[11px] font-bold ${
+                          b.change >= 0 ? "text-income" : "text-danger"
+                        }`}
                       >
-                        {b.change >= 0 ? `+${b.change}` : b.change} ({b.pct.toFixed(2)}%)
+                        {b.change >= 0 ? `+${b.change.toLocaleString(locale)}` : b.change.toLocaleString(locale)} ({b.pct.toFixed(2)}%)
                       </span>
                     )}
                   </span>
@@ -419,190 +414,182 @@ export function BullionStatement({ inject }: BullionPageProps) {
               );
             })}
           </div>
-        ))}
-      </div>
 
-      {/* ── 5. SYNCHRONIZED INTERACTIVE CHART ── */}
-      <section className="panel space-y-3 rounded-2xl p-4">
-        <div className="flex flex-wrap items-start justify-between gap-1.5">
-          <div className="min-w-0">
-            <p
-              className="text-base font-black uppercase tracking-[0.5px]"
-              style={{
-                color: isGold
-                  ? isDark
-                    ? "var(--sf-bull-gold-ink)"
-                    : "var(--sf-bull-gold-accent)"
-                  : "var(--sf-text)",
-              }}
-            >
-              {activeBenchmark.label} / {activeBenchmark.unit}
+          {/* ── 5. SYNCHRONIZED INTERACTIVE CHART ── */}
+          <section className="panel space-y-3 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-1.5">
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-text">
+                  {activeBenchmark.label} / {activeBenchmark.unit}
+                </p>
+                <p className="mt-0.5 text-[11.5px] text-text-muted">
+                  {historyPoints.length >= 2
+                    ? market === "NP"
+                      ? t("bullion_nepal_history_note")
+                      : t("bullion_market_history_note").replace("{currency}", currency)
+                    : t("bullion_history_unavailable")}
+                </p>
+              </div>
+              {historyPoints.length >= 2 && (
+                <div className="flex shrink-0 gap-1">
+                  {([1, 3, 6, 12] as TrendPeriod[]).map((m) => {
+                    const active = trendMonths === m;
+                    return (
+                      <button
+                        key={m}
+                        onClick={() => {
+                          setTrendMonths(m);
+                          setSelectedIndex(null);
+                        }}
+                        className={`rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                          active
+                            ? "border-primary bg-primary text-primary-ink"
+                            : "border-border bg-surface-elevated text-text-muted hover:text-text"
+                        }`}
+                      >
+                        {m === 1 ? "1M" : m === 3 ? "3M" : m === 6 ? "6M" : "1Y"}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {loading ? (
+              <Skeleton className="h-[190px] w-full" />
+            ) : historyPoints.length >= 2 ? (
+              <>
+                <TrendSvg
+                  points={historyPoints}
+                  accent={isGold ? "var(--sf-bull-gold-accent)" : "var(--sf-bull-sil-accent)"}
+                  grad={isGold ? "var(--sf-bull-gold-grad)" : "var(--sf-bull-sil-grad)"}
+                  minPrice={minPrice}
+                  maxPrice={maxPrice}
+                  selectedIndex={selectedIndex}
+                  onSelect={(i) => setSelectedIndex(i === selectedIndex ? null : i)}
+                  labelOf={(date) =>
+                    new Intl.DateTimeFormat("en-GB", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    }).format(new Date(`${date}T00:00:00`))
+                  }
+                  fmtPrice={masked}
+                />
+                <div className="flex gap-2 pt-1">
+                  <div className="flex-1 space-y-px rounded-lg border border-border bg-surface-elevated p-2 text-center">
+                    <p className="text-[10px] font-medium text-text-muted">{t("bullion_period_low")}</p>
+                    <p className="figures text-[13px] text-text">{masked(minPrice)}</p>
+                  </div>
+                  <div className="flex-1 space-y-px rounded-lg border border-border bg-surface-elevated p-2 text-center">
+                    <p className="text-[10px] font-medium text-text-muted">{t("bullion_period_high")}</p>
+                    <p
+                      className="figures text-[13px]"
+                      style={{ color: isGold ? "var(--sf-bull-gold-accent)" : "var(--sf-bull-sil-accent)" }}
+                    >
+                      {masked(maxPrice)}
+                    </p>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="flex h-[190px] flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-border px-6 text-center">
+                <Clock size={20} className="text-faint" aria-hidden />
+                <p className="text-[13px] font-semibold text-text">{t("bullion_history_unavailable")}</p>
+                <p className="text-[11px] leading-[15px] text-text-muted">
+                  {t("bullion_history_unavailable_hint")}
+                </p>
+              </div>
+            )}
+          </section>
+        </div>
+
+        <div className="min-w-0 space-y-4">
+          {/* ── 6. INSTANT METAL VALUATION CALCULATOR ── */}
+          <section className="panel space-y-3 p-4">
+            <p className="flex items-center gap-2 text-sm font-bold text-text">
+              <Calculator size={16} className="shrink-0 text-primary" aria-hidden />
+              {t("bullion_calc_title")}
             </p>
-            <p className="text-[11px] text-text-muted">
-              {historyPoints.length >= 2
-                ? market === "NP"
-                  ? t("bullion_nepal_history_note")
-                  : t("bullion_market_history_note").replace("{currency}", currency)
-                : t("bullion_history_unavailable")}
-            </p>
-          </div>
-          {historyPoints.length >= 2 && (
-            <div className="flex shrink-0 gap-1">
-              {([1, 3, 6, 12] as TrendPeriod[]).map((m) => {
-                const active = trendMonths === m;
+            <div className="flex gap-2">
+              {(
+                [
+                  { key: "24k", label: t("bullion_calc_gold24") },
+                  { key: "22k", label: t("bullion_calc_gold22") },
+                  { key: "silver", label: t("bullion_calc_silver999") },
+                ] as const
+              ).map((m) => {
+                const active = calcMetal === m.key;
                 return (
                   <button
-                    key={m}
-                    onClick={() => {
-                      setTrendMonths(m);
-                      setSelectedIndex(null);
-                    }}
-                    className={`rounded-full border px-2 py-[3.5px] text-[11px] transition ${
+                    key={m.key}
+                    onClick={() => setCalcMetal(m.key)}
+                    className={`min-w-0 flex-1 truncate rounded-lg border py-2 text-center text-xs font-semibold transition-colors ${
                       active
-                        ? "border-transparent font-extrabold text-white"
-                        : "border-border bg-surface-elevated font-semibold text-text-muted"
+                        ? "border-primary bg-primary text-primary-ink"
+                        : "border-border bg-surface-elevated text-text hover:border-faint"
                     }`}
-                    style={active ? { backgroundColor: isGold ? "var(--sf-bull-gold-accent)" : "var(--sf-bull-sil-accent)" } : undefined}
                   >
-                    {m === 1 ? "1M" : m === 3 ? "3M" : m === 6 ? "6M" : "1Y"}
+                    {m.label}
                   </button>
                 );
               })}
             </div>
-          )}
-        </div>
-
-        {loading ? (
-          <Skeleton className="h-[190px] w-full" />
-        ) : historyPoints.length >= 2 ? (
-          <>
-            <TrendSvg
-              points={historyPoints}
-              accent={isGold ? "var(--sf-bull-gold-accent)" : "var(--sf-bull-sil-accent)"}
-              grad={isGold ? "var(--sf-bull-gold-grad)" : "var(--sf-bull-sil-grad)"}
-              minPrice={minPrice}
-              maxPrice={maxPrice}
-              selectedIndex={selectedIndex}
-              onSelect={(i) => setSelectedIndex(i === selectedIndex ? null : i)}
-              labelOf={(date) =>
-                new Intl.DateTimeFormat("en-GB", {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                }).format(new Date(`${date}T00:00:00`))
-              }
-              fmtPrice={masked}
-            />
-            <div className="flex gap-2 pt-1">
-              <div className="flex-1 space-y-px rounded-[10px] border border-border bg-surface-elevated p-2 text-center">
-                <p className="text-[10px] font-semibold text-text-muted">{t("bullion_period_low")}</p>
-                <p className="text-[12.5px] font-extrabold text-text">{masked(minPrice)}</p>
-              </div>
-              <div className="flex-1 space-y-px rounded-[10px] border border-border bg-surface-elevated p-2 text-center">
-                <p className="text-[10px] font-semibold text-text-muted">{t("bullion_period_high")}</p>
-                <p
-                  className="text-[12.5px] font-extrabold"
-                  style={{ color: isGold ? "var(--sf-bull-gold-accent)" : "var(--sf-bull-sil-accent)" }}
-                >
-                  {masked(maxPrice)}
-                </p>
-              </div>
+            <div className="flex h-12 items-center rounded-lg border border-border bg-surface-elevated px-3.5 transition-colors focus-within:border-primary">
+              <Scale size={17} className="mr-2 shrink-0 text-faint" aria-hidden />
+              <input
+                inputMode="numeric"
+                placeholder={t("bullion_weight_placeholder")}
+                value={calcWeight}
+                onChange={(e) => setCalcWeight(e.target.value.replace(/[^0-9.]/g, ""))}
+                className="figures min-w-0 flex-1 bg-transparent text-base text-text outline-none placeholder:font-normal placeholder:text-text-muted"
+                aria-label={t("weightGrams")}
+              />
+              <span className="ml-2 shrink-0 text-[12.5px] font-semibold text-primary">
+                {t("bullion_grams")}
+              </span>
             </div>
-          </>
-        ) : (
-          <div className="flex h-[190px] flex-col items-center justify-center gap-1.5 rounded-[10px] border border-border bg-surface-elevated px-6 text-center">
-            <Clock size={20} className="text-text-muted" aria-hidden />
-            <p className="text-[13px] font-extrabold text-text">{t("bullion_history_unavailable")}</p>
-            <p className="text-[11px] leading-[15px] text-text-muted">
-              {t("bullion_history_unavailable_hint")}
+            <div className="space-y-0.5 rounded-lg bg-[var(--sf-primary-light)] p-3.5 text-center">
+              <p className="text-[11px] font-medium text-text-muted">
+                {t("bullion_est_value").replace("{weight}", String(weightNum))}
+              </p>
+              <p className="figures-display text-3xl tracking-[-0.02em] text-primary-strong">
+                {board ? masked(calculatedValue) : "–"}
+              </p>
+            </div>
+          </section>
+
+          {/* ── 7. BULLION STANDARDS & BUYER GUIDE ── */}
+          <section className="panel space-y-3 p-4">
+            <p className="flex items-center gap-2 text-sm font-bold text-text">
+              <Info size={16} className="shrink-0 text-primary" aria-hidden />
+              {t("bullion_guide_title")}
             </p>
-          </div>
-        )}
-      </section>
-
-      {/* ── 6. INSTANT METAL VALUATION CALCULATOR ── */}
-      <section className="panel space-y-3 rounded-2xl p-4">
-        <p className="flex items-center gap-2 text-[15px] font-extrabold text-text">
-          <Calculator size={17} className="shrink-0 text-primary" aria-hidden />
-          {t("bullion_calc_title")}
-        </p>
-        <div className="flex gap-2">
-          {(
-            [
-              { key: "24k", label: t("bullion_calc_gold24") },
-              { key: "22k", label: t("bullion_calc_gold22") },
-              { key: "silver", label: t("bullion_calc_silver999") },
-            ] as const
-          ).map((m) => {
-            const active = calcMetal === m.key;
-            return (
-              <button
-                key={m.key}
-                onClick={() => setCalcMetal(m.key)}
-                className={`min-w-0 flex-1 truncate rounded-[10px] border py-2 text-center text-xs transition active:opacity-85 ${
-                  active
-                    ? "border-primary bg-primary font-extrabold text-white"
-                    : "border-border bg-surface-elevated font-semibold text-text"
-                }`}
-              >
-                {m.label}
-              </button>
-            );
-          })}
-        </div>
-        <div className="flex h-[50px] items-center rounded-[10px] border-[1.5px] border-primary bg-background px-3.5">
-          <Scale size={18} className="mr-2 shrink-0 text-text-muted" aria-hidden />
-          <input
-            inputMode="numeric"
-            placeholder={t("bullion_weight_placeholder")}
-            value={calcWeight}
-            onChange={(e) => setCalcWeight(e.target.value.replace(/[^0-9.]/g, ""))}
-            className="min-w-0 flex-1 bg-transparent text-base font-extrabold text-text outline-none placeholder:font-normal placeholder:text-text-muted"
-            aria-label={t("weightGrams")}
-          />
-          <span className="ml-2 shrink-0 text-[13px] font-extrabold text-primary">
-            {t("bullion_grams")}
-          </span>
-        </div>
-        <div className="space-y-[3px] rounded-[10px] border border-[var(--sf-bull-result-line)] bg-[var(--sf-bull-result-bg)] p-3.5 text-center">
-          <p className="text-[11px] font-semibold text-text-muted">
-            {t("bullion_est_value").replace("{weight}", String(weightNum))}
-          </p>
-          <p className="text-[26px] font-black leading-8 text-primary">
-            {board ? masked(calculatedValue) : "—"}
-          </p>
-        </div>
-      </section>
-
-      {/* ── 7. BULLION STANDARDS & BUYER GUIDE ── */}
-      <section className="panel space-y-2.5 rounded-2xl p-4">
-        <p className="flex items-center gap-1.5 text-sm font-extrabold text-text">
-          <Info size={16} className="shrink-0 text-primary" aria-hidden />
-          {t("bullion_guide_title")}
-        </p>
-        <div className="space-y-2 pt-1">
-          <div className="flex gap-2">
-            <ShieldCheck size={16} style={{ color: "#10B981" }} className="mt-0.5 shrink-0" aria-hidden />
-            <div className="min-w-0">
-              <p className="text-[13px] font-bold text-text">{t("bullion_guide_24k_title")}</p>
-              <p className="text-[11.5px] leading-4 text-text-muted">{t("bullion_guide_24k_body")}</p>
+            <div className="space-y-3">
+              <div className="flex gap-2.5">
+                <ShieldCheck size={16} className="mt-0.5 shrink-0 text-income" aria-hidden />
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold text-text">{t("bullion_guide_24k_title")}</p>
+                  <p className="mt-0.5 text-[12px] leading-[17px] text-text-muted">{t("bullion_guide_24k_body")}</p>
+                </div>
+              </div>
+              <div className="flex gap-2.5">
+                <Scale size={16} className="mt-0.5 shrink-0 text-brass" aria-hidden />
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold text-text">{t("bullion_guide_tola_title")}</p>
+                  <p className="mt-0.5 text-[12px] leading-[17px] text-text-muted">{t("bullion_guide_tola_body")}</p>
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="flex gap-2">
-            <Scale size={16} style={{ color: "#F59E0B" }} className="mt-0.5 shrink-0" aria-hidden />
-            <div className="min-w-0">
-              <p className="text-[13px] font-bold text-text">{t("bullion_guide_tola_title")}</p>
-              <p className="text-[11.5px] leading-4 text-text-muted">{t("bullion_guide_tola_body")}</p>
-            </div>
-          </div>
+          </section>
         </div>
-      </section>
+      </div>
     </main>
   );
 }
 
 /**
- * Mobile's SVG spline chart — Catmull-Rom curve, dashed gridlines, y/x axis
+ * Mobile's SVG spline chart – Catmull-Rom curve, dashed gridlines, y/x axis
  * labels, gradient area fill, per-point touch rects and a floating tooltip.
  */
 function TrendSvg({
@@ -767,14 +754,14 @@ function TrendSvg({
       )}
       {sel && (
         <div
-          className="pointer-events-none absolute rounded-lg border border-[var(--sf-bull-tooltip-line)] bg-[var(--sf-bull-tooltip-bg)] px-2.5 py-[5px] text-center shadow-[0_3px_6px_rgb(0_0_0/0.3)]"
+          className="pointer-events-none absolute rounded-lg border border-[var(--sf-bull-tooltip-line)] bg-[var(--sf-bull-tooltip-bg)] px-2.5 py-[5px] text-center shadow-soft"
           style={{
             top: Math.max(sel.y - 48, 2),
             left: `min(max(${(sel.x / W) * 100}% - 65px, ${padLeft}px), calc(100% - 135px))`,
           }}
         >
-          <p className="text-xs font-black text-white">{fmtPrice(sel.point.price)}</p>
-          <p className="text-[9.5px] font-bold text-[#94A3B8]">{labelOf(sel.point.date)}</p>
+          <p className="text-xs font-bold text-white">{fmtPrice(sel.point.price)}</p>
+          <p className="text-[9.5px] font-semibold text-text-muted">{labelOf(sel.point.date)}</p>
         </div>
       )}
     </div>

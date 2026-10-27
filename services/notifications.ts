@@ -1,5 +1,5 @@
 /**
- * Notification reads — web companion to services/alerts.ts (which writes the
+ * Notification reads – web companion to services/alerts.ts (which writes the
  * milestone rows). The mobile app only pushes; the web alert ledger browses
  * the same `notifications` table (RLS-scoped to the owner).
  */

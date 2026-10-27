@@ -1,11 +1,11 @@
 /**
- * FX tier-resolution regression check — guards that CURRENT-rate requests are
+ * FX tier-resolution regression check – guards that CURRENT-rate requests are
  * API-first (frankfurter → er-api): no client can write `exchange_rates`
  * any more, so rows of ANY age (even yesterday's) must never answer "today"
- * — that staleness left every display-currency figure ~1 % off live
+ * – that staleness left every display-currency figure ~1 % off live
  * (2026-09-15/16 user reports). Historical dated lookups stay table-first,
  * byte-compatible with mobile. Runs against the REAL shipped code
- * (services/exchange.ts compiled on each run — no re-implementation).
+ * (services/exchange.ts compiled on each run – no re-implementation).
  *
  * Scenarios (all mocked; no network, no Supabase):
  *   1. Current + FRESH table row          → live API wins; table not consulted.
@@ -79,7 +79,7 @@ function stubFetch({ ccy = null, er = null, frankLatest = null, frankDated = nul
     else if (/frankfurter\.dev\/v1\/latest/.test(url)) rate = frankLatest;
     else if (/frankfurter\.dev\/v1\/\d{4}/.test(url)) rate = frankDated;
     if (rate == null || ccy == null) return { ok: false, status: 503 };
-    // Providers key their rates object by currency code — mirror that.
+    // Providers key their rates object by currency code – mirror that.
     return { ok: true, json: async () => ({ rates: { [ccy]: rate } }) };
   };
   return urls;

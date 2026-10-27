@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Category Budget Studio — 1:1 web port of mobile
+ * Category Budget Studio – 1:1 web port of mobile
  * components/expense/CategoryBudgetFormModal.tsx: slide-up sheet with grab
  * handle, live allocation-impact gauge (vs the monthly ceiling), horizontal
  * category picker chips, hero amount input with quick-add pills, and the
@@ -159,7 +159,7 @@ export function CategoryBudgetStudio({
           aria-label={t("studioTitle")}
           className="sf-sheet max-h-[92%] w-full max-w-[560px] overflow-y-auto rounded-t-[24px] border border-border bg-surface"
         >
-          {/* Sheet header — grab handle + title row */}
+          {/* Sheet header – grab handle + title row */}
           <div className="sticky top-0 z-10 border-b border-border bg-surface-elevated px-4 pb-2 pt-3">
             <div
               aria-hidden
@@ -236,7 +236,7 @@ export function CategoryBudgetStudio({
               </div>
             </div>
 
-            {/* 2. Choose category — horizontal chips */}
+            {/* 2. Choose category – horizontal chips */}
             <div className="space-y-2.5">
               <p className="text-[13px] font-extrabold text-text">
                 1. {t("studioChooseCat")}
@@ -322,7 +322,7 @@ export function CategoryBudgetStudio({
                   <button
                     onClick={() => void handleSave()}
                     disabled={saving}
-                    className="flex h-[50px] shrink-0 items-center justify-center rounded-[10px] bg-primary px-[18px] text-[13px] font-bold text-white transition active:scale-[0.96] disabled:opacity-60"
+                    className="flex h-[50px] shrink-0 items-center justify-center rounded-[10px] bg-primary px-[18px] text-[13px] font-bold text-primary-ink transition active:scale-[0.96] disabled:opacity-60"
                   >
                     {saving ? (
                       <span
@@ -391,7 +391,7 @@ export function CategoryBudgetStudio({
                           </button>
                           <button
                             onClick={() => void handleClearSingle(c.id)}
-                            aria-label={`${t("catDelete")} — ${c.name}`}
+                            aria-label={`${t("catDelete")} – ${c.name}`}
                             className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-lg border border-[var(--sf-studio-clear-line)] bg-[var(--sf-studio-clear-bg)] text-danger transition active:scale-[0.88]"
                           >
                             <Trash2 size={15} aria-hidden />

@@ -14,7 +14,7 @@ import { listCategories } from "@/services/categories";
 import type { Category } from "@/types/database.types";
 
 /**
- * In-memory cross-screen freshness (mobile parity: notifyExpensesChanged —
+ * In-memory cross-screen freshness (mobile parity: notifyExpensesChanged –
  * web has no realtime either; see docs/SYNC-STRATEGY.md).
  */
 type Listener = () => void;

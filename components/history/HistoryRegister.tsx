@@ -1,13 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import {
   ArrowDownLeft,
   ArrowUpRight,
+  ArrowUpDown,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Flame,
+  Download,
   Image as ImageIcon,
   Pencil,
   Plus,
@@ -25,20 +29,19 @@ import { listExpenses } from "@/services/expenses";
 import { listBankAccounts, type BankAccountRow } from "@/services/bankAccounts";
 import { accountGlyph, categoryGlyph } from "@/components/ui/Glyph";
 import { useCategories } from "@/hooks/useExpenses";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
+import { SheetSelect } from "@/components/ui/SheetSelect";
 import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
 import { useRowConverter } from "@/hooks/useRates";
 import { ExpenseDetailSheet } from "@/components/expense/ExpenseDetailSheet";
-import { Modal } from "@/components/ui/Modal";
-import { PrivacyEyeButton } from "@/components/ui/PrivacyEyeButton";
-import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { RangeField } from "@/components/ui/CalendarModal";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { FitText } from "@/components/ui/FitText";
+import { FloatingSelect, SelectRow } from "@/components/ui/FloatingSelect";
 import { PAYMENT_METHODS, type PaymentMethod } from "@/constants/app";
 import {
   formatMoney,
   getCycleWindow,
+  getPreviousCycleWindow,
   todayISO,
   toISODate,
   isValidISODate,
@@ -48,9 +51,9 @@ import type { ExpenseFilters, ExpenseRow, ExpenseSort } from "@/services/expense
 
 type FlowFilter = "all" | "expense" | "income";
 type DatePreset = "all" | "today" | "week" | "cycle" | "custom";
-type SortKey = "date_desc" | "date_asc" | "amount_desc" | "amount_asc";
+export type SortKey = "date_desc" | "date_asc" | "amount_desc" | "amount_asc";
 
-const PAGE = 10;
+const PAGE_SIZES = [10, 25, 50];
 
 const SORTS: { key: SortKey; label: string; sort: ExpenseSort }[] = [
   { key: "date_desc", label: "Newest first", sort: { field: "date", direction: "desc" } },
@@ -60,15 +63,19 @@ const SORTS: { key: SortKey; label: string; sort: ExpenseSort }[] = [
 ];
 
 /**
- * History — "ledger journal" redesign (2026-09-15). Same engine (deep links,
- * 300 ms server-side search, filters, paging, privacy mask, detail sheet),
- * new skin:
- *  · Cash-flow hero — net headline, inflow/outflow split rule, peak chip and
- *    the All/Expense/Income switcher live in one statement card.
- *  · Control bar — search + sort + a row of removable filter chips.
- *  · Phones: day cards with a date rail (journal timeline), staggered reveal.
- *  · lg+: the same register as an aligned statement table with day bands.
- * `inject` is the /preview-history design seam (static rows, no auth/network).
+ * History - transactions register, "Ledger Console" rebuild (2026-10-25,
+ * user-directed reference: a neutral transactions-list console). Same engine
+ * (deep links, 300 ms server-side search, filters, paging, privacy mask,
+ * detail sheet, preview seam), new skin:
+ *  · Masthead - title + subtitle, Export CSV / New Transaction actions.
+ *  · 4 stat cards - outflow / inflow with like-for-like previous-window
+ *    delta chips, average ticket, net flow.
+ *  · One register card - search + every filter as a console dropdown +
+ *    reset + result count, then the lg+ ledger table (sortable Date/Amount
+ *    headers) with the day-grouped touch list below lg, and a pager footer
+ *    with a per-page selector.
+ *  · Insights row - category share bars (drills to /analytics) beside
+ *    payment-channel share.
  */
 export function HistoryRegister({
   inject,
@@ -79,10 +86,14 @@ export function HistoryRegister({
   const { t, locale } = useLanguage();
   const { mask } = usePrivacy();
 
-  // Deep-link capture (window read once — redirect-landing pattern).
-  const url = useMemo(
-    () => (typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams()),
-    [],
+  // Deep-link params: live via useSearchParams so a client-side navigation
+  // (e.g. the shell header's search) applies without a remount. Initial
+  // filter state still reads them redirect-landing style.
+  const url = useSearchParams();
+
+  const cycle = useMemo(
+    () => getCycleWindow(new Date(), profile?.cycle_start_day ?? 1, profile?.cycle_end_day ?? null),
+    [profile?.cycle_start_day, profile?.cycle_end_day],
   );
 
   const [search, setSearch] = useState(() => url.get("q") ?? "");
@@ -95,10 +106,18 @@ export function HistoryRegister({
     const f = url.get("from");
     const to = url.get("to");
     if (isValidISODate(f ?? "") || isValidISODate(to ?? "")) return "custom";
-    return "all";
+    return "cycle";
   });
-  const [from, setFrom] = useState(() => (isValidISODate(url.get("from") ?? "") ? url.get("from")! : ""));
-  const [to, setTo] = useState(() => (isValidISODate(url.get("to") ?? "") ? url.get("to")! : ""));
+  const [from, setFrom] = useState(() => {
+    const f = url.get("from");
+    if (isValidISODate(f ?? "")) return f!;
+    return toISODate(cycle.start);
+  });
+  const [to, setTo] = useState(() => {
+    const t = url.get("to");
+    if (isValidISODate(t ?? "")) return t!;
+    return toISODate(cycle.end);
+  });
   const [categoryId, setCategoryId] = useState(() => url.get("category") ?? "");
   const [method, setMethod] = useState<string>(() => {
     const v = url.get("method");
@@ -111,9 +130,26 @@ export function HistoryRegister({
     const v = url.get("sort");
     return SORTS.some((s) => s.key === v) ? (v as SortKey) : "date_desc";
   });
+  const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<ExpenseRow | null>(null);
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const toggleMenu = (key: string) => setOpenMenu((cur) => (cur === key ? null : key));
+
+  // Header-search handoff: when the query string changes after mount
+  // (shell search bar navigates to /history?q=...), apply it to the box.
+  const paramsString = url.toString();
+  const firstParams = useRef(true);
+  useEffect(() => {
+    if (firstParams.current) {
+      firstParams.current = false;
+      return;
+    }
+    setSearch(url.get("q") ?? "");
+    setDebounced(url.get("q") ?? "");
+    setPage(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paramsString]);
 
   // 300 ms debounce (mobile parity).
   useEffect(() => {
@@ -133,10 +169,6 @@ export function HistoryRegister({
       .catch(() => setAccounts([]));
   }, [user]);
 
-  const cycle = useMemo(
-    () => getCycleWindow(new Date(), profile?.cycle_start_day ?? 1, profile?.cycle_end_day ?? null),
-    [profile?.cycle_start_day, profile?.cycle_end_day],
-  );
 
   const applyPreset = (p: DatePreset) => {
     setPreset(p);
@@ -177,7 +209,7 @@ export function HistoryRegister({
 
   useEffect(() => {
     setPage(0);
-  }, [filters, sort]);
+  }, [filters, sort, pageSize]);
 
   // Full filtered dataset (server-side filters, 5000 cap): totals, grouping
   // and paging must cover every matching entry, not just a page slice.
@@ -224,41 +256,200 @@ export function HistoryRegister({
 
   const displayCurrency = profile?.preferred_currency ?? "NPR";
   const fmt = (n: number) => mask(formatMoney(n, displayCurrency, locale));
+  const bare = (n: number) => fmt(n).replace(/^[^\d]*/, "");
 
   const summary = useMemo(() => {
     let outflow = 0;
     let inflow = 0;
-    let peak = 0;
-    let peakLabel = "";
+    let expenseCount = 0;
     for (const row of rows) {
       const v = convert(row);
       if (row.type === "income") inflow += v;
       else {
         outflow += v;
-        if (v > peak) {
-          peak = v;
-          peakLabel = row.description || row.categories?.name || "";
-        }
+        expenseCount += 1;
       }
     }
-    return { outflow, inflow, peak, peakLabel, net: inflow - outflow };
+    return { outflow, inflow, net: inflow - outflow, expenseCount };
   }, [rows, convert]);
-
-  // "At transaction-date rates" debugger counterpart of the filtered totals
-  // (TodayRateLine hides it when the two bases agree; headline is LIVE for
-  // rows in the active month).
   const historyFrozenTotals = useMemo(() => {
     let inc = 0;
     let exp = 0;
-    for (const r of rows) {
-      if (r.type === "income") inc += convertFrozen(r);
-      else exp += convertFrozen(r);
+    for (const row of rows) {
+      const v = convertFrozen(row);
+      if (row.type === "income") inc += v;
+      else exp += v;
     }
     return { income: inc, expense: exp };
   }, [rows, convertFrozen]);
 
-  // Mobile base: progressive paging. Desktop table: classic paging.
-  const pageRows = useMemo(() => rows.slice(page * PAGE, page * PAGE + PAGE), [rows, page]);
+  // Like-for-like previous window (same length, immediately before) for the
+  // stat-card delta chips; "All time" has no predecessor.
+  const prevWindow = useMemo<{ from: string; to: string } | null>(() => {
+    if (preset === "all") return null;
+    if (preset === "cycle") {
+      const p = getPreviousCycleWindow(
+        new Date(),
+        profile?.cycle_start_day ?? 1,
+        profile?.cycle_end_day ?? null,
+      );
+      return { from: toISODate(p.start), to: toISODate(p.end) };
+    }
+    if (!from || !to || !isValidISODate(from) || !isValidISODate(to)) return null;
+    const len = Math.max(
+      1,
+      Math.round((new Date(`${to}T00:00:00`).getTime() - new Date(`${from}T00:00:00`).getTime()) / 86400000) + 1,
+    );
+    const pEnd = new Date(`${from}T00:00:00`);
+    pEnd.setDate(pEnd.getDate() - 1);
+    const pStart = new Date(pEnd);
+    pStart.setDate(pStart.getDate() - (len - 1));
+    return { from: toISODate(pStart), to: toISODate(pEnd) };
+  }, [preset, from, to, profile?.cycle_start_day, profile?.cycle_end_day]);
+
+  const [prevTotals, setPrevTotals] = useState<{ inflow: number; outflow: number } | null>(null);
+  useEffect(() => {
+    if (inject || !user || !prevWindow) {
+      setPrevTotals(null);
+      return;
+    }
+    let cancelled = false;
+    listExpenses(
+      supabase,
+      user.id,
+      0,
+      { ...filters, from: prevWindow.from, to: prevWindow.to },
+      sort,
+      5000,
+    )
+      .then(({ rows: prevRows }) => {
+        if (cancelled) return;
+        let inflow = 0;
+        let outflow = 0;
+        for (const r of prevRows) {
+          const v = convert(r);
+          if (r.type === "income") inflow += v;
+          else outflow += v;
+        }
+        setPrevTotals({ inflow, outflow });
+      })
+      .catch(() => {
+        if (!cancelled) setPrevTotals(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [inject, user, supabase, filters, sort, prevWindow, convert]);
+
+  // ±999% past that a tiny previous window makes the pct meaningless.
+  const pctDelta = (cur: number, prev: number | undefined): number | null => {
+    if (prev == null || prev === 0) return null;
+    const pct = Math.round(((cur - prev) / Math.abs(prev)) * 100);
+    return Number.isFinite(pct) && Math.abs(pct) <= 999 ? pct : null;
+  };
+
+  const totalCount = count || rows.length;
+  const pageCount = Math.max(1, Math.ceil(totalCount / pageSize));
+  const filterCount = [preset !== "cycle", !!categoryId, !!method, !!accountId, !!min, !!max].filter(
+    Boolean,
+  ).length;
+
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  useBodyScrollLock(filtersOpen);
+  const activeFilterCount = filterCount + (flow !== "all" ? 1 : 0);
+
+  const resetAll = useCallback(() => {
+    setSearch("");
+    setFlow("all");
+    setPreset("cycle");
+    setFrom(toISODate(cycle.start));
+    setTo(toISODate(cycle.end));
+    setCategoryId("");
+    setMethod("");
+    setAccountId("");
+    setMin("");
+    setMax("");
+    setSortKey("date_desc");
+    setOpenMenu(null);
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  }, [cycle]);
+
+  // Filter option lists. The hooks need auth; when they come back empty but
+  // rows are loaded, derive the options from the rows themselves (client-side,
+  // no extra queries) so the dropdowns are never blank.
+  const railCategories = useMemo(() => {
+    if (categories.length > 0) {
+      return categories.map((c) => ({ value: c.id, label: c.name, type: c.type }));
+    }
+    const seen = new Map<string, { value: string; label: string; type: string }>();
+    for (const r of rows) {
+      if (r.categories && !seen.has(r.categories.id)) {
+        seen.set(r.categories.id, { value: r.categories.id, label: r.categories.name, type: r.categories.type });
+      }
+    }
+    return [...seen.values()];
+  }, [categories, rows]);
+  const railAccounts = useMemo(() => {
+    if (accounts.length > 0) {
+      return accounts.map((a) => ({ value: a.id, label: a.name }));
+    }
+    const seen = new Map<string, { value: string; label: string }>();
+    for (const r of rows) {
+      if (r.bank_accounts && !seen.has(r.bank_accounts.id)) {
+        seen.set(r.bank_accounts.id, { value: r.bank_accounts.id, label: r.bank_accounts.name });
+      }
+    }
+    return [...seen.values()];
+  }, [accounts, rows]);
+
+  // Per-category counts inside the current filtered set (client-side, no
+  // extra query): the category dropdown shows how many entries each holds.
+  const categoryCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of rows) {
+      if (r.category_id) m.set(r.category_id, (m.get(r.category_id) ?? 0) + 1);
+    }
+    return m;
+  }, [rows]);
+
+  const pageRows = useMemo(
+    () => rows.slice(page * pageSize, page * pageSize + pageSize),
+    [rows, page, pageSize],
+  );
+
+  // Insights row: outflow share by category (drills to /analytics) and
+  // entry share by payment channel, both over the FULL filtered set.
+  const categoryInsights = useMemo(() => {
+    const m = new Map<string, { label: string; value: number }>();
+    for (const r of rows) {
+      if (r.type !== "expense") continue;
+      const key = r.categories?.id ?? r.categories?.name ?? "other";
+      const cur = m.get(key) ?? { label: r.categories?.name ?? "Other", value: 0 };
+      cur.value += convert(r);
+      m.set(key, cur);
+    }
+    return [...m.values()]
+      .map((c) => ({
+        label: c.label,
+        pct: summary.outflow > 0 ? Math.max(1, Math.round((c.value / summary.outflow) * 100)) : 0,
+      }))
+      .sort((a, b) => b.pct - a.pct)
+      .slice(0, 4);
+  }, [rows, convert, summary.outflow]);
+  const channelInsights = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of rows) {
+      const key = r.payment_method || "Other";
+      m.set(key, (m.get(key) ?? 0) + 1);
+    }
+    const total = rows.length || 1;
+    return [...m.entries()]
+      .map(([label, n]) => ({ label, n, pct: Math.round((n / total) * 100) }))
+      .sort((a, b) => b.n - a.n)
+      .slice(0, 4);
+  }, [rows]);
 
   const groupRows = useCallback(
     (list: ExpenseRow[]) => {
@@ -279,94 +470,324 @@ export function HistoryRegister({
   );
   const sections = useMemo(() => groupRows(pageRows), [groupRows, pageRows]);
 
-  // Paging scrolls back to the top of the register on both layouts.
+  // Paging scrolls back to the top of the register.
   const panelRef = useRef<HTMLDivElement>(null);
+
   const goPage = (n: number) => {
     setPage(n);
     panelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const totalCount = count || rows.length;
-  const pageCount = Math.max(1, Math.ceil(totalCount / PAGE));
-  const sheetFilterCount = [preset !== "all", !!categoryId, !!method, !!accountId, !!min, !!max].filter(
-    Boolean,
-  ).length;
-  const isFiltered = !!(debounced || flow !== "all" || sheetFilterCount > 0 || sortKey !== "date_desc");
+  const sortBy = (field: "date" | "amount") => {
+    setSortKey((cur) =>
+      cur === `${field}_desc` ? (`${field}_asc` as SortKey) : (`${field}_desc` as SortKey),
+    );
+  };
 
-  const resetAll = useCallback(() => {
-    setSearch("");
-    setFlow("all");
-    setPreset("all");
-    setFrom("");
-    setTo("");
-    setCategoryId("");
-    setMethod("");
-    setAccountId("");
-    setMin("");
-    setMax("");
-    setSortKey("date_desc");
-    if (typeof window !== "undefined") {
-      window.history.replaceState(null, "", window.location.pathname);
-    }
-  }, []);
+  // Every filter control in one block — rendered inside the Filters popover
+  // (lg+) and the bottom sheet (below lg).
+  // Filter controls, split so the laptop row lays them out inline while the
+  // mobile Filters sheet groups them with labels.
+  const periodControl = (
+    <>
+            <FloatingSelect
+        className="relative w-full"
+        label={
+          preset === "custom"
+            ? t("filterCustom")
+            : preset === "all"
+              ? t("periodAll")
+              : preset === "today"
+                ? t("histChipToday")
+                : preset === "week"
+                  ? t("histChipWeek")
+                  : t("histChipCycle")
+        }
+        open={openMenu === "period"}
+        onToggle={() => toggleMenu("period")}
+        menuClassName="max-h-64 overflow-y-auto"
+        >
+        {[
+          { key: "all" as DatePreset, label: t("periodAll") },
+          { key: "today" as DatePreset, label: t("histChipToday") },
+          { key: "week" as DatePreset, label: t("histChipWeek") },
+          { key: "cycle" as DatePreset, label: t("histChipCycle") },
+          { key: "custom" as DatePreset, label: t("filterCustom") },
+        ].map((p) => (
+          <SelectRow
+            key={p.key}
+            selected={preset === p.key}
+            label={p.label}
+            onSelect={() => {
+              applyPreset(p.key);
+              setOpenMenu(null);
+            }}
+          />
+        ))}
+        </FloatingSelect>
+        {preset === "custom" && (
+        <div className="flex items-center gap-1.5">
+          <input
+            type="date"
+            value={from}
+            onChange={(e) => {
+              setFrom(e.target.value);
+              setPage(0);
+            }}
+            aria-label={t("anCalFrom")}
+            className="h-9 rounded-lg border border-border bg-input px-2.5 text-[12px] text-text focus:border-primary focus:outline-none"
+          />
+          <span className="text-[12px] text-faint">–</span>
+          <input
+            type="date"
+            value={to}
+            onChange={(e) => {
+              setTo(e.target.value);
+              setPage(0);
+            }}
+            aria-label={t("anCalTo")}
+            className="h-9 rounded-lg border border-border bg-input px-2.5 text-[12px] text-text focus:border-primary focus:outline-none"
+          />
+        </div>
+        )}
+    </>
+  );
 
-  // Removable filter chips — one glance shows what the register is narrowed by.
-  const chips: { key: string; label: string; onRemove: () => void }[] = [];
-  if (preset !== "all")
-    chips.push({
-      key: "period",
-      label:
-        preset === "today" ? t("histChipToday") : preset === "week" ? t("histChipWeek") : preset === "cycle" ? t("histChipCycle") : `${from || "…"} → ${to || "…"}`,
-      onRemove: () => applyPreset("all"),
-    });
-  if (categoryId) {
-    const c = categories.find((x) => x.id === categoryId);
-    if (c) chips.push({ key: "cat", label: c.name, onRemove: () => setCategoryId("") });
-  }
-  if (method) chips.push({ key: "method", label: method, onRemove: () => setMethod("") });
-  if (accountId) {
-    const a = accounts.find((x) => x.id === accountId);
-    if (a) chips.push({ key: "acct", label: a.name, onRemove: () => setAccountId("") });
-  }
-  if (min) chips.push({ key: "min", label: `≥ ${min}`, onRemove: () => setMin("") });
-  if (max) chips.push({ key: "max", label: `≤ ${max}`, onRemove: () => setMax("") });
-  if (debounced) chips.push({ key: "q", label: `“${debounced}”`, onRemove: () => setSearch("") });
+  const typeControl = (
+            <FloatingSelect
+        className="relative w-full"
+        label={flow === "all" ? t("histAllTypes") : flow === "expense" ? t("expense") : t("income")}
+        open={openMenu === "type"}
+        onToggle={() => toggleMenu("type")}
+        >
+        {[
+          { key: "all" as FlowFilter, label: t("histAllTypes") },
+          { key: "expense" as FlowFilter, label: t("expense") },
+          { key: "income" as FlowFilter, label: t("income") },
+        ].map((f) => (
+          <SelectRow
+            key={f.key}
+            selected={flow === f.key}
+            label={f.label}
+            onSelect={() => {
+              setFlow(f.key);
+              setPage(0);
+              setOpenMenu(null);
+            }}
+          />
+        ))}
+        </FloatingSelect>
+  );
+
+  const categoryControl = (
+            <FloatingSelect
+        className="relative w-full"
+        label={
+          categoryId
+            ? railCategories.find((c) => c.value === categoryId)?.label ?? t("histAllCategories")
+            : t("histAllCategories")
+        }
+        open={openMenu === "category"}
+        onToggle={() => toggleMenu("category")}
+        menuClassName="max-h-64 overflow-y-auto"
+        >
+        <SelectRow
+          selected={categoryId === ""}
+          label={t("histAllCategories")}
+          onSelect={() => {
+            setCategoryId("");
+            setPage(0);
+            setOpenMenu(null);
+          }}
+        />
+        {railCategories.map((c) => (
+          <SelectRow
+            key={c.value}
+            selected={categoryId === c.value}
+            label={`${c.label}${categoryCounts.get(c.value) ? ` · ${categoryCounts.get(c.value)}` : ""}`}
+            onSelect={() => {
+              setCategoryId((cur) => (cur === c.value ? "" : c.value));
+              setPage(0);
+              setOpenMenu(null);
+            }}
+          />
+        ))}
+        </FloatingSelect>
+  );
+
+  const accountControl = (
+            <FloatingSelect
+        className="relative w-full"
+        label={
+          accountId
+            ? railAccounts.find((a) => a.value === accountId)?.label ?? t("histAllAccounts")
+            : t("histAllAccounts")
+        }
+        open={openMenu === "account"}
+        onToggle={() => toggleMenu("account")}
+        menuClassName="max-h-64 overflow-y-auto"
+        >
+        <SelectRow
+          selected={accountId === ""}
+          label={t("histAllAccounts")}
+          onSelect={() => {
+            setAccountId("");
+            setPage(0);
+            setOpenMenu(null);
+          }}
+        />
+        {railAccounts.map((a) => (
+          <SelectRow
+            key={a.value}
+            selected={accountId === a.value}
+            label={a.label}
+            onSelect={() => {
+              setAccountId((cur) => (cur === a.value ? "" : a.value));
+              setPage(0);
+              setOpenMenu(null);
+            }}
+          />
+        ))}
+        </FloatingSelect>
+  );
+
+  const channelControl = (
+            <FloatingSelect
+        className="relative w-full"
+        label={method || t("histAllChannels")}
+        open={openMenu === "channel"}
+        onToggle={() => toggleMenu("channel")}
+        menuClassName="max-h-64 overflow-y-auto"
+        >
+        <SelectRow
+          selected={method === ""}
+          label={t("histAllChannels")}
+          onSelect={() => {
+            setMethod("");
+            setPage(0);
+            setOpenMenu(null);
+          }}
+        />
+        {PAYMENT_METHODS.map((m) => (
+          <SelectRow
+            key={m}
+            selected={method === m}
+            label={m}
+            onSelect={() => {
+              setMethod((cur) => (cur === m ? "" : m));
+              setPage(0);
+              setOpenMenu(null);
+            }}
+          />
+        ))}
+        </FloatingSelect>
+  );
+
+  const sortControl = (
+            <FloatingSelect
+        className="relative w-full"
+        label={SORTS.find((s) => s.key === sortKey)?.label ?? SORTS[0].label}
+        open={openMenu === "sort"}
+        onToggle={() => toggleMenu("sort")}
+        >
+        {SORTS.map((s) => (
+          <SelectRow
+            key={s.key}
+            selected={sortKey === s.key}
+            label={s.label}
+            onSelect={() => {
+              setSortKey(s.key);
+              setOpenMenu(null);
+            }}
+          />
+        ))}
+        </FloatingSelect>
+  );
 
   return (
-    <main className="mx-auto w-full max-w-[1200px]">
-      {/* ── Masthead ── */}
-      <header className="mb-4 flex items-end justify-between gap-3 sm:mb-5">
-        <div>
-          <p className="caps-faint">{t("histOverline")}</p>
-          <h1 className="font-brand mt-1 text-2xl font-bold tracking-tight text-text sm:text-[28px]">
-            {t("history")}
-          </h1>
+    <main className="mx-auto w-full max-w-[1240px]">
+      {/* ── Masthead: title + subtitle left, actions right ── */}
+      <header className="rise flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-[26px] font-bold tracking-tight text-text">{t("histTitle")}</h1>
+          <p className="mt-1 text-xs text-text-muted">{t("histSubtitle")}</p>
         </div>
-        <div className="flex items-center gap-1">
-          <span className="mr-1 border border-border bg-surface px-2.5 py-1 text-[11px] font-bold text-text-muted">
-            {totalCount} {t("entriesLabel")}
-          </span>
-          <PrivacyEyeButton />
-          {/* Mobile shows the shell's global toggle — hide this page-level one
-              there only (user request 2026-09-16); desktop keeps the APK header. */}
-          <ThemeToggle className="hidden p-2 sm:grid" />
+        <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
+          <Link
+            href="/export"
+            aria-label={t("histExportCsv")}
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-border bg-surface text-text shadow-soft transition-colors hover:bg-surface-elevated lg:hidden"
+          >
+            <Download size={14} />
+          </Link>
+          <Link
+            href="/export"
+            className="hidden h-9 items-center gap-2 rounded-lg border border-border bg-surface px-3.5 text-xs font-medium text-text shadow-soft transition-colors hover:bg-surface-elevated lg:flex"
+          >
+            <Download size={13} className="text-text-muted" aria-hidden />
+            <span>{t("histExportCsv")}</span>
+          </Link>
+          <Link
+            href="/expense/new"
+            className="hidden h-9 items-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-ink shadow-soft transition-colors hover:bg-primary-strong lg:flex"
+          >
+            <Plus size={14} aria-hidden />
+            <span>{t("histNewTx")}</span>
+          </Link>
         </div>
       </header>
 
-      {/* ── Cash-flow hero: net headline, split rule, peak, flow switcher ── */}
-      <HistoryHero
-        inflow={summary.inflow}
-        outflow={summary.outflow}
-        net={summary.net}
-        peak={summary.peak > 0 ? { label: summary.peakLabel, value: fmt(summary.peak) } : null}
-        fmt={fmt}
-        flow={flow}
-        onFlow={(f) => {
-          setFlow(f);
-          setPage(0);
-        }}
-      />
-      <div className="mt-2 space-y-2 px-1">
+      {/* ── 4 stat cards ── */}
+      <section className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <StatCard
+          label={t("statTotalOutflow")}
+          value={bare(summary.outflow)}
+          caption={
+            prevTotals ? (
+              <DeltaChip pct={pctDelta(summary.outflow, prevTotals.outflow)} tone="danger" label={t("histVsPrevPeriod")} />
+            ) : (
+              <span className="text-[11px] text-faint">
+                {summary.expenseCount} {t("expense")}
+              </span>
+            )
+          }
+        />
+        <StatCard
+          label={t("statTotalInflow")}
+          value={bare(summary.inflow)}
+          caption={
+            prevTotals ? (
+              <DeltaChip pct={pctDelta(summary.inflow, prevTotals.inflow)} tone="income" label={t("histVsPrevPeriod")} />
+            ) : (
+              <span className="text-[11px] text-faint">
+                {totalCount - summary.expenseCount} {t("income")}
+              </span>
+            )
+          }
+        />
+        <StatCard
+          label={t("statAvgTicket")}
+          value={bare(summary.expenseCount > 0 ? summary.outflow / summary.expenseCount : 0)}
+          caption={
+            <span className="text-[11px] text-faint">
+              {summary.expenseCount} {t("expense")}
+            </span>
+          }
+        />
+        <StatCard
+          label={t("statNetFlow")}
+          value={`${summary.net >= 0 ? "+" : "−"}${bare(Math.abs(summary.net))}`}
+          caption={
+            <span className={`text-[11px] font-semibold ${summary.net >= 0 ? "text-income" : "text-danger"}`}>
+              {summary.inflow > 0
+                ? t("histSavedPct").replace("{n}", String(Math.round((summary.net / summary.inflow) * 100)))
+                : `${totalCount} ${t("entriesLabel")}`}
+            </span>
+          }
+        />
+      </section>
+
+      <div className="mt-2 px-1">
         <TodayRateLine
           live={{ income: summary.inflow, expense: summary.outflow }}
           frozen={historyFrozenTotals}
@@ -374,420 +795,409 @@ export function HistoryRegister({
         />
       </div>
 
-      {/* ── Control bar ── */}
-      <div className="panel mt-4 overflow-hidden" ref={panelRef}>
-        <div className="flex flex-wrap items-center gap-2 p-3">
-          <div className="relative min-w-[140px] flex-1">
-            <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
+      {/* ── Register card: filter row + ledger + pager ── */}
+      <div ref={panelRef} className="mt-5 overflow-hidden rounded-xl border border-border bg-surface shadow-soft">
+        {/* Filter row */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-border p-3 sm:p-3.5">
+          <div className="relative min-w-[200px] flex-1">
+            <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" aria-hidden />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={t("search")}
-              aria-label={t("search")}
-              className="h-11 w-full border border-border bg-input pl-9 pr-8 text-sm text-text placeholder:text-faint transition-colors focus:border-primary focus:outline-none sm:h-10"
+              placeholder={t("histSearchAll")}
+              aria-label={t("histSearchAll")}
+              className="h-9 w-full rounded-lg border border-border bg-input pl-9 pr-8 text-xs text-text placeholder:text-faint transition-colors focus:border-primary focus:outline-none"
             />
             {search && (
               <button
                 onClick={() => setSearch("")}
                 aria-label={t("clear")}
-                className="absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center text-faint transition-colors hover:text-text"
+                className="absolute right-2 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center text-faint transition-colors hover:text-text"
               >
-                <X size={14} />
+                <X size={13} />
               </button>
             )}
           </div>
-          <select
-            aria-label="Sort entries"
-            value={sortKey}
-            onChange={(e) => setSortKey(e.target.value as SortKey)}
-            className="h-11 border border-border bg-input px-2 text-xs font-bold text-text-muted sm:h-10"
-          >
-            {SORTS.map((s) => (
-              <option key={s.key} value={s.key}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={() => setFiltersOpen(true)}
-            className="sf-lift relative flex h-11 shrink-0 items-center gap-1.5 border border-border bg-surface px-3.5 text-[11px] font-bold uppercase tracking-[0.06em] text-text-muted hover:border-text-muted hover:text-text lg:hidden"
-          >
-            <SlidersHorizontal size={14} /> {t("histFilters")}
-            {sheetFilterCount > 0 && (
-              <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-white">
-                {sheetFilterCount}
-              </span>
-            )}
-          </button>
-          {isFiltered && (
+
+          {/* lg+: inline filter row */}
+          <div className="hidden items-center gap-2 lg:flex">
+            <span className="hidden items-center gap-1.5 text-xs text-text-muted">
+              <SlidersHorizontal size={13} aria-hidden /> {t("histFilters")}:
+            </span>
+            <div className="w-[150px]">{periodControl}</div>
+            <div className="w-[130px]">{typeControl}</div>
+            <div className="w-[170px]">{categoryControl}</div>
+            <div className="w-[150px]">{accountControl}</div>
+            <div className="w-[150px]">{channelControl}</div>
+            <div className="w-[150px]">{sortControl}</div>
+          </div>
+
+          {/* below lg: Filters button */}
+          <div className="relative lg:hidden">
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((v) => !v)}
+              aria-expanded={filtersOpen}
+              className={`flex h-9 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold transition-colors ${
+                filtersOpen || activeFilterCount > 0
+                  ? "border-primary bg-[var(--sf-primary-light)] text-primary"
+                  : "border-border bg-surface text-text-muted hover:text-text"
+              }`}
+            >
+              <SlidersHorizontal size={13} aria-hidden />
+              {t("histFilters")}
+              {activeFilterCount > 0 && (
+                <span className="numeric grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-ink">
+                  {activeFilterCount}
+                </span>
+              )}
+              <ChevronDown
+                size={13}
+                aria-hidden
+                className={`transition-transform ${filtersOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+          </div>
+
+          {(filterCount > 0 || search) && (
             <button
               onClick={resetAll}
-              className="flex h-11 items-center gap-1 px-2 text-[11px] font-bold uppercase tracking-[0.06em] text-rust transition-colors hover:opacity-80 sm:h-10"
+              className="flex h-9 items-center rounded-lg px-2.5 text-xs font-medium text-danger transition-colors hover:bg-[var(--sf-tint-danger)]"
             >
-              {t("filtered")} <X size={12} />
+              {t("clear")}
             </button>
           )}
+
+          <span className="numeric ml-auto whitespace-nowrap text-[11px] font-semibold text-faint">
+            {t("histShowing").replace("{n}", String(totalCount))}
+          </span>
         </div>
 
-        {/* Removable active-filter chips (both layouts). */}
-        {chips.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 border-t border-border bg-surface-elevated/30 px-3 py-2">
-            <span className="caps-faint mr-0.5">{t("histActiveFilters")}</span>
-            {chips.map((c) => (
-              <span
-                key={c.key}
-                className="flex h-7 items-center gap-1.5 border border-border bg-surface pl-2.5 pr-1 text-[11px] font-bold text-text"
-              >
-                <span className="max-w-[160px] truncate">{c.label}</span>
+        {/* below lg: filter bottom sheet */}
+        {filtersOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label={t("histFilters")}>
+            <button
+              type="button"
+              tabIndex={-1}
+              aria-label={t("clear")}
+              onClick={() => setFiltersOpen(false)}
+              className="absolute inset-0 cursor-default bg-black/40"
+            />
+            <div className="sf-sheet absolute inset-x-0 bottom-0 flex max-h-[85vh] flex-col rounded-t-2xl bg-surface">
+              <div aria-hidden className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-[var(--sf-grab)]" />
+              <div className="flex items-center justify-between px-4 pb-2 pt-3">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-bold text-text">{t("histFilters")}</p>
+                  {activeFilterCount > 0 && (
+                    <span className="numeric rounded-full bg-[var(--sf-primary-light)] px-2 py-0.5 text-[10px] font-bold text-primary">
+                      {activeFilterCount} active
+                    </span>
+                  )}
+                </div>
                 <button
-                  onClick={c.onRemove}
-                  aria-label={`${t("clear")} ${c.label}`}
-                  className="grid h-5 w-5 place-items-center text-faint transition-colors hover:text-danger"
+                  type="button"
+                  onClick={() => setFiltersOpen(false)}
+                  aria-label={t("clear")}
+                  className="grid h-8 w-8 place-items-center rounded-lg text-text-muted transition-colors hover:bg-surface-elevated"
                 >
-                  <X size={12} />
+                  <X size={16} />
                 </button>
-              </span>
-            ))}
+              </div>
+              <div className="flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 pb-2">
+                <div>
+                  <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-faint">Period</p>
+                  {periodControl}
+                </div>
+                {/* Native selects in the sheet: the OS renders the option
+                    list, so a dropdown can never nest a second scrollbar
+                    inside the sheet's own scroll container. Period stays a
+                    FloatingSelect (it opens the custom-range calendar). */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-faint">Type</p>
+                    <SheetSelect
+                      ariaLabel="Type"
+                      value={flow}
+                      onChange={(v) => {
+                        setFlow(v as FlowFilter);
+                        setPage(0);
+                      }}
+                      options={[
+                        { value: "all", label: t("histAllTypes") },
+                        { value: "expense", label: t("expense") },
+                        { value: "income", label: t("income") },
+                      ]}
+                    />
+                  </div>
+                  <div>
+                    <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-faint">Channel</p>
+                    <SheetSelect
+                      ariaLabel="Channel"
+                      value={method}
+                      onChange={(v) => {
+                        setMethod(v);
+                        setPage(0);
+                      }}
+                      options={[
+                        { value: "", label: t("histAllChannels") },
+                        ...PAYMENT_METHODS.map((m) => ({ value: m, label: m })),
+                      ]}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-faint">Category</p>
+                  <SheetSelect
+                    ariaLabel="Category"
+                    value={categoryId}
+                    onChange={(v) => {
+                      setCategoryId(v);
+                      setPage(0);
+                    }}
+                    options={[{ value: "", label: t("histAllCategories") }, ...railCategories]}
+                  />
+                </div>
+                <div>
+                  <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-faint">Account</p>
+                  <SheetSelect
+                    ariaLabel="Account"
+                    value={accountId}
+                    onChange={(v) => {
+                      setAccountId(v);
+                      setPage(0);
+                    }}
+                    options={[{ value: "", label: t("histAllAccounts") }, ...railAccounts]}
+                  />
+                </div>
+                <div>
+                  <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-faint">Sort by</p>
+                  <SheetSelect
+                    ariaLabel="Sort by"
+                    value={sortKey}
+                    onChange={(v) => {
+                      setSortKey(v as SortKey);
+                      setPage(0);
+                    }}
+                    options={SORTS.map((s) => ({ value: s.key, label: s.label }))}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-2 border-t border-border p-4">
+                {filterCount > 0 ? (
+                  <button
+                    type="button"
+                    onClick={resetAll}
+                    className="flex h-10 items-center rounded-lg px-3 text-xs font-semibold text-danger transition-colors hover:bg-[var(--sf-tint-danger)]"
+                  >
+                    {t("clear")}
+                  </button>
+                ) : (
+                  <span />
+                )}
+                <button
+                  type="button"
+                  onClick={() => setFiltersOpen(false)}
+                  className="flex h-10 flex-1 items-center justify-center rounded-lg bg-primary text-sm font-semibold text-primary-ink transition-colors hover:bg-primary-strong"
+                >
+                  {t("done")}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
-        {/* Desktop enhancement: inline filter register. */}
-        <div className="hidden flex-wrap items-center gap-x-3 gap-y-2 border-t border-border bg-surface-elevated/20 px-3 py-2 lg:flex">
-          <div className="flex items-center gap-1" role="group" aria-label="Date range">
-            {(["all", "today", "week", "cycle"] as DatePreset[]).map((p) => (
-              <button
-                key={p}
-                onClick={() => applyPreset(p)}
-                className={`h-8 border px-3 text-[11px] font-bold uppercase tracking-[0.06em] transition ${
-                  preset === p ? "border-primary bg-primary text-white" : "border-border text-text-muted hover:text-text"
-                }`}
-              >
-                {p === "all" ? "All time" : p === "cycle" ? "Cycle" : p}
-              </button>
-            ))}
-            <button
-              onClick={() => applyPreset("custom")}
-              className={`h-8 border px-3 text-[11px] font-bold uppercase tracking-[0.06em] transition ${
-                preset === "custom" ? "border-primary bg-primary text-white" : "border-border text-text-muted hover:text-text"
-              }`}
-            >
-              Custom
-            </button>
-          </div>
-          {preset === "custom" && (
-            <RangeField from={from} to={to} boxClassName="h-8 !min-h-[32px]" onChange={(f, t2) => { setFrom(f); setTo(t2); }} />
-          )}
-          <FilterSelect
-            label="Category"
-            value={categoryId}
-            onChange={setCategoryId}
-            anyLabel="Any category"
-            options={categories
-              .filter((c) => flow === "all" || c.type === flow)
-              .map((c) => ({ value: c.id, label: c.name }))}
-          />
-          <FilterSelect
-            label="Channel"
-            value={method}
-            onChange={setMethod}
-            anyLabel="Any channel"
-            options={PAYMENT_METHODS.map((m) => ({ value: m, label: m }))}
-          />
-          <FilterSelect
-            label="Account"
-            value={accountId}
-            onChange={setAccountId}
-            anyLabel="Any account"
-            options={accounts.map((a) => ({ value: a.id, label: a.name }))}
-          />
-          <div className="flex items-center gap-1">
-            <input
-              type="number"
-              inputMode="decimal"
-              min="0"
-              placeholder="Min"
-              aria-label="Minimum amount"
-              value={min}
-              onChange={(e) => setMin(e.target.value)}
-              className="h-8 w-20 border border-border bg-input px-2 text-xs text-text placeholder:text-faint focus:border-primary focus:outline-none"
-            />
-            <input
-              type="number"
-              inputMode="decimal"
-              min="0"
-              placeholder="Max"
-              aria-label="Maximum amount"
-              value={max}
-              onChange={(e) => setMax(e.target.value)}
-              className="h-8 w-20 border border-border bg-input px-2 text-xs text-text placeholder:text-faint focus:border-primary focus:outline-none"
-            />
-          </div>
-        </div>
-
+        {/* Ledger body */}
         {loading && rows.length === 0 ? (
           <div className="space-y-3 p-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="h-14 w-full lg:h-11" />
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
         ) : error ? (
           <EmptyState title={t("error")} message={error} />
         ) : rows.length === 0 ? (
-          <EmptyState title={t("noTransactions")} message={t("noTransactionsHint")} />
+          <EmptyState
+            title={t("noTransactions")}
+            message={t("noTransactionsHint")}
+            action={
+              <button
+                onClick={resetAll}
+                className="flex h-10 items-center justify-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-ink transition-colors hover:bg-primary-strong"
+              >
+                <X size={14} aria-hidden /> {t("clear")}
+              </button>
+            }
+          />
         ) : (
           <>
-            {/* ── MOBILE BASE: day cards on a journal rail ── */}
-            <div className="sf-stagger space-y-3 p-3 sm:p-4 lg:hidden">
-              {sections.map((section) => (
-                <DayCard
-                  key={section.date}
-                  date={section.date}
-                  total={section.total}
-                  locale={locale}
-                  fmt={fmt}
-                >
-                  {section.rows.map((row) => (
-                    <JournalRow
+            {/* lg+ ledger table */}
+            <div className="hidden lg:block">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-border text-[10px] font-bold uppercase tracking-wider text-faint">
+                    <th className="py-3 pl-5 pr-4 font-semibold">
+                      <SortHead label={t("histColDate")} field="date" sortKey={sortKey} onSort={sortBy} />
+                    </th>
+                    <th className="py-3 px-4 font-semibold">{t("histColMerchant")}</th>
+                    <th className="py-3 px-4 font-semibold">{t("histColCategory")}</th>
+                    <th className="py-3 px-4 font-semibold">{t("histColAccount")}</th>
+                    <th className="py-3 pl-4 pr-5 text-right font-semibold">
+                      <SortHead label={t("histColAmount")} field="amount" sortKey={sortKey} onSort={sortBy} />
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {pageRows.map((row) => (
+                    <TxTableRow
                       key={row.id}
                       row={row}
-                      amount={fmt(convert(row))}
+                      amount={bare(convert(row))}
                       original={
                         row.currency !== displayCurrency
                           ? mask(formatMoney(row.amount, row.currency, locale))
                           : null
                       }
                       locale={locale}
+                      editLabel={t("editExpense")}
                       onOpen={() => setSelected(row)}
                     />
                   ))}
-                </DayCard>
-              ))}
-            </div>
-
-            {/* ── DESKTOP ENHANCEMENT: aligned ledger table ── */}
-            <div className="hidden overflow-x-auto lg:block">
-              <table className="w-full min-w-[880px] text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left text-[10px] font-bold uppercase tracking-widest text-faint">
-                    <th className="px-5 py-3">Transaction</th>
-                    <th className="px-3 py-3">Category</th>
-                    <th className="px-3 py-3">Account</th>
-                    <th className="px-3 py-3">Channel</th>
-                    <th className="px-3 py-3">Time</th>
-                    <th className="px-5 py-3 text-right">Amount</th>
-                    <th className="w-10 py-3" aria-label="Actions" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {sections.map((section) => (
-                    <Fragment key={section.date}>
-                      <tr className="border-b border-border bg-surface-elevated/50">
-                        <td colSpan={7} className="px-5 py-2">
-                          <div className="flex items-center gap-2.5">
-                            <DayChip date={section.date} locale={locale} compact />
-                            <span className="caps">{groupDate(section.date, locale)}</span>
-                            <span className="rule-after" />
-                            <span
-                              className={`numeric text-xs font-bold ${
-                                section.total >= 0 ? "text-income" : "text-danger"
-                              }`}
-                            >
-                              {section.total >= 0 ? "+" : "−"}
-                              {fmt(Math.abs(section.total)).replace(/^[^\d]*/, "")}
-                            </span>
-                          </div>
-                        </td>
-                      </tr>
-                      {section.rows.map((row) => (
-                        <HistoryRow
-                          key={row.id}
-                          row={row}
-                          amount={fmt(convert(row))}
-                          original={
-                            row.currency !== displayCurrency
-                              ? mask(formatMoney(row.amount, row.currency, locale))
-                              : null
-                          }
-                          locale={locale}
-                          editLabel={t("editExpense")}
-                          onOpen={() => setSelected(row)}
-                        />
-                      ))}
-                    </Fragment>
-                  ))}
                 </tbody>
-                <tfoot>
-                  <tr className="end-rule bg-surface-elevated/50">
-                    <td colSpan={5} className="px-5 py-2.5">
-                      <span className="caps">Totals — {rows.length} matching entries</span>
-                    </td>
-                    <td className="numeric px-3 py-2.5 text-right text-xs font-extrabold text-text">
-                      <span className="text-income">+{fmt(summary.inflow).replace(/^[^\d]*/, "")}</span>
-                      {" / "}
-                      <span className="text-danger">−{fmt(summary.outflow).replace(/^[^\d]*/, "")}</span>
-                    </td>
-                    <td className="px-5 py-2.5" />
-                  </tr>
-                  <tr>
-                    <td colSpan={5} className="px-5 pb-2 pt-1">
-                      <span className="caps-faint">Net</span>
-                    </td>
-                    <td
-                      className={`numeric px-3 pb-2 pt-1 text-right text-xs font-extrabold ${
-                        summary.net >= 0 ? "text-income" : "text-danger"
-                      }`}
-                    >
-                      {summary.net >= 0 ? "+" : "−"}
-                      {fmt(Math.abs(summary.net)).replace(/^[^\d]*/, "")}
-                    </td>
-                    <td />
-                  </tr>
-                </tfoot>
               </table>
             </div>
 
-            {/* Pager — same page window on both layouts. */}
-            <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-3">
-              <button
-                onClick={() => goPage(Math.max(0, page - 1))}
-                disabled={page === 0}
-                className="sf-lift flex h-11 items-center gap-1 border border-border bg-surface px-4 text-[11px] font-bold uppercase tracking-[0.06em] text-text-muted hover:border-text-muted hover:text-text disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <ChevronLeft size={14} /> {t("prev")}
-              </button>
-              <span className="numeric text-center text-[11px] font-bold text-faint">
-                <span className="lg:hidden">{t("histPage")} </span>
-                {page + 1} / {pageCount} · {pageRows.length} / {rows.length}
-              </span>
-              <button
-                onClick={() => goPage(Math.min(pageCount - 1, page + 1))}
-                disabled={page >= pageCount - 1}
-                className="sf-lift flex h-11 items-center gap-1 border border-border bg-surface px-4 text-[11px] font-bold uppercase tracking-[0.06em] text-text-muted hover:border-text-muted hover:text-text disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {t("next")} <ChevronRight size={14} />
-              </button>
+            {/* Below lg: day-grouped touch list */}
+            <div className="lg:hidden">
+              {sections.map((section, gi) => (
+                <section key={section.date} className={gi > 0 ? "border-t border-border" : undefined}>
+                  <div className="flex items-baseline justify-between gap-3 px-4 py-2.5">
+                    <p className="truncate text-[10.5px] font-bold uppercase tracking-[0.08em] text-faint">
+                      {groupDate(section.date, locale)}
+                    </p>
+                    <p
+                      className={`numeric shrink-0 text-[11px] font-bold ${
+                        section.total >= 0 ? "text-income" : "text-danger"
+                      }`}
+                    >
+                      {section.total >= 0 ? "+" : "−"}
+                      {bare(Math.abs(section.total))}{" "}
+                      <span className="font-semibold text-faint">{t("histDayNet")}</span>
+                    </p>
+                  </div>
+                  {section.rows.map((row) => (
+                    <RegisterRow
+                      key={row.id}
+                      row={row}
+                      amount={bare(convert(row))}
+                      original={
+                        row.currency !== displayCurrency
+                          ? mask(formatMoney(row.amount, row.currency, locale))
+                          : null
+                      }
+                      locale={locale}
+                      editLabel={t("editExpense")}
+                      onOpen={() => setSelected(row)}
+                    />
+                  ))}
+                </section>
+              ))}
+            </div>
+
+            {/* Pager footer */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 sm:px-5">
+              <div className="hidden items-center gap-2 sm:flex">
+                <span className="hidden text-[11px] text-faint sm:inline">{t("histPerPage")}:</span>
+                <FloatingSelect
+                  className="relative w-[74px]"
+                  label={String(pageSize)}
+                  open={openMenu === "pagesize"}
+                  onToggle={() => toggleMenu("pagesize")}
+                >
+                  {PAGE_SIZES.map((n) => (
+                    <SelectRow
+                      key={n}
+                      selected={pageSize === n}
+                      label={String(n)}
+                      onSelect={() => {
+                        setPageSize(n);
+                        setPage(0);
+                        setOpenMenu(null);
+                      }}
+                    />
+                  ))}
+                </FloatingSelect>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <span className="numeric text-[11px] font-semibold text-faint">
+                  {t("histPage")} {page + 1} / {pageCount}
+                </span>
+                <button
+                  onClick={() => goPage(Math.max(0, page - 1))}
+                  disabled={page === 0}
+                  className="flex h-9 items-center gap-1 rounded-lg border border-border bg-surface px-3.5 text-xs font-medium text-text-muted transition-colors hover:bg-surface-elevated hover:text-text disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ChevronLeft size={13} aria-hidden /> {t("prev")}
+                </button>
+                <button
+                  onClick={() => goPage(Math.min(pageCount - 1, page + 1))}
+                  disabled={page >= pageCount - 1}
+                  className="flex h-9 items-center gap-1 rounded-lg border border-border bg-surface px-3.5 text-xs font-medium text-text-muted transition-colors hover:bg-surface-elevated hover:text-text disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {t("next")} <ChevronRight size={13} aria-hidden />
+                </button>
+              </div>
             </div>
           </>
         )}
       </div>
 
-      {/* Mobile filter sheet — same state as the desktop register. */}
-      <Modal open={filtersOpen} title="Filter register" onClose={() => setFiltersOpen(false)} maxWidth="max-w-lg">
-        <div className="space-y-4 p-5">
-          <div className="grid grid-cols-2 gap-2">
-            <label className="caps col-span-2">Period</label>
-            {(["all", "today", "week", "cycle", "custom"] as DatePreset[]).map((p) => (
-              <button
-                key={p}
-                onClick={() => applyPreset(p)}
-                className={`h-11 border text-xs font-bold uppercase tracking-[0.06em] transition ${
-                  preset === p ? "border-primary bg-primary text-white" : "border-border text-text-muted hover:text-text"
-                }`}
-              >
-                {p === "all" ? "All time" : p === "cycle" ? "This cycle" : p}
-              </button>
-            ))}
-          </div>
-          {preset === "custom" && (
-            <div className="space-y-1.5">
-              <p className="caps">Custom range</p>
-              <RangeField from={from} to={to} boxClassName="h-11 justify-center" onChange={(f, t2) => { setFrom(f); setTo(t2); }} />
-            </div>
-          )}
-          <div className="space-y-3">
-            <p className="caps">Narrow</p>
-            <select
-              aria-label="Filter by category"
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              className="h-11 w-full border border-border bg-input px-2 text-sm text-text"
-            >
-              <option value="">Any category</option>
-              {categories
-                .filter((c) => flow === "all" || c.type === flow)
-                .map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-            </select>
-            <div className="grid grid-cols-2 gap-2">
-              <select
-                aria-label="Filter by payment method"
-                value={method}
-                onChange={(e) => setMethod(e.target.value)}
-                className="h-11 w-full border border-border bg-input px-2 text-sm text-text"
-              >
-                <option value="">Any channel</option>
-                {PAYMENT_METHODS.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
-              <select
-                aria-label="Filter by account"
-                value={accountId}
-                onChange={(e) => setAccountId(e.target.value)}
-                className="h-11 w-full border border-border bg-input px-2 text-sm text-text"
-              >
-                <option value="">Any account</option>
-                {accounts.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="number"
-                inputMode="decimal"
-                min="0"
-                placeholder="Min amount"
-                aria-label="Minimum amount"
-                value={min}
-                onChange={(e) => setMin(e.target.value)}
-                className="h-11 w-full border border-border bg-input px-3 text-sm text-text placeholder:text-faint"
-              />
-              <input
-                type="number"
-                inputMode="decimal"
-                min="0"
-                placeholder="Max amount"
-                aria-label="Maximum amount"
-                value={max}
-                onChange={(e) => setMax(e.target.value)}
-                className="h-11 w-full border border-border bg-input px-3 text-sm text-text placeholder:text-faint"
-              />
-            </div>
-            <select
-              aria-label="Sort entries"
-              value={sortKey}
-              onChange={(e) => setSortKey(e.target.value as SortKey)}
-              className="h-11 w-full border border-border bg-input px-2 text-sm text-text"
-            >
-              {SORTS.map((s) => (
-                <option key={s.key} value={s.key}>
-                  {s.label}
-                </option>
+      {/* ── Insights row: category share + channel share ── */}
+      {!loading && !error && rows.length > 0 && (
+        <section className="mt-6 grid gap-4 lg:grid-cols-2">
+          <div className="rounded-xl border border-border bg-surface p-5 shadow-soft">
+            <h2 className="text-[15px] font-bold text-text">{t("histCategoryInsights")}</h2>
+            <div className="mt-4 space-y-3.5">
+              {categoryInsights.map((c) => (
+                <div key={c.label}>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium text-text">{c.label}</span>
+                    <span className="numeric font-semibold text-text-muted">{c.pct}%</span>
+                  </div>
+                  <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-surface-elevated">
+                    <div className="h-full rounded-full bg-income transition-all duration-500" style={{ width: `${c.pct}%` }} />
+                  </div>
+                </div>
               ))}
-            </select>
-          </div>
-          <div className="flex items-center justify-between gap-2 pt-1">
-            <button
-              onClick={resetAll}
-              className="h-11 px-3 text-[11px] font-bold uppercase tracking-wide text-faint transition-colors hover:text-danger"
+            </div>
+            <Link
+              href="/analytics"
+              className="mt-5 flex items-center justify-center gap-1 border-t border-border pt-3.5 text-xs font-semibold text-income transition-colors hover:brightness-75"
             >
-              Clear all
-            </button>
-            <button
-              onClick={() => setFiltersOpen(false)}
-              className="h-11 min-w-[140px] flex-1 border border-primary bg-primary text-xs font-bold uppercase tracking-[0.08em] text-white transition-colors hover:bg-primary-strong"
-            >
-              Show {totalCount} result{totalCount === 1 ? "" : "s"}
-            </button>
+              <span>{t("histViewAnalytics")}</span>
+              <ChevronRight size={13} aria-hidden />
+            </Link>
           </div>
-        </div>
-      </Modal>
+
+          <div className="rounded-xl border border-border bg-surface p-5 shadow-soft">
+            <h2 className="text-[15px] font-bold text-text">{t("histChannelsTitle")}</h2>
+            <div className="mt-4 space-y-3.5">
+              {channelInsights.map((c) => (
+                <div key={c.label}>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium text-text">{c.label}</span>
+                    <span className="numeric font-semibold text-text-muted">
+                      {c.n} · {c.pct}%
+                    </span>
+                  </div>
+                  <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-surface-elevated">
+                    <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${c.pct}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <ExpenseDetailSheet
         row={selected}
@@ -799,291 +1209,85 @@ export function HistoryRegister({
   );
 }
 
-/* ── cash-flow hero — net headline + split rule + peak + flow switcher ── */
-function HistoryHero({
-  inflow,
-  outflow,
-  net,
-  peak,
-  fmt,
-  flow,
-  onFlow,
-}: {
-  inflow: number;
-  outflow: number;
-  net: number;
-  peak: { label: string; value: string } | null;
-  fmt: (n: number) => string;
-  flow: FlowFilter;
-  onFlow: (f: FlowFilter) => void;
-}) {
-  const { t } = useLanguage();
-  const total = inflow + outflow;
-  const incomePct = total > 0 ? Math.round((inflow / total) * 100) : 50;
-  return (
-    <section className="panel shadow-soft relative overflow-hidden">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full opacity-50"
-        style={{ background: "radial-gradient(closest-side, var(--sf-primary-light), transparent 75%)" }}
-      />
-      <div className="relative flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2.5 sm:px-5">
-        <span className="caps">{t("cashFlow")}</span>
-        {/* Flow switcher — segmented, thumb-sized on phones. */}
-        <div className="flex border border-border bg-input p-0.5" role="group" aria-label={t("allFlow")}>
-          {(["all", "expense", "income"] as FlowFilter[]).map((f) => (
-            <button
-              key={f}
-              onClick={() => onFlow(f)}
-              aria-pressed={flow === f}
-              className={`h-9 min-w-[64px] px-3 text-[11px] font-bold uppercase tracking-[0.06em] transition active:scale-[0.97] sm:h-8 ${
-                flow === f
-                  ? f === "income"
-                    ? "bg-income text-white"
-                    : f === "expense"
-                      ? "bg-danger text-white"
-                      : "bg-primary text-white"
-                  : "text-text-muted hover:text-text"
-              }`}
-            >
-              {f === "all" ? t("allFlow") : t(f)}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="relative px-4 py-4 sm:px-5">
-        <p className="caps-faint">{t("histNetFlow")}</p>
-        <div className={`figures mt-1 font-bold ${net >= 0 ? "text-income" : "text-danger"}`}>
-          <FitText basePx={34} minPx={18}>
-            {net >= 0 ? "+" : "−"}
-            {fmt(Math.abs(net)).replace(/^[^\d]*/, "")}
-          </FitText>
-        </div>
-        {/* Inflow / outflow split rule — one rounded bar, complement derived. */}
-        <div className="mt-3 flex h-2 overflow-hidden rounded-full" style={{ background: "var(--sf-track)" }}>
-          <span className="bg-income transition-[width] duration-500" style={{ width: `${incomePct}%` }} />
-          <span className="bg-danger transition-[width] duration-500" style={{ width: `${100 - incomePct}%` }} />
-        </div>
-        <div className="mt-3 grid grid-cols-3 gap-2 sm:gap-4">
-          <HeroStat label={t("totalInflow")} value={fmt(inflow)} tone="income" icon={ArrowUpRight} />
-          <HeroStat label={t("totalOutflow")} value={fmt(outflow)} tone="danger" icon={ArrowDownLeft} />
-          <HeroStat
-            label={t("analyticsKpiPeakTitle")}
-            value={peak ? peak.value : "—"}
-            sub={peak ? peak.label : undefined}
-            tone="muted"
-            icon={Flame}
-          />
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function HeroStat({
+/* ── Stat card (console look): caps label, mono figure, caption row. ── */
+function StatCard({
   label,
   value,
-  sub,
-  tone,
-  icon: Icon,
+  caption,
 }: {
   label: string;
   value: string;
-  sub?: string;
-  tone: "income" | "danger" | "muted";
-  icon: typeof ArrowUpRight;
+  caption: ReactNode;
 }) {
-  const toneCls = tone === "income" ? "text-income" : tone === "danger" ? "text-danger" : "text-text";
   return (
-    <div className="min-w-0">
-      <p className="caps flex min-h-[26px] items-center gap-1 sm:min-h-0">
-        <Icon size={12} className={`shrink-0 ${tone === "muted" ? "text-brass" : toneCls}`} aria-hidden />
-        <span>{label}</span>
+    <div className="rounded-xl border border-border bg-surface p-4 shadow-soft sm:p-5">
+      <p className="truncate text-[11px] font-bold uppercase tracking-wider text-text-muted">{label}</p>
+      <p className="numeric mt-2.5 truncate text-[22px] font-bold tracking-tight text-text sm:text-[24px]">
+        {value}
       </p>
-      <div className={`figures mt-1 text-sm font-bold sm:text-base ${toneCls}`}>
-        <FitText basePx={16} minPx={11}>{value}</FitText>
-      </div>
-      {sub && <p className="mt-0.5 truncate text-[10px] text-text-muted">{sub}</p>}
+      <div className="mt-2 flex min-h-4 items-center gap-1.5">{caption}</div>
     </div>
   );
 }
 
-/* ── laptop inline filter dropdown (caps label + hairline select) ── */
-function FilterSelect({
+/* ── Prev-window delta chip: arrow + signed pct + caption. ── */
+function DeltaChip({
+  pct,
+  tone,
   label,
-  value,
-  onChange,
-  anyLabel,
-  options,
 }: {
+  pct: number | null;
+  tone: "income" | "danger";
   label: string;
-  value: string;
-  onChange: (v: string) => void;
-  anyLabel: string;
-  options: { value: string; label: string }[];
 }) {
+  if (pct == null) {
+    return <span className="text-[11px] text-faint">{label}</span>;
+  }
   return (
-    <label className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.06em] text-faint">
-      {label}
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={`h-8 border bg-input px-2 text-[11px] font-bold text-text-muted ${
-          value ? "border-primary text-primary-strong" : "border-border"
+    <>
+      <span
+        className={`flex items-center gap-0.5 text-xs font-semibold ${
+          tone === "income" ? "text-income" : "text-danger"
         }`}
       >
-        <option value="">{anyLabel}</option>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </label>
+        {pct >= 0 ? <ArrowUpRight size={12} aria-hidden /> : <ArrowDownLeft size={12} aria-hidden />}
+        {pct >= 0 ? "+" : "−"}
+        {Math.abs(pct)}%
+      </span>
+      <span className="text-[11px] text-faint">{label}</span>
+    </>
   );
 }
 
-/* ── day rail chip: big numeral + month overline ── */
-function DayChip({ date, locale, compact }: { date: string; locale: string; compact?: boolean }) {
-  const d = new Date(`${date}T00:00:00`);
-  const day = new Intl.DateTimeFormat(locale, { day: "numeric" }).format(d);
-  const mon = new Intl.DateTimeFormat(locale, { month: "short" }).format(d).toUpperCase();
-  return (
-    <span
-      className={`grid shrink-0 place-items-center border border-border bg-surface leading-none ${
-        compact ? "h-8 w-8" : "h-11 w-11"
-      }`}
-      style={{ background: "var(--sf-select-tint)" }}
-      aria-hidden
-    >
-      <span className={`figures font-bold text-text ${compact ? "text-sm" : "text-base"}`}>{day}</span>
-      <span className={`font-bold tracking-[0.1em] text-faint ${compact ? "text-[7px]" : "text-[8px]"}`}>{mon}</span>
-    </span>
-  );
-}
-
-/* ── mobile day card: header rail + journal rows ── */
-function DayCard({
-  date,
-  total,
-  locale,
-  fmt,
-  children,
+/* ── Table sort header button. ── */
+export function SortHead({
+  label,
+  field,
+  sortKey,
+  onSort,
 }: {
-  date: string;
-  total: number;
-  locale: string;
-  fmt: (n: number) => string;
-  children: React.ReactNode;
+  label: string;
+  field: "date" | "amount";
+  sortKey: SortKey;
+  onSort: (field: "date" | "amount") => void;
 }) {
-  const { t } = useLanguage();
-  return (
-    <div className="panel overflow-hidden">
-      <div className="flex items-center gap-3 border-b border-border bg-surface-elevated/50 px-3 py-2.5">
-        <DayChip date={date} locale={locale} />
-        <div className="min-w-0 flex-1">
-          <p className="caps truncate">{groupDate(date, locale)}</p>
-          <p
-            className={`numeric mt-0.5 text-[11px] font-bold ${total >= 0 ? "text-income" : "text-danger"}`}
-          >
-            {total >= 0 ? "+" : "−"}
-            {fmt(Math.abs(total)).replace(/^[^\d]*/, "")}{" "}
-            <span className="font-semibold text-faint">{t("histDayNet")}</span>
-          </p>
-        </div>
-      </div>
-      {children}
-    </div>
-  );
-}
-
-/* ── mobile journal row: avatar, notes/receipt/recurring flags, locked
-   amount column (privacy reveal never shifts layout) ── */
-function JournalRow({
-  row,
-  amount,
-  original,
-  locale,
-  onOpen,
-}: {
-  row: ExpenseRow;
-  amount: string;
-  original: string | null;
-  locale: string;
-  onOpen: () => void;
-}) {
-  const isIncome = row.type === "income";
-  const catColor = row.categories?.color ?? "var(--sf-faint)";
-  const avatarStyle = isIncome
-    ? { borderColor: "var(--sf-income)", backgroundColor: "var(--sf-primary-light)", color: "var(--sf-income)" }
-    : { borderColor: catColor, backgroundColor: `${catColor}14`, color: catColor };
-  const CategoryGlyph = row.categories?.icon
-    ? categoryGlyph(row.categories.icon)
-    : isIncome
-      ? Plus
-      : Tag;
-  const time = row.time
-    ? new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" }).format(
-        new Date(`${row.date}T${row.time}`),
-      )
-    : null;
-  const meta = [row.categories?.name, row.payment_method, row.bank_accounts?.name, time]
-    .filter(Boolean)
-    .join(" · ");
+  const active = sortKey.startsWith(field);
   return (
     <button
-      onClick={onOpen}
-      className="flex w-full items-center gap-3 border-b border-border/60 px-3 py-3 text-left transition last:border-b-0 hover:bg-surface-elevated/40 active:bg-surface-elevated/70"
+      type="button"
+      onClick={() => onSort(field)}
+      aria-label={label}
+      className={`flex items-center gap-1 uppercase tracking-wider transition-colors hover:text-text ${active ? "text-text" : ""}`}
     >
-      <span
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border"
-        style={avatarStyle}
-        aria-hidden
-      >
-        <CategoryGlyph size={16} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-1.5">
-          <span className="truncate text-sm font-semibold text-text">
-            {row.description || row.categories?.name || "Transaction"}
-          </span>
-          {row.notes && <StickyNote size={11} className="shrink-0 text-faint" aria-label="Has notes" />}
-          {row.receipt_image_url && <ImageIcon size={11} className="shrink-0 text-faint" aria-label="Receipt attached" />}
-          {(row.is_recurring || row.recurring_rule_id) && (
-            <Repeat size={11} className="shrink-0 text-brass" aria-label="Recurring entry" />
-          )}
-        </span>
-        <span className="mt-0.5 block truncate text-[11px] text-faint">{meta}</span>
-      </span>
-      <span className="shrink-0 text-right">
-        <span
-          className={`figures flex items-center justify-end gap-0.5 text-[15px] font-bold ${
-            isIncome ? "text-income" : "text-text"
-          }`}
-          style={{ minWidth: "104px" }}
-        >
-          {isIncome ? (
-            <ArrowUpRight size={12} className="text-income" />
-          ) : (
-            <ArrowDownLeft size={12} className="text-danger" />
-          )}
-          {original && <span className="mr-0.5 text-[10px] font-bold text-faint">{row.currency}</span>}
-          {isIncome ? "+" : "−"}
-          {amount.replace(/^[^\d]*/, "")}
-        </span>
-        <span className={`caps mt-0.5 !text-[9px] ${isIncome ? "!text-income" : "!text-faint"}`}>
-          {isIncome ? "Income" : "Expense"}
-        </span>
-        {original && <span className="numeric mt-0.5 block text-[10px] text-faint">{original}</span>}
-      </span>
-      <ChevronRight size={14} className="shrink-0 text-faint" aria-hidden />
+      {label}
+      <ArrowUpDown size={11} className={active ? "text-primary" : "opacity-60"} aria-hidden />
     </button>
   );
 }
 
-/* ── desktop table row (enhanced layout) ── */
-function HistoryRow({
+/* ── lg+ ledger table row: date, chip + merchant, category pill, account,
+      locked-width mono amount (neutral spend, blue income), hover edit. ── */
+export function TxTableRow({
   row,
   amount,
   original,
@@ -1099,12 +1303,23 @@ function HistoryRow({
   onOpen: () => void;
 }) {
   const isIncome = row.type === "income";
-  const CategoryGlyph = row.categories?.icon ? categoryGlyph(row.categories.icon) : Tag;
+  const CategoryGlyph = row.categories?.icon ? categoryGlyph(row.categories.icon) : isIncome ? Plus : Tag;
+  const tileStyle = row.categories?.color
+    ? {
+        backgroundColor: `color-mix(in srgb, ${row.categories.color} 13%, transparent)`,
+        color: row.categories.color,
+      }
+    : undefined;
   const time = row.time
     ? new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" }).format(
         new Date(`${row.date}T${row.time}`),
       )
     : null;
+  const dateLabel = new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(`${row.date}T00:00:00`));
   return (
     <tr
       onClick={onOpen}
@@ -1112,78 +1327,167 @@ function HistoryRow({
         if (e.key === "Enter") onOpen();
       }}
       tabIndex={0}
+      role="button"
       aria-label={`Open record for ${row.description || row.categories?.name || "transaction"}`}
-      className="group cursor-pointer border-b border-border/50 transition last:border-0 hover:bg-surface-elevated/40 focus:bg-surface-elevated/60 focus:outline-none"
+      className="group cursor-pointer text-xs transition-colors hover:bg-surface-elevated/60 focus:bg-surface-elevated/60 focus:outline-none"
     >
-      <td className="px-5 py-2.5">
+      <td className="py-3.5 pl-5 pr-4 text-text-muted">{dateLabel}</td>
+      <td className="py-3.5 px-4">
         <div className="flex items-center gap-3">
           <span
-            className="h-7 w-1 shrink-0 transition-[height] group-hover:h-8"
-            style={{ backgroundColor: row.categories?.color ?? "var(--sf-faint)" }}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+            style={tileStyle}
             aria-hidden
-          />
-          <span className="max-w-[280px] truncate font-semibold text-text">
-            {row.description || row.categories?.name || "Transaction"}
+          >
+            <CategoryGlyph size={14} />
           </span>
-          <span className="flex shrink-0 items-center gap-1 text-faint">
-            {row.notes && <StickyNote size={11} aria-label="Has notes" />}
-            {row.receipt_image_url && <ImageIcon size={11} aria-label="Receipt attached" />}
-            {(row.is_recurring || row.recurring_rule_id) && <Repeat size={11} aria-label="Recurring entry" />}
+          <span className="min-w-0">
+            <span className="flex items-center gap-1.5">
+              <span className="truncate text-xs font-semibold text-text">
+                {row.description || row.categories?.name || "Transaction"}
+              </span>
+              {row.notes && <StickyNote size={11} className="shrink-0 text-faint" aria-label="Has notes" />}
+              {row.receipt_image_url && (
+                <ImageIcon size={11} className="shrink-0 text-faint" aria-label="Receipt attached" />
+              )}
+              {(row.is_recurring || row.recurring_rule_id) && (
+                <Repeat size={11} className="shrink-0 text-brass" aria-label="Recurring entry" />
+              )}
+            </span>
+            <span className="mt-0.5 block truncate text-[10px] text-faint">
+              {[row.payment_method, time].filter(Boolean).join(" · ")}
+            </span>
           </span>
         </div>
       </td>
-      <td className="px-3 py-2.5">
-        <span className="inline-flex items-center gap-1.5 border border-border bg-surface px-2 py-1 text-xs font-semibold text-text-muted">
-          <CategoryGlyph
-            size={12}
-            style={{ color: row.categories?.color ?? "var(--sf-faint)" }}
-            aria-hidden
-          />
-          {row.categories?.name ?? "—"}
-        </span>
-      </td>
-      <td className="px-3 py-2.5">
-        {row.bank_accounts ? (
-          <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-text-muted">
-            {(() => {
-              const AccountGlyph = accountGlyph(row.bank_accounts!.icon, row.bank_accounts!.account_type);
-              return <AccountGlyph size={13} aria-hidden />;
-            })()}
-            <span className="max-w-[130px] truncate">{row.bank_accounts.name}</span>
+      <td className="py-3.5 px-4">
+        {row.categories?.name ? (
+          <span className="inline-block max-w-[130px] truncate rounded-full bg-surface-elevated px-2.5 py-1 text-[10px] font-medium text-text-muted">
+            {row.categories.name}
           </span>
-        ) : (
-          <span className="text-faint">—</span>
-        )}
+        ) : null}
       </td>
-      <td className="px-3 py-2.5">
-        <span className="border border-border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-text-muted">
-          {row.payment_method}
-        </span>
-      </td>
-      <td className="numeric px-3 py-2.5 text-xs text-text-muted">{time ?? <span className="text-faint">—</span>}</td>
-      {/* Amount cell keeps a locked min-width so privacy reveal never shifts. */}
-      <td
-        className={`numeric px-5 py-2.5 text-right font-extrabold ${isIncome ? "text-income" : "text-text"}`}
-        style={{ minWidth: "150px" }}
-      >
-        <span className="inline-flex items-center gap-0.5">
-          {isIncome ? <ArrowUpRight size={13} /> : <ArrowDownLeft size={13} className="text-danger" />}
-          {original && <span className="mr-0.5 text-[10px] font-bold text-faint">{row.currency}</span>}
+      <td className="py-3.5 px-4 text-text-muted">{row.bank_accounts?.name ?? row.payment_method ?? "—"}</td>
+      <td className="py-3.5 pr-5 pl-4 text-right">
+        <span
+          className={`numeric inline-block text-right font-bold ${isIncome ? "text-income" : "text-text"}`}
+          style={{ minWidth: "104px" }}
+        >
+          {original && <span className="mr-1 text-[10px] font-bold text-faint">{row.currency}</span>}
           {isIncome ? "+" : "−"}
-          {amount.replace(/^[^\d]*/, "")}
+          {amount}
         </span>
-        {original && <span className="block text-[10px] font-normal text-faint">{original}</span>}
-      </td>
-      <td className="py-2.5 pr-4 text-right" onClick={(e) => e.stopPropagation()}>
         <Link
           href={`/expense/${row.id}`}
+          onClick={(e) => e.stopPropagation()}
           aria-label={editLabel}
-          className="inline-flex rounded-md p-1.5 text-faint opacity-0 transition group-hover:opacity-100 hover:bg-primary-light hover:text-primary focus:opacity-100"
+          className="ml-2 hidden rounded-md p-1.5 align-middle text-faint opacity-0 transition group-hover:opacity-100 hover:bg-[var(--sf-primary-light)] hover:text-primary focus:opacity-100 lg:inline-block"
         >
-          <Pencil size={14} />
+          <Pencil size={13} />
         </Link>
       </td>
     </tr>
+  );
+}
+
+/* ── Touch register row (below lg): chip, name + markers, method · account ·
+    time, locked-width amount, hover edit. ── */
+export function RegisterRow({
+  row,
+  amount,
+  original,
+  locale,
+  editLabel,
+  onOpen,
+}: {
+  row: ExpenseRow;
+  amount: string;
+  original: string | null;
+  locale: string;
+  editLabel: string;
+  onOpen: () => void;
+}) {
+  const isIncome = row.type === "income";
+  const CategoryGlyph = row.categories?.icon ? categoryGlyph(row.categories.icon) : isIncome ? Plus : Tag;
+  const AccountGlyph = row.bank_accounts?.icon ? accountGlyph(row.bank_accounts.icon) : null;
+  const tileStyle = row.categories?.color
+    ? {
+        backgroundColor: `color-mix(in srgb, ${row.categories.color} 13%, transparent)`,
+        color: row.categories.color,
+      }
+    : undefined;
+  const time = row.time
+    ? new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" }).format(
+        new Date(`${row.date}T${row.time}`),
+      )
+    : null;
+  const secondLine = [row.payment_method, row.bank_accounts?.name].filter(Boolean).join(" - ");
+  return (
+    <div
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") onOpen();
+      }}
+      tabIndex={0}
+      role="button"
+      aria-label={`Open record for ${row.description || row.categories?.name || "transaction"}`}
+      className="group flex min-h-[56px] cursor-pointer items-center gap-3 border-b border-border px-3 py-2.5 transition-colors last:border-b-0 hover:bg-surface-elevated/60 focus:bg-surface-elevated/60 focus:outline-none sm:px-4"
+    >
+      {/* Category icon chip. */}
+      <span
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+        style={tileStyle}
+        aria-hidden
+      >
+        <CategoryGlyph size={16} />
+      </span>
+
+      {/* Name + markers, method - account underneath. */}
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-1.5">
+          <span className="truncate text-[13.5px] font-medium text-text">
+            {row.description || row.categories?.name || "Transaction"}
+          </span>
+          {row.notes && <StickyNote size={11} className="shrink-0 text-faint" aria-label="Has notes" />}
+          {row.receipt_image_url && (
+            <ImageIcon size={11} className="shrink-0 text-faint" aria-label="Receipt attached" />
+          )}
+          {(row.is_recurring || row.recurring_rule_id) && (
+            <Repeat size={11} className="shrink-0 text-brass" aria-label="Recurring entry" />
+          )}
+        </span>
+        <span className="mt-0.5 flex items-center gap-1 text-[11px] text-faint">
+          {AccountGlyph && <AccountGlyph size={11} className="shrink-0" aria-hidden />}
+          <span className="truncate">
+            {secondLine}
+            {secondLine && time ? " · " : ""}
+            {time ?? ""}
+          </span>
+        </span>
+      </span>
+
+      {/* Amount + hover edit. Locked min-width: privacy reveal never shifts. */}
+      <span className="flex shrink-0 items-center gap-0.5">
+        <span
+          className={`figures flex items-center justify-end gap-0.5 text-[14.5px] font-bold ${
+            isIncome ? "text-income" : "text-text"
+          }`}
+          style={{ minWidth: "104px" }}
+        >
+          {original && <span className="mr-0.5 text-[10px] font-bold text-faint">{row.currency}</span>}
+          {isIncome ? "+" : "−"}
+          {amount}
+        </span>
+        <Link
+          href={`/expense/${row.id}`}
+          onClick={(e) => e.stopPropagation()}
+          aria-label={editLabel}
+          className="hidden rounded-md p-1.5 text-faint opacity-0 transition group-hover:opacity-100 hover:bg-[var(--sf-primary-light)] hover:text-primary focus:opacity-100 sm:block"
+        >
+          <Pencil size={14} />
+        </Link>
+      </span>
+    </div>
   );
 }
 
@@ -1200,9 +1504,9 @@ function groupDate(date: string, locale: string): string {
     month: "short",
     year: "numeric",
   }).format(d);
-  if (date === iso(today)) return `Today — ${label}`.toUpperCase();
-  if (date === iso(yest)) return `Yesterday — ${label}`.toUpperCase();
-  return label.toUpperCase();
+  if (date === iso(today)) return `Today · ${label}`;
+  if (date === iso(yest)) return `Yesterday · ${label}`;
+  return label;
 }
 
 /* ── Preview seam: client-side mirror of listExpenses' filtering + sorting. ── */

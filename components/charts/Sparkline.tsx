@@ -20,7 +20,7 @@ interface SparklineProps {
 /**
  * Compact trend line for stat tiles and card headers. Stretches to its
  * container width (viewBox units), smooth Catmull-Rom curve, optional
- * gradient fill and last-point marker. Pure SVG — no chart library.
+ * gradient fill and last-point marker. Pure SVG – no chart library.
  */
 export function Sparkline({
   values,

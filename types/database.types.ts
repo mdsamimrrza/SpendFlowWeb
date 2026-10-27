@@ -1,11 +1,11 @@
 /**
- * GENERATED-TYPES PLACEHOLDER — see docs/SCHEMA.md.
+ * GENERATED-TYPES PLACEHOLDER – see docs/SCHEMA.md.
  *
  * The Supabase CLI is not linked in this environment yet, so these types are
  * hand-derived from the committed migrations (docs/SCHEMA.md) and cover the
  * tables the web app touches. Replace this file wholesale with the output of
  * `supabase gen types typescript` (scripts/sync-supabase-types.mjs) once the
- * CLI is available — the import surface (Tables/Insert/Updates) matches what
+ * CLI is available – the import surface (Tables/Insert/Updates) matches what
  * the generator emits.
  */
 
@@ -130,7 +130,7 @@ export type Database = {
           preferred_currency: string;
           theme_preference: "light" | "dark" | "system";
           monthly_budget: number | null;
-          /** Live DB column (docs/SCHEMA.md §users) — the currency the stored
+          /** Live DB column (docs/SCHEMA.md §users) – the currency the stored
               monthly_budget figure is in; mobile writes it. */
           budget_currency: string | null;
           cycle_start_day: number;
@@ -365,7 +365,7 @@ export type Database = {
           base_currency: string | null;
           created_at: string;
           updated_at: string;
-          /** Bin trash column — set = in Bin, NULL = live (20260916 migration). */
+          /** Bin trash column – set = in Bin, NULL = live (20260916 migration). */
           deleted_at: string | null;
         };
         Insert: {
@@ -544,7 +544,7 @@ export type Database = {
           fetched_at: string;
           source: string | null;
         };
-        // Clients are read-only on this table (RLS revokes writes — docs/SUPABASE.md §1).
+        // Clients are read-only on this table (RLS revokes writes – docs/SUPABASE.md §1).
         Insert: never;
         Update: never;
       };
@@ -562,7 +562,7 @@ export type Database = {
           path: string;
           purged_at: string;
         };
-        // RLS with zero policies — only the SECURITY DEFINER functions touch it.
+        // RLS with zero policies – only the SECURITY DEFINER functions touch it.
         Insert: never;
         Update: never;
       };

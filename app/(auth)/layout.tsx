@@ -11,9 +11,9 @@ import { isSupabaseConfigured } from "@/utils/supabase/browser";
 
 /**
  * Auth shell for /sign-in, /sign-up and /forgot-password.
- * Mobile-first: below lg a compact masthead + aurora ambience behind one
- * parchment card. From lg (laptop) up the whole experience lives in ONE
- * master card — brand statement half on the left, form half on the right.
+ * Mobile-first: below lg a compact masthead + guilloche ambience behind one
+ * note-paper card. From lg (laptop) up the whole experience lives in ONE
+ * master card – brand statement half on the left, form half on the right.
  */
 export default function AuthLayout({ children }: { children: ReactNode }) {
   const { t } = useLanguage();
@@ -33,13 +33,6 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="relative min-h-dvh bg-background">
-      {/* Aurora ambience behind the form column (phones: behind the card). */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="aurora-blob aurora-primary -left-24 top-[-120px] h-[380px] w-[380px] opacity-30" />
-        <div className="aurora-blob aurora-blob-alt aurora-brass bottom-[-140px] right-[-120px] h-[420px] w-[420px] opacity-25" />
-        <div className="aurora-blob aurora-sky left-1/2 top-1/2 h-[320px] w-[320px] opacity-20" />
-      </div>
-
       <div className="relative flex min-h-dvh w-full flex-col">
         {/* Mobile masthead */}
         <header className="flex items-center justify-between px-5 py-2 lg:hidden">
@@ -53,7 +46,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        {/* Laptop/desktop controls — top right of the viewport */}
+        {/* Laptop/desktop controls – top right of the viewport */}
         <div className="absolute right-5 top-6 z-10 hidden items-center gap-2 lg:flex xl:right-10">
           <LangPills />
           <ThemeToggle className="h-9 w-9" />
@@ -63,7 +56,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           {/* Below lg: a plain centering wrapper. From lg: one master card
               (frame, accent bar and entrance handled by .sf-auth-master). */}
           <div className="sf-auth-master flex w-full max-w-[960px] justify-center lg:grid lg:grid-cols-[1.05fr_1fr] lg:items-stretch">
-            {/* ===== Brand half — laptop and up ===== */}
+            {/* ===== Brand half – laptop and up ===== */}
             <aside className="sf-auth-brand hidden flex-col justify-between p-8 lg:flex xl:p-10">
               <Link href="/" className="flex items-center gap-2.5">
                 <SpendFlowSeal size={34} />
@@ -71,7 +64,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
               </Link>
 
               <div className="py-6">
-                <h2 className="font-brand gradient-accent text-[28px] font-bold leading-[1.15] tracking-tight xl:text-[32px]">
+                <h2 className="font-display text-[28px] font-semibold leading-[1.15] tracking-tight text-text xl:text-[32px]">
                   {t("brandAuthHead")}
                 </h2>
                 <p className="mt-3 max-w-xs text-[13px] leading-relaxed text-text-muted">
@@ -93,7 +86,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
               <p className="stamp">{t("authFooterSynced")}</p>
             </aside>
 
-            {/* ===== Form half — the page's own card (children) ===== */}
+            {/* ===== Form half – the page's own card (children) ===== */}
             <div className="flex w-full justify-center lg:items-center lg:p-8 xl:p-10">
               {children}
             </div>

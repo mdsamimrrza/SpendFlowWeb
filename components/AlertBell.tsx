@@ -15,7 +15,7 @@ import {
 import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
 
 /**
- * Alert ledger — the notifications table stops being write-only. Bell +
+ * Alert ledger – the notifications table stops being write-only. Bell +
  * unread badge in the masthead; a dropdown panel anchored under the bell
  * browses persisted milestone alerts (APK Settings→Notifications
  * counterpart), mark-all-read, and the alert suppression reset.
@@ -40,7 +40,7 @@ export function AlertBell({ buttonClassName }: { buttonClassName?: string }) {
       setItems(rows);
       setUnread(rows.filter((r) => !r.is_read).length);
     } catch {
-      // best-effort — same tolerance as the alert writer
+      // best-effort – same tolerance as the alert writer
     } finally {
       setLoading(false);
     }
@@ -79,7 +79,7 @@ export function AlertBell({ buttonClassName }: { buttonClassName?: string }) {
     try {
       await markAllNotificationsRead(supabase, user.id);
     } catch {
-      // silent — refresh still shows truth
+      // silent – refresh still shows truth
     }
     void refresh();
   };
@@ -102,14 +102,14 @@ export function AlertBell({ buttonClassName }: { buttonClassName?: string }) {
         onClick={onToggle}
         aria-expanded={open}
         aria-haspopup="dialog"
-        aria-label={unread > 0 ? `${t("alerts")} — ${unread} ${t("alertsUnreadCount")}` : t("alerts")}
+        aria-label={unread > 0 ? `${t("alerts")} – ${unread} ${t("alertsUnreadCount")}` : t("alerts")}
         className={`relative grid place-items-center text-text-muted transition-colors hover:text-text ${buttonClassName ?? "p-2"}`}
       >
         <Bell size={17} />
         {unread > 0 && (
           <span
             aria-hidden
-            className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brass px-1 text-[9px] font-bold text-white"
+            className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brass px-1 text-[9px] font-bold text-primary-ink"
           >
             {unread > 9 ? "9+" : unread}
           </span>
@@ -118,7 +118,7 @@ export function AlertBell({ buttonClassName }: { buttonClassName?: string }) {
 
       {open && (
         <>
-          {/* click-away layer — same trick as the account menu */}
+          {/* click-away layer – same trick as the account menu */}
           <button
             aria-label={t("close")}
             tabIndex={-1}
@@ -186,7 +186,7 @@ export function AlertBell({ buttonClassName }: { buttonClassName?: string }) {
                 <button
                   onClick={() => void markAll()}
                   disabled={unread === 0}
-                  className="h-8 rounded-full border border-primary px-3.5 text-xs font-bold uppercase tracking-[0.08em] text-primary transition-colors hover:bg-primary hover:text-white disabled:opacity-40"
+                  className="h-8 rounded-lg bg-primary px-3.5 text-xs font-semibold text-primary-ink transition-colors hover:bg-primary-strong disabled:opacity-40"
                 >
                   {t("markAllRead")}
                 </button>

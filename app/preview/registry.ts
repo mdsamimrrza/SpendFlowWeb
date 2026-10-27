@@ -7,6 +7,7 @@
 import type { ComponentType } from "react";
 import Accounts from "./screens/accounts";
 import Analytics from "./screens/analytics";
+import Banknote from "./screens/banknote";
 import Bin from "./screens/bin";
 import Bullion from "./screens/bullion";
 import Categories from "./screens/categories";
@@ -25,6 +26,7 @@ import Transfer from "./screens/transfer";
 export const SCREENS: Record<string, ComponentType> = {
   accounts: Accounts,
   analytics: Analytics,
+  banknote: Banknote,
   bin: Bin,
   bullion: Bullion,
   categories: Categories,

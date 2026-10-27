@@ -18,7 +18,7 @@ export function Panel({ label, action, className = "", children, ...rest }: Pane
           <span className="caps whitespace-nowrap">{label}</span>
           {action && (
             // Constrained slot: long actions shrink (min-w-0) and scroll or
-            // truncate inside — they never push the masthead wider.
+            // truncate inside – they never push the masthead wider.
             <div className="flex min-w-0 items-center justify-end overflow-hidden">
               {action}
             </div>
@@ -30,7 +30,7 @@ export function Panel({ label, action, className = "", children, ...rest }: Pane
   );
 }
 
-/** Label + stretched hairline — replaces "section title" headers. */
+/** Label + stretched hairline – replaces "section title" headers. */
 export function SectionTitle({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return (
     <div className="mb-4 flex items-center gap-3">

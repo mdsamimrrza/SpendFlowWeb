@@ -1,7 +1,7 @@
 /**
  * Ad-hoc visual check: open each Settings modal (currency, theme, language,
  * security, notifications, sign-out) and capture it. Not part of the repo's
- * per-screen shot suite — run manually after touching settings modals.
+ * per-screen shot suite – run manually after touching settings modals.
  */
 import { chromium } from "playwright-core";
 

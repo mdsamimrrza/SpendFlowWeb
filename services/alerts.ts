@@ -1,5 +1,5 @@
 /**
- * Threshold alerts — mobile services/notifications.ts parity for web:
+ * Threshold alerts – mobile services/notifications.ts parity for web:
  * cycle-budget milestones (25/50/75/90/100%) and category budget thresholds
  * (90/100%) fire an in-app toast and persist a `notifications` row.
  *
@@ -65,7 +65,7 @@ function markSent(userId: string, key: string): void {
   try {
     localStorage.setItem(`sf_alert_sent_${monthKey()}_${userId.slice(0, 8)}_${key}`, "1");
   } catch {
-    // private mode — alerts will repeat per session, acceptable
+    // private mode – alerts will repeat per session, acceptable
   }
 }
 
@@ -121,7 +121,7 @@ async function persistNotification(
       data: data as Json,
     });
   } catch {
-    // best-effort parity with mobile — the toast already fired
+    // best-effort parity with mobile – the toast already fired
   }
 }
 
@@ -133,7 +133,7 @@ export interface BudgetAlertInput {
   fire: (message: string, kind?: "success" | "error" | "info") => void;
 }
 
-/** Cycle-budget milestones — deduped per user/month/threshold (DB-backed). */
+/** Cycle-budget milestones – deduped per user/month/threshold (DB-backed). */
 export async function checkBudgetAlerts(input: BudgetAlertInput): Promise<void> {
   const { supabase, userId, budget, spent, fire } = input;
   if (!(budget > 0)) return;
@@ -153,7 +153,7 @@ export async function checkBudgetAlerts(input: BudgetAlertInput): Promise<void> 
       t === 100
         ? "Cycle budget fully consumed."
         : `Spending has reached ${t}% of your cycle budget.`;
-    fire(`${title} — ${body}`, t >= 90 ? "error" : "info");
+    fire(`${title} – ${body}`, t >= 90 ? "error" : "info");
     await persistNotification(supabase, userId, "budget_threshold", title, body, {
       threshold: t,
       spent,
@@ -170,7 +170,7 @@ export interface CategoryAlertInput {
   fire: (message: string, kind?: "success" | "error" | "info") => void;
 }
 
-/** Category thresholds (90/100%) — deduped per user/month/category (DB-backed). */
+/** Category thresholds (90/100%) – deduped per user/month/category (DB-backed). */
 export async function checkCategoryAlerts(input: CategoryAlertInput): Promise<void> {
   const { supabase, userId, categories, fire } = input;
   const sent = await dbSentKeys(supabase, userId);
@@ -191,7 +191,7 @@ export async function checkCategoryAlerts(input: CategoryAlertInput): Promise<vo
         t === 100
           ? "Category limit fully consumed this cycle."
           : `Spending is at ${t}% of this category's monthly limit.`;
-      fire(`${title} — ${body}`, "info");
+      fire(`${title} – ${body}`, "info");
       await persistNotification(supabase, userId, "category_threshold", title, body, {
         category: c.name,
         threshold: t,

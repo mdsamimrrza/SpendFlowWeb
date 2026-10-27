@@ -1,17 +1,17 @@
 /**
- * Bullion service — mobile services/bullion.ts calibration parity
+ * Bullion service – mobile services/bullion.ts calibration parity
  * (docs/00-EXISTING-APP-AUDIT.md §3):
  *  - Nepal (FENEGOSIDA): fine gold ×1.20649, Tejabi 92.5588% of fine, silver ×1.22765
  *  - India (IBJA): gold ×1.0918 (6% customs + 3% GST), 22K (916) at 91.67%
  * Spot from api.gold-api.com (CORS-open); futures history from the shared
- * `bullion-history` edge function (Yahoo proxy — browsers can't hit Yahoo).
+ * `bullion-history` edge function (Yahoo proxy – browsers can't hit Yahoo).
  * Nepal chart/badges come ONLY from verified `market_gold_rates` rows
- * (mobile services/nepalGold.ts parity — never the futures proxy); the
+ * (mobile services/nepalGold.ts parity – never the futures proxy); the
  * futures series powers non-NP markets, converted at historical FX through
  * the same calibration and board rounding as the live board
  * (mobile buildBullionMarketHistoryAll parity).
  * 1 tola = 11.6638 g. FX basis: services/exchange.ts getRate() returns
- * USD per 1 unit — local = USD ÷ usdPerUnit (never × ).
+ * USD per 1 unit – local = USD ÷ usdPerUnit (never × ).
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
@@ -200,7 +200,7 @@ export async function computeBoard(
   }
   if (ccy === "INR") {
     // India (IBJA): the published figures are per 10 g / per 1 kg at whole
-    // rupees; tola and 22K (916) derive from them — mobile's INR rounding path.
+    // rupees; tola and 22K (916) derive from them – mobile's INR rounding path.
     const gold10g = round((goldPerTola / TOLA_G) * 10 * 1.0918);
     const goldTola = (gold10g / 10) * TOLA_G;
     const k22_10g = round(gold10g * 0.9167);
@@ -216,7 +216,7 @@ export async function computeBoard(
     };
   }
   // Any other profile currency (mobile parity): pure global spot, no
-  // domestic duty calibration and no board rounding — raw floats.
+  // domestic duty calibration and no board rounding – raw floats.
   const fine = goldPerTola;
   const tejabi = fine * 0.9167;
   const silver = silverPerTola;
@@ -334,7 +334,7 @@ export function officialBenchmarkPrice(rate: OfficialNepalRate, key: BenchmarkKe
   }
 }
 
-/** Verified official daily fixes (newest last) — the NP chart's only source. */
+/** Verified official daily fixes (newest last) – the NP chart's only source. */
 export async function fetchOfficialNepalHistory(
   supabase: SupabaseClient<Database>,
   days = 400,
@@ -385,7 +385,7 @@ export async function fetchOfficialNepalHistory(
 }
 
 // Pegged currencies are exact constants (mobile BULLION_PEGGED_UNITS_PER_USD)
-// — never fetched. Stored here on the web's USD-per-1-unit basis.
+// – never fetched. Stored here on the web's USD-per-1-unit basis.
 const PEGGED_USD_PER_UNIT: Record<string, number> = {
   USD: 1,
   QAR: 1 / 3.64,
@@ -395,7 +395,7 @@ const PEGGED_USD_PER_UNIT: Record<string, number> = {
 // NPR = INR ÷ 1.6 on the USD-per-unit basis (mobile NPR_PER_INR peg).
 const NPR_PER_INR = 1.6;
 
-/** USD-per-1-unit for each date — pegs constant, floats historical. */
+/** USD-per-1-unit for each date – pegs constant, floats historical. */
 async function fetchHistoricalUsdPerUnit(
   dates: string[],
   currency: string,
@@ -440,7 +440,7 @@ async function fetchHistoricalUsdPerUnit(
 }
 
 /**
- * Builds ALL FOUR benchmark series for the secondary market in one pass —
+ * Builds ALL FOUR benchmark series for the secondary market in one pass –
  * real futures closes × historical FX through the same calibration and
  * market-board rounding as the live board (mobile buildBullionMarketHistoryAll
  * parity; calibration keys off the CURRENCY: NPR → FENEGOSIDA, INR → IBJA,

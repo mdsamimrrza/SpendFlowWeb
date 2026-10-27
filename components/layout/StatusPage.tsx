@@ -38,7 +38,7 @@ export function StatusPage({ icon, tone, figure, title, body, actions }: StatusP
         </div>
 
         {figure && (
-          <p className="mt-6 font-brand text-[64px] font-extrabold leading-none tracking-tight text-text">
+          <p className="figures-display mt-6 text-[64px] leading-none text-text">
             {figure}
           </p>
         )}

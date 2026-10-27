@@ -1,6 +1,6 @@
 "use client";
 
-import { DashboardShell } from "@/components/layout/DashboardShell";
+import { AppShell } from "@/components/shell/AppShell";
 import {
   BullionStatement,
   type BullionInject,
@@ -9,7 +9,7 @@ import {
 
 /**
  * Static design preview of the Bullion board (mock data, no auth, no
- * network) — mobile-parity layout: benchmark cards, the synchronized spline
+ * network) – mobile-parity layout: benchmark cards, the synchronized spline
  * chart, valuation calculator and standards guide.
  */
 const TOLA_G = 11.6638;
@@ -25,8 +25,9 @@ const board: BullionInject["board"] = {
 
 // Smooth ~4-month gold walk (NPR per tola), silver co-moves at ~1.53%.
 const goldTolaSeries: BullionSeriesPoint[] = Array.from({ length: 120 }, (_, i) => {
-  const d = new Date(Date.UTC(2026, 4, 15));
-  d.setUTCDate(d.getUTCDate() + i);
+  const d = new Date();
+  d.setUTCHours(0, 0, 0, 0);
+  d.setUTCDate(d.getUTCDate() - (119 - i));
   const wave = Math.sin(i / 9) * 6400 + Math.sin(i / 23) * 10400;
   return {
     date: d.toISOString().slice(0, 10),
@@ -44,7 +45,7 @@ const to10g = (s: BullionSeriesPoint[]): BullionSeriesPoint[] =>
 const inject: BullionInject = {
   board,
   official: {
-    rateDate: "2026-09-11",
+    rateDate: new Date().toISOString().slice(0, 10),
     fineGoldPerTola: 300100,
     fineGoldPer10g: 257290,
     tejabiPerTola: 277800,
@@ -62,8 +63,8 @@ const inject: BullionInject = {
 
 export default function PreviewBullionPage() {
   return (
-    <DashboardShell>
+    <AppShell>
       <BullionStatement inject={inject} />
-    </DashboardShell>
+    </AppShell>
   );
 }

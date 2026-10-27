@@ -1,5 +1,5 @@
 /**
- * Transfers service — mobile services/transfers.ts parity: the FX rate is
+ * Transfers service – mobile services/transfers.ts parity: the FX rate is
  * LOCKED on the row at creation (exchange_rate, converted_amount; the DB CHECK
  * enforces converted ≈ amount × rate within 0.05). Soft delete.
  */

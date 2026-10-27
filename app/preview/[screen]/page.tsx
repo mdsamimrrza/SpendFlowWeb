@@ -7,7 +7,7 @@ import { SCREENS } from "../registry";
 /**
  * Single design-preview route: /preview/<screen> renders the mock-data-only
  * version of that screen (see app/preview/registry.ts). Public by middleware,
- * never linked from app navigation — the screenshot/overflow tooling and
+ * never linked from app navigation – the screenshot/overflow tooling and
  * design review use these pages.
  */
 export default function PreviewScreenPage({

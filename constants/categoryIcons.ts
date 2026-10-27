@@ -34,16 +34,16 @@ import {
 } from "lucide-react";
 
 /**
- * Category icon catalog — direct port of the mobile app's
+ * Category icon catalog – direct port of the mobile app's
  * components/ui/CategoryIcon.tsx. The shared `categories.icon` column holds
  * these NAME strings on rows written by either client's manage modal
- * (e.g. "utensils"), and legacy emoji on older seeds — resolve both.
+ * (e.g. "utensils"), and legacy emoji on older seeds – resolve both.
  */
 
 /** Create default stored by the mobile modal (data value, not a theme token). */
 export const DEFAULT_CATEGORY_COLOR = "#10B981";
 
-/** Mobile ICON_MAP — stored name → Lucide component. */
+/** Mobile ICON_MAP – stored name → Lucide component. */
 export const CATEGORY_ICONS: Record<string, LucideIcon> = {
   utensils: Utensils,
   "shopping-bag": ShoppingBag,
@@ -78,7 +78,7 @@ export const CATEGORY_ICONS: Record<string, LucideIcon> = {
   sparkles: Sparkles,
 };
 
-/** Mobile EMOJI_TO_ICON_MAP — legacy emoji rows normalize to names. */
+/** Mobile EMOJI_TO_ICON_MAP – legacy emoji rows normalize to names. */
 export const EMOJI_TO_ICON_NAME: Record<string, string> = {
   "🍔": "utensils",
   "🍕": "utensils",
@@ -115,7 +115,7 @@ export const EMOJI_TO_ICON_NAME: Record<string, string> = {
   "✨": "sparkles",
 };
 
-/** Mobile SELECTABLE_ICONS — the curated picker strip, same order. */
+/** Mobile SELECTABLE_ICONS – the curated picker strip, same order. */
 export const SELECTABLE_CATEGORY_ICONS: { name: string; label: string; icon: LucideIcon }[] = [
   { name: "utensils", label: "Food & Dining", icon: Utensils },
   { name: "coffee", label: "Cafe & Drinks", icon: Coffee },
@@ -143,7 +143,7 @@ export const SELECTABLE_CATEGORY_ICONS: { name: string; label: string; icon: Luc
   { name: "tag", label: "Other & Miscellaneous", icon: Tag },
 ];
 
-/** Money-inflow icon names — the category picker shows only these when the
+/** Money-inflow icon names – the category picker shows only these when the
  *  key's type is income; everything else (the spending keys) shows for
  *  expense. */
 export const INCOME_ICON_NAMES: ReadonlySet<string> = new Set([

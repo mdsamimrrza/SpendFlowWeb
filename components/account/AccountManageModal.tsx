@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Account add/edit sheet — 1:1 web port of the APK's
+ * Account add/edit sheet – 1:1 web port of the APK's
  * components/account/AccountManageModal.tsx: centered 460px dialog with the
  * live-tinted header chip, the country dropdown (drives the bank/wallet list
  * AND the account currency), the institution dropdown with Physical Cash and
@@ -51,7 +51,7 @@ import { accountGlyph } from "@/components/ui/Glyph";
 
 type AccountType = "bank" | "wallet" | "cash" | "credit_card" | "savings" | "investment" | "other";
 
-/** APK ACCOUNT_TYPES — labels/colors/icons byte-identical. */
+/** APK ACCOUNT_TYPES – labels/colors/icons byte-identical. */
 const ACCOUNT_TYPES: {
   type: AccountType;
   labelKey: TranslationKey;
@@ -362,7 +362,7 @@ export function AccountManageModal({
         aria-label={account ? t("accEditAccount") : t("accAddAccount")}
         className="sf-pop flex max-h-[88vh] w-full max-w-[460px] flex-col overflow-hidden rounded-[24px] border border-border bg-surface shadow-[0_10px_18px_rgb(0_0_0/0.28)]"
       >
-        {/* Header — chip wears the live account color/icon selection */}
+        {/* Header – chip wears the live account color/icon selection */}
         <div className="flex items-center justify-between gap-2 border-b border-border px-5 py-4">
           <div className="flex min-w-0 items-center gap-2.5">
             <span
@@ -392,7 +392,7 @@ export function AccountManageModal({
             </div>
           )}
 
-          {/* Country — drives the bank/wallet list AND the account currency */}
+          {/* Country – drives the bank/wallet list AND the account currency */}
           <Select
             icon={<Globe size={14} className="text-text-muted" aria-hidden />}
             label={t("account_country")}
@@ -434,7 +434,7 @@ export function AccountManageModal({
                 {t("account_currency_change_title")}
               </p>
               <p className="text-xs leading-[17px] text-text">
-                {t("account_currency_change_note")} {(account.currency || "").toUpperCase()} → {activeCurrency}.
+                {t("account_currency_change_note")} {(account.currency || "").toUpperCase()} to {activeCurrency}.
               </p>
             </div>
           )}
@@ -529,7 +529,7 @@ export function AccountManageModal({
               }`}
               aria-hidden
             >
-              {isDefault && <Check size={14} className="text-white" />}
+              {isDefault && <Check size={14} className="text-primary-ink" />}
             </span>
             <span className="min-w-0 flex-1">
               <span className="block text-[13px] font-bold text-text">{t("accSetDefault")}</span>
@@ -573,7 +573,7 @@ export function AccountManageModal({
                 <button
                   onClick={() => void handleSave()}
                   disabled={saving || deleting}
-                  className="flex h-[46px] w-full items-center justify-center gap-2 rounded-[10px] bg-primary text-[13px] font-bold text-white transition active:opacity-90 disabled:opacity-60"
+                  className="flex h-[46px] w-full items-center justify-center gap-2 rounded-[10px] bg-primary text-[13px] font-bold text-primary-ink transition active:opacity-90 disabled:opacity-60"
                 >
                   {saving && (
                     <span aria-hidden className="block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />

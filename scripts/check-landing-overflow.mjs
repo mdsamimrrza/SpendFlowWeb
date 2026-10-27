@@ -1,5 +1,5 @@
 /**
- * TEMP diagnostic — measures FitText clipping in the landing demo statement
+ * TEMP diagnostic – measures FitText clipping in the landing demo statement
  * (CashFlowHero) across the full 12-currency cycle at several viewport widths.
  * Reports any figure whose rendered width exceeds its column (scrollWidth >
  * clientWidth) i.e. it is visually cut off. Delete after the fix is verified.

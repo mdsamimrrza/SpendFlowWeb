@@ -1,5 +1,5 @@
 /**
- * SpendFlow brand mark — the app's "S" medallion, matching the mobile icon
+ * SpendFlow brand mark – the app's "S" medallion, matching the mobile icon
  * and the tab favicon. Two renderings swap with the theme via the `dark:`
  * variant (class strategy): brass-on-parchment light, brass-on-navy dark.
  * Artwork: public/icons/brand-{light,dark}.png (scripts/generate-web-icons.cjs).

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { AlertCircle, CheckCircle2, ChevronRight, Repeat } from "lucide-react";
+import { Check, ChevronRight, Repeat } from "lucide-react";
 import { useAuth } from "@/store/AuthContext";
 import { useLanguage } from "@/store/LanguageContext";
 import { useToast } from "@/store/ToastContext";
@@ -16,28 +16,39 @@ import {
   type RecurringRuleRow,
 } from "@/services/recurring";
 import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
-import { formatMoney, todayISO } from "@/utils/format";
+import { formatMoney, stripCents, todayISO } from "@/utils/format";
+import { CardPillLink, DashCard } from "./primitives";
 
 const MAX_ROWS = 3;
 
+interface BillsDueProps {
+  /** Preview harness injection – skips the self-fetch. */
+  injected?: { rules: RecurringRuleRow[]; overdueDays: number[] };
+}
+
 /**
- * "Bills due" strip (mobile BillsDueStrip parity): rules whose slot is open
- * render here with a one-tap Mark Paid — money the user still owes, not
- * history. Auto_charge rules only appear transiently (the generator books
- * them when the Recurring tab loads); pay_on_due rules wait for this tap.
+ * "Bills due" statement band (mobile BillsDueStrip parity): rules whose
+ * slot is open render here with one-tap Mark Paid – money still owed, not
+ * history. The section self-removes when nothing is owed. Auto_charge
+ * plans only appear transiently (the generator books them when the
+ * Recurring tab loads); pay_on_due plans wait for this tap.
  */
-export function BillsDueStrip() {
+export function BillsDue({ injected }: BillsDueProps) {
   const { user, profile } = useAuth();
   const { t, locale } = useLanguage();
   const { showToast } = useToast();
   const supabase = getSupabaseBrowserClient();
 
-  const [due, setDue] = useState<{ rule: RecurringRuleRow; overdueDays: number }[]>([]);
+  const [due, setDue] = useState<{ rule: RecurringRuleRow; overdueDays: number }[]>(
+    injected
+      ? injected.rules.map((rule, i) => ({ rule, overdueDays: injected.overdueDays[i] ?? 0 }))
+      : [],
+  );
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!user) {
-      setDue([]);
+    if (injected || !user) {
+      if (!injected) setDue([]);
       return;
     }
     try {
@@ -74,9 +85,9 @@ export function BillsDueStrip() {
           .sort((a, b) => a.rule.next_due_date.localeCompare(b.rule.next_due_date)),
       );
     } catch {
-      // The strip is decorative urgency — a failed poll never blocks the dashboard.
+      // urgency band – a failed poll never blocks the dashboard
     }
-  }, [user, supabase]);
+  }, [user, supabase, injected]);
 
   useEffect(() => {
     void load();
@@ -86,9 +97,8 @@ export function BillsDueStrip() {
 
   const displayCurrency = profile?.preferred_currency ?? "NPR";
 
-  // The strip lists plans side by side, so each amount prices at today's rate
-  // into the display currency; a foreign plan keeps its own figure as the
-  // caption (History/Analytics convention).
+  // Each plan prices at today's rate into the display currency; a foreign
+  // plan keeps its own figure as the caption (History/Analytics convention).
   const { convert, ready } = useRowConverter(
     displayCurrency,
     due.map(({ rule }) => ({
@@ -102,7 +112,7 @@ export function BillsDueStrip() {
     const value = Number(rule.amount) || 0;
     const native = rule.currency || displayCurrency;
     if (native === displayCurrency || !ready) {
-      return { shown: formatMoney(value, native, locale), nativeText: null as string | null };
+      return { shown: stripCents(formatMoney(value, native, locale)), nativeText: null as string | null };
     }
     const converted = convert({
       amount: value,
@@ -111,10 +121,10 @@ export function BillsDueStrip() {
       exchange_rate_to_usd: null,
     });
     return converted === value
-      ? { shown: formatMoney(value, native, locale), nativeText: null }
+      ? { shown: stripCents(formatMoney(value, native, locale)), nativeText: null }
       : {
-          shown: formatMoney(converted, displayCurrency, locale),
-          nativeText: formatMoney(value, native, locale),
+          shown: stripCents(formatMoney(converted, displayCurrency, locale)),
+          nativeText: stripCents(formatMoney(value, native, locale)),
         };
   };
 
@@ -145,76 +155,68 @@ export function BillsDueStrip() {
   const hasOverdue = due.some((d) => d.overdueDays > 0);
 
   return (
-    <section
-      className="panel mb-4 border-2"
-      style={{ borderColor: hasOverdue ? "color-mix(in srgb, var(--sf-danger) 50%, transparent)" : "var(--sf-border)" }}
-      aria-label={t("recurring_bills_due")}
+    <DashCard
+      title={
+        <span className={hasOverdue ? "!text-danger" : "!text-income"}>
+          {t("recurring_bills_due")}
+          <span className="numeric ml-2 font-medium">
+            · {due.length}
+          </span>
+        </span>
+      }
+      action={<CardPillLink href="/recurring">{t("viewAll")}</CardPillLink>}
     >
-      <div className="flex items-center justify-between gap-3 border-b px-4 py-2.5 sm:px-5"
-        style={{ borderColor: "color-mix(in srgb, var(--sf-border) 60%, transparent)" }}>
-        <p
-          className={`inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-[0.08em] ${
-            hasOverdue ? "text-danger" : "text-primary"
-          }`}
-        >
-          <AlertCircle size={14} />
-          {t("recurring_bills_due")} · {due.length}
-        </p>
-        <Link href="/recurring" className="caps inline-flex items-center gap-0.5 !text-primary hover:underline">
-          <ChevronRight size={13} /> {t("viewAll")}
-        </Link>
-      </div>
-      <div>
+      <div
+        className="divide-y divide-border/70 rounded-xl border px-4"
+        style={{
+          borderColor: hasOverdue
+            ? "color-mix(in srgb, var(--sf-danger) 32%, transparent)"
+            : "color-mix(in srgb, var(--sf-income) 32%, transparent)",
+          background: hasOverdue ? "var(--sf-tint-danger)" : "var(--sf-tint-success)",
+        }}
+      >
         {visible.map(({ rule, overdueDays }) => {
           const Glyph = rule.categories?.icon ? categoryGlyph(rule.categories.icon) : Repeat;
           const priced = price(rule);
           return (
-          <div
-            key={rule.id}
-            className="flex items-center gap-3 border-b px-4 py-2.5 last:border-0 sm:px-5"
-            style={{ borderColor: "color-mix(in srgb, var(--sf-border) 60%, transparent)" }}
-          >
-            <span aria-hidden className="text-primary">
-              <Glyph size={18} />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-bold text-text">
-                {rule.description?.trim() || rule.categories?.name || t("recurring")}
-              </p>
-              <p className="truncate text-[11px] text-faint">
-                <span className="numeric">
+            <div key={rule.id} className="flex items-center gap-3 py-2.5">
+              <span aria-hidden className="shrink-0 text-text-muted">
+                <Glyph size={17} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[13px] font-semibold text-text">
+                  {rule.description?.trim() || rule.categories?.name || t("recurring")}
+                </p>
+                <p className="numeric truncate text-[11px] text-faint">
                   {priced.shown}
-                  {priced.nativeText ? ` (${priced.nativeText})` : ""}
-                </span>{" "}
-                ·{" "}
-                {overdueDays > 0 ? (
-                  <span className="font-bold text-danger">
-                    {t("recurring_overdue")} {overdueDays}d · {t("recurring_slot_due")} {rule.next_due_date}
-                  </span>
-                ) : (
-                  <span className="font-bold text-primary">{t("recurring_due_today")}</span>
-                )}
-              </p>
+                  {priced.nativeText ? ` (${priced.nativeText})` : ""} ·{" "}
+                  {overdueDays > 0 ? (
+                    <span className="font-semibold text-danger">
+                      {t("recurring_overdue")} {overdueDays}d
+                    </span>
+                  ) : (
+                    <span className="font-semibold text-income">{t("recurring_due_today")}</span>
+                  )}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void handlePaid(rule)}
+                disabled={busyId === rule.id}
+                className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-income bg-background px-2.5 text-[11px] font-bold text-income transition hover:bg-income hover:text-background disabled:opacity-50"
+              >
+                <Check size={13} aria-hidden />
+                {t("recurring_mark_paid")}
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => void handlePaid(rule)}
-              disabled={busyId === rule.id}
-              className="inline-flex h-9 shrink-0 items-center gap-1.5 border border-income bg-[var(--sf-tint-success)] px-3 text-[11px] font-black uppercase tracking-[0.06em] text-income transition hover:bg-income hover:text-white disabled:opacity-50"
-            >
-              <CheckCircle2 size={13} />
-              {t("recurring_mark_paid")}
-            </button>
-          </div>
           );
         })}
         {extra > 0 && (
-          <div className="border-t px-4 py-2 text-[11px] italic text-faint sm:px-5"
-            style={{ borderColor: "color-mix(in srgb, var(--sf-border) 60%, transparent)" }}>
+          <p className="numeric py-2 text-[11px] text-faint">
             +{extra} {t("recurring_more_due")}
-          </div>
+          </p>
         )}
       </div>
-    </section>
+    </DashCard>
   );
 }

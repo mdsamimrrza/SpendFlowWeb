@@ -68,7 +68,7 @@ export default function SignUpPage() {
     if (error) {
       const e = error as { message?: string; code?: string };
       const msg = (e.message ?? "").toLowerCase();
-      // "already registered" would confirm the email exists — show the same
+      // "already registered" would confirm the email exists – show the same
       // neutral landing message as success instead (audit P3-9).
       if (
         e.code === "user_already_exists" ||

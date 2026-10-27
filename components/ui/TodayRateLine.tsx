@@ -5,7 +5,7 @@
  * the live-rate rule, user decision 2026-09-19): headline totals for the
  * ACTIVE financial month are priced at today's live rate everywhere; this
  * collapsible shows what the SAME money is worth frozen at each transaction's
- * own date. Collapsible: starts CLOSED — tap the header to reveal the two
+ * own date. Collapsible: starts CLOSED – tap the header to reveal the two
  * figures, tap again to fold it back. Hides itself entirely when the two
  * bases agree (nothing to cross-check) or while the frozen totals are
  * unresolved. Callers pass masked formatters so privacy mode applies like
@@ -21,10 +21,10 @@ export function TodayRateLine({
   fmt,
   className = "",
 }: {
-  /** Headline basis for the rendered period — LIVE rates for the active
+  /** Headline basis for the rendered period – LIVE rates for the active
    *  financial month, transaction-date rates for closed periods. */
   live: { income: number; expense: number };
-  /** ALWAYS transaction-date totals — shown inside the collapsible so the
+  /** ALWAYS transaction-date totals – shown inside the collapsible so the
    *  frozen historical value can be cross-checked against the live headline. */
   frozen: { income: number; expense: number } | null;
   fmt: (n: number) => string;

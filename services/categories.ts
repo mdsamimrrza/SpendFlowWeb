@@ -1,4 +1,4 @@
-/** Categories service — mobile services/categories.ts parity (seed-on-empty, cache-paint). */
+/** Categories service – mobile services/categories.ts parity (seed-on-empty, cache-paint). */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Category, Database } from "@/types/database.types";
 import { seedDefaultCategories } from "./auth";
@@ -72,8 +72,8 @@ export async function createCategory(
 }
 
 /**
- * Audit P2-4: owner-scoped mutation. `type` stays settable — the category
- * editor's type toggle is documented mobile-parity UI — but the write can only
+ * Audit P2-4: owner-scoped mutation. `type` stays settable – the category
+ * editor's type toggle is documented mobile-parity UI – but the write can only
  * ever touch the caller's own row.
  */
 export async function updateCategory(

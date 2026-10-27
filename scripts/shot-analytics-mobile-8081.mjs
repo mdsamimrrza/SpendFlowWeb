@@ -1,7 +1,7 @@
 /**
  * Mobile full-page screenshots of the analytics statement (:8081)
- * at 390px width, in each theme (light + dark). Uses /preview/analytics —
- * the real AnalyticsStatement + DashboardShell with mock data — because the
+ * at 390px width, in each theme (light + dark). Uses /preview/analytics –
+ * the real AnalyticsStatement + DashboardShell with mock data – because the
  * live /analytics route needs a signed-in session.
  * Run: node scripts/shot-analytics-mobile-8081.mjs
  */

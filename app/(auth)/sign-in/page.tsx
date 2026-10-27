@@ -47,9 +47,9 @@ export default function SignInPage() {
   );
 
   // OAuth failures return here as ?error flags from the callback route; map
-  // them to the banner once. `?mode=signUp` is a stale-link path — the signup
+  // them to the banner once. `?mode=signUp` is a stale-link path – the signup
   // form moved to its own route, so forward old links instead of ignoring them.
-  // Read from window.location — this is a redirect landing, not nav state.
+  // Read from window.location – this is a redirect landing, not nav state.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const oauthError = params.get("error");
@@ -71,7 +71,7 @@ export default function SignInPage() {
   // the Supabase project's Redirect URL allowlist instead.
 
   // Audit P3-9 + NV-8: default-deny. Never surface the IdP's raw credential
-  // error — some GoTrue states (banned, OAuth-only, unconfirmed variants)
+  // error – some GoTrue states (banned, OAuth-only, unconfirmed variants)
   // confirm account existence. Transient network/rate-limit failures say
   // nothing about the account, so they get the retryable "went wrong" line;
   // every other error collapses to the one generic credentials message.

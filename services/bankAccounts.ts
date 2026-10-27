@@ -1,5 +1,5 @@
 /**
- * Bank accounts service — mobile services/bankAccounts.ts parity:
+ * Bank accounts service – mobile services/bankAccounts.ts parity:
  * list (soft-deleted hidden by RLS), CRUD, default seeding, and computed live
  * balances (initial + income − expenses ± transfers, converted at snapshots).
  */
@@ -107,7 +107,7 @@ export interface AccountInput {
   country?: string | null;
 }
 
-/** Client-side write validation (DB CHECKs back these up — audit P2-4/P3). */
+/** Client-side write validation (DB CHECKs back these up – audit P2-4/P3). */
 function validateAccountInput(input: {
   name?: string;
   currency?: string;
