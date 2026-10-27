@@ -12,7 +12,7 @@ interface DonutChartProps {
   centerValue?: string;
 }
 
-/** Category breakdown donut (mobile CategoryBreakdown, simplified — no flip cycle in v1). */
+/** Category breakdown donut (mobile CategoryBreakdown, simplified – no flip cycle in v1). */
 export function DonutChart({ slices, centerLabel, centerValue }: DonutChartProps) {
   const total = slices.reduce((s, x) => s + x.value, 0);
   const R = 70;

@@ -1,12 +1,12 @@
 "use client";
 
 /**
- * Static design-preview route for the redesigned Recurring page — the real
- * page component rendered inside the real DashboardShell with an injected
+ * Static design-preview route for the redesigned Recurring page – the real
+ * page component rendered inside the real AppShell with an injected
  * mock register (no auth, no network). Payment actions are inert without a
  * user; all visuals render from the seam. Not linked from navigation.
  */
-import { DashboardShell } from "@/components/layout/DashboardShell";
+import { AppShell } from "@/components/shell/AppShell";
 import { RecurringRegister } from "@/components/recurring/RecurringRegister";
 import type { RecurringRuleRow, RuleOccurrence } from "@/services/recurring";
 
@@ -126,7 +126,7 @@ const rules = [
   },
 ] as unknown as RecurringRuleRow[];
 
-/** A plan already denominated in the preview's display currency — it must
+/** A plan already denominated in the preview's display currency – it must
  *  render without a conversion caption, proving both paths at once. */
 const usdRule = {
   id: "r7",
@@ -158,11 +158,11 @@ const occurrences = [
 
 export default function PreviewRecurringPage() {
   return (
-    <DashboardShell>
+    <AppShell>
       {/* displayCurrency "USD" mirrors the account that surfaced the FX bug:
           NPR plans must price into USD with their own figure as the caption,
           while the USD plan needs no conversion at all. */}
       <RecurringRegister inject={{ rules: [...rules, usdRule], occurrences, displayCurrency: "USD" }} />
-    </DashboardShell>
+    </AppShell>
   );
 }

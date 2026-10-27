@@ -1,4 +1,4 @@
-/** Institution/wizard registry — mirrors mobile constants/countries.ts. */
+/** Institution/wizard registry – mirrors mobile constants/countries.ts. */
 import type { CurrencyCode } from "./app";
 
 export interface CountryInfo {
@@ -27,10 +27,10 @@ export const WIZARD_COUNTRIES: CountryInfo[] = [
 export const ONBOARDING_CURRENCY_KEY = "spendflow_onboarding_currency";
 export const ONBOARDING_COMPLETE_KEY = "spendflow_onboarding_complete";
 
-/* ── Institution registry — 1:1 port of mobile constants/countries.ts ──
+/* ── Institution registry – 1:1 port of mobile constants/countries.ts ──
    Real licensed banks/wallets per country, bundled statically so the account
    picker works offline and only offers legitimate institutions. The country
-   drives the account's currency. `flag` is data only — the web renders the
+   drives the account's currency. `flag` is data only – the web renders the
    self-hosted /flags SVGs, never the emoji. */
 
 export interface InstitutionPreset {

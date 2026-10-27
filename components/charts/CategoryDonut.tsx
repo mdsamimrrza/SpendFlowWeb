@@ -26,7 +26,7 @@ interface CategoryDonutProps {
 }
 
 /**
- * Interactive category donut: tap a ring segment or a legend row to pin it —
+ * Interactive category donut: tap a ring segment or a legend row to pin it –
  * center flips to that slice's label, figure and share; tap again to clear.
  * Segments animate their dash on mount. Legend is the full accessible table
  * (color + icon + text + value + %), never color alone.
@@ -198,7 +198,7 @@ export function CategoryDonut({
             </button>
           )}
         </div>
-        {/* One legend column at every width — two-up squeezed the label
+        {/* One legend column at every width – two-up squeezed the label
             column into unreadable truncation on desktop cards. */}
         <ul className="grid grid-cols-1 gap-0.5">
           {segs.slice(0, 8).map((s) => (

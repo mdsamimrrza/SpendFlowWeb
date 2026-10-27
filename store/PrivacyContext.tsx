@@ -12,7 +12,7 @@ import {
 
 /**
  * Global privacy mode (mobile parity): when on, every money value renders as
- * •••••• with a locked container width (zero layout shift — mobile AGENTS rule).
+ * •••••• with a locked container width (zero layout shift – mobile AGENTS rule).
  */
 interface PrivacyContextValue {
   isPrivacyMode: boolean;
@@ -29,6 +29,12 @@ export function PrivacyProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setIsPrivacyMode(localStorage.getItem(STORAGE_KEY) === "1");
   }, []);
+
+  // Mirror the mode onto the document so CSS can blur money figures
+  // (html.sf-privacy .numeric) instead of swapping them for dots.
+  useEffect(() => {
+    document.documentElement.classList.toggle("sf-privacy", isPrivacyMode);
+  }, [isPrivacyMode]);
 
   const toggle = useCallback(() => {
     setIsPrivacyMode((prev) => {

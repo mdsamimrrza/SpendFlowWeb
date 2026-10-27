@@ -1,16 +1,16 @@
 /**
- * OAuth redirect allowlist verifier — checks whether an origin is in the
+ * OAuth redirect allowlist verifier – checks whether an origin is in the
  * Supabase project's Redirect URL allowlist WITHOUT any real login.
  *
  * Why: the project's Site URL is the mobile deep link `spendflow://`. When the
  * web app starts Google OAuth with `redirect_to = <origin>/auth/callback` and
  * that origin is NOT allowlisted, Supabase silently rewrites the redirect to
- * `spendflow://…` — on Android the browser then opens the installed mobile APK
+ * `spendflow://…` – on Android the browser then opens the installed mobile APK
  * instead of returning to the web app (docs/SUPABASE.md §7).
  *
  * Oracle used: GET /auth/v1/verify with a fake token + our redirect_to. The
  * verify endpoint resolves redirect_to against the project's allowlist
- * *independent of any OAuth session* — even on guaranteed failure (the token
+ * *independent of any OAuth session* – even on guaranteed failure (the token
  * is fake) it redirects to:
  *   - <our origin>/auth/callback#error=...  → the origin IS allowlisted
  *   - spendflow://#error=...                → rewritten to Site URL → NOT allowlisted
@@ -23,7 +23,7 @@
  *   node scripts/verify-oauth-redirect.mjs http://192.168.1.20:3000   # LAN dev from a phone
  *
  * Reads NEXT_PUBLIC_SUPABASE_URL + NEXT_PUBLIC_SUPABASE_ANON_KEY from .env.local
- * or .env (anon key only — safe to run anywhere; no secrets are printed).
+ * or .env (anon key only – safe to run anywhere; no secrets are printed).
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -57,7 +57,7 @@ if (!/^https?:\/\//.test(origin)) {
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 if (!supabaseUrl || !anonKey) {
-  console.error("Missing NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY — fill .env.local first.");
+  console.error("Missing NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY – fill .env.local first.");
   process.exit(2);
 }
 
@@ -88,17 +88,17 @@ console.log(`redirect_to       : ${redirectTo}`);
 console.log(`Redirect decision : ${location || "(none)"}`);
 console.log("");
 if (allowed) {
-  console.log("✓ ALLOWLISTED — Supabase will send OAuth back to this origin; Google login on the web app returns to /auth/callback.");
+  console.log("✓ ALLOWLISTED – Supabase will send OAuth back to this origin; Google login on the web app returns to /auth/callback.");
   process.exit(0);
 }
 if (locLower.startsWith("spendflow://") || locLower.startsWith("spendflow:")) {
-  console.log("✗ NOT ALLOWLISTED — Supabase rewrote the redirect to the Site URL (spendflow://).");
+  console.log("✗ NOT ALLOWLISTED – Supabase rewrote the redirect to the Site URL (spendflow://).");
   console.log("  On Android this is the bug where Google login 'succeeds' but opens the mobile");
   console.log("  APK instead of returning to the web app.");
 } else if (!location) {
-  console.log("✗ INCONCLUSIVE — the auth server returned no Location header.");
+  console.log("✗ INCONCLUSIVE – the auth server returned no Location header.");
 } else {
-  console.log(`✗ INCONCLUSIVE — unexpected redirect target: ${location}`);
+  console.log(`✗ INCONCLUSIVE – unexpected redirect target: ${location}`);
 }
 console.log("");
 console.log("Fix (dashboard, no code): Supabase Dashboard → Authentication → URL Configuration →");

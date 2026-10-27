@@ -145,7 +145,7 @@ function PadButton({
     kind === "op"
       ? "text-primary"
       : kind === "eq"
-        ? "bg-primary text-white hover:opacity-90"
+        ? "bg-primary text-primary-ink hover:opacity-90"
         : kind === "fn"
           ? "text-text-muted"
           : "text-text";

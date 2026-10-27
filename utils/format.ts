@@ -1,7 +1,7 @@
 /**
  * Locale-aware formatting + the budget/cycle math ported from mobile
  * utils/format.ts (see docs/00-EXISTING-APP-AUDIT.md §3 Profit & Loss).
- * These are parity-critical — see docs/TESTING.md §2.
+ * These are parity-critical – see docs/TESTING.md §2.
  */
 import { CURRENCY_DETAILS, type CurrencyCode } from "@/constants/app";
 
@@ -21,7 +21,7 @@ export function formatMoney(
 ): string {
   // Intl.NumberFormat throws RangeError for any `currency` outside the
   // [A-Za-z]{3} shape. Stored currencies are validated on web writes but the
-  // shared DB (mobile-authored rows, second-order) is lower-trust input here —
+  // shared DB (mobile-authored rows, second-order) is lower-trust input here –
   // a single malformed row must not route a whole screen to the error
   // boundary. Non-conforming codes render as a plain number + code suffix.
   const code = (currency || "USD").toUpperCase();
@@ -39,6 +39,15 @@ export function formatMoney(
 /** Minor-unit digits per currency (0 for the zero-decimal KRW/JPY). */
 export function currencyDecimals(currency: string): number {
   return CURRENCY_DETAILS[currency as CurrencyCode]?.decimals ?? 2;
+}
+
+/**
+ * Dashboard-scale display: drops a trailing ".00" / ",00" (ASCII or
+ * Devanagari digits) from a formatMoney result. Full cents stay on the
+ * register screens; overview figures read cleaner whole.
+ */
+export function stripCents(formatted: string): string {
+  return formatted.replace(/[.,](?:\d{2}|[\u0966-\u096F]{2})$/, "");
 }
 
 /**
@@ -71,7 +80,7 @@ export function currencyTotals<T extends { currency: string; amount: number }>(
  * at the conversion boundary so every aggregate is a sum of on-screen values:
  * derived lines (net = inflow − outflow, over/remaining = budget − spent) then
  * always reconcile with the displayed operands, in all 12 currencies.
- * Display-layer only — stored amounts, budgets, and FX snapshots are never
+ * Display-layer only – stored amounts, budgets, and FX snapshots are never
  * rewritten (docs/SYNC-STRATEGY.md §6).
  */
 export function quantizeMoney(amount: number, currency: string): number {
@@ -86,7 +95,7 @@ export function quantizeMoney(amount: number, currency: string): number {
  * Parse a date string as LOCAL time. Accepts bare YYYY-MM-DD (midnight) and
  * datetime strings ("YYYY-MM-DDTHH:mm" or space-separated). Appending
  * T00:00:00 blindly to a datetime string yields an Invalid Date, and
- * space-separated forms fail in Safari — normalize both here.
+ * space-separated forms fail in Safari – normalize both here.
  */
 function parseLocalDate(date: string): Date {
   const iso = date.replace(" ", "T");
@@ -127,7 +136,7 @@ export function isValidISODate(value: string): boolean {
 /**
  * Cycle window for a reference date (mobile parity):
  * cycle_start_day 1 = standard calendar month sentinel; 2–31 custom start;
- * end day null = day before the next cycle start. Starts on 29–31 are valid —
+ * end day null = day before the next cycle start. Starts on 29–31 are valid –
  * never clamped to 28 (mobile rule).
  */
 export interface CycleWindow {
@@ -180,7 +189,7 @@ export function getPreviousCycleWindow(
 
 /**
  * Locale-independent statement number for a cycle: year + zero-padded month
- * of the cycle START (e.g. "2026-08"). Never derived from a formatted label —
+ * of the cycle START (e.g. "2026-08"). Never derived from a formatted label –
  * those are locale-dependent and truncate mid-month-name in hi/ne.
  */
 export function cycleStatementNo(window: CycleWindow): string {
@@ -224,7 +233,7 @@ export function getCycleWindow(
   } else {
     // Dynamic end: day before the next cycle starts (mobile currentMonthRange
     // dynamic-end branch). Month-end (day 0 of next month) was WRONG for
-    // custom starts — e.g. start 20 gave Aug 20–31 (12d) instead of
+    // custom starts – e.g. start 20 gave Aug 20–31 (12d) instead of
     // Aug 20 – Sep 19 (31d). Clamping keeps 29–31 starts correct in short
     // months (next start Sep 30-clamped → end Sep 29, matching mobile).
     const nextStart = safeDate(start.getFullYear(), start.getMonth() + 1, day);
@@ -241,7 +250,7 @@ function clampCycleDay(day: number): number {
 
 /**
  * Display-only budget conversion (mobile getMonthlyBudget parity). NEVER
- * rewrite the stored monthly_budget — conversion happens here only.
+ * rewrite the stored monthly_budget – conversion happens here only.
  */
 export function convertBudget(
   monthlyBudget: number,
@@ -254,7 +263,7 @@ export function convertBudget(
   const to = getRate(displayCurrency);
   if (!from || !to) return monthlyBudget;
   // Rates are USD per unit: converting budget_currency → display means
-  // amount × (USD per from) ÷ (USD per to) — same direction as row conversion.
+  // amount × (USD per from) ÷ (USD per to) – same direction as row conversion.
   return (monthlyBudget * from) / to;
 }
 

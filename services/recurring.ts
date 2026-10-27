@@ -1,10 +1,10 @@
 /**
- * Recurring plans service — mobile services/recurring.ts parity
+ * Recurring plans service – mobile services/recurring.ts parity
  * (docs/recurring-plan.md + migration 20260915000000_recurring_payment_model.sql):
  * schedule-locked chains, `custom` frequency via `interval_days`, billing
  * `mode` (auto_charge posts itself; pay_on_due books money only on an
  * explicit tap), and the shared occurrence writes keyed by the
- * (recurring_rule_id, recurring_due_date) slot index — phone, web and the
+ * (recurring_rule_id, recurring_due_date) slot index – phone, web and the
  * generator can never double-book the same installment.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -83,7 +83,7 @@ function dayDiff(fromISO: string, toISO: string): number {
 
 /**
  * Advance an ISO date by one cycle. The chain is SCHEDULE-LOCKED: callers
- * always pass the current DUE slot, never a payment date — paying late notes
+ * always pass the current DUE slot, never a payment date – paying late notes
  * the delay but must not shift the plan. 'custom' uses interval_days
  * (falls back to 30 if unset).
  */
@@ -227,7 +227,7 @@ export async function updateRecurringRule(
   }
   if (input.isActive != null) patch.is_active = input.isActive;
 
-  // Audit P2-4: owner scope is mandatory, not conditional — the predicate is
+  // Audit P2-4: owner scope is mandatory, not conditional – the predicate is
   // defense in depth over the RLS boundary and must never be silently omitted.
   const { data, error } = await supabase
     .from("recurring_rules")
@@ -242,7 +242,7 @@ export async function updateRecurringRule(
 
 /**
  * Moves the rule to the Bin (soft delete). The row survives for the 60-day
- * retention window — restorable from /bin — and a nightly cron sweep
+ * retention window – restorable from /bin – and a nightly cron sweep
  * (purge_expired_bin_items, owned by the mobile repo) removes it for good.
  * While binned it is invisible to listRecurringRules, so it never auto-charges,
  * never shows a due card, and its schedule stays frozen for a clean restore.
@@ -292,7 +292,7 @@ export interface RuleOccurrence {
 }
 
 /**
- * All booked occurrences for the given rules, newest slot first — one query
+ * All booked occurrences for the given rules, newest slot first – one query
  * so paid states, DUE badges and the timeline are derived client-side.
  */
 export async function listRuleOccurrences(
@@ -392,10 +392,10 @@ export async function generateDueRecurringExpenses(
 
 /**
  * Books the CURRENT slot of a rule as paid on `paidDate` (defaults to today)
- * — the single shared write behind every "paid" surface: the Recurring tab
+ * – the single shared write behind every "paid" surface: the Recurring tab
  * Mark Paid button and the dashboard bills-due strip.
  *
- * Chain lock: the next due date is always `slot + one cycle` — paying late
+ * Chain lock: the next due date is always `slot + one cycle` – paying late
  * records "late by N days" on the row but never shifts the plan. Idempotent
  * via the unique slot index (a double-tap or phone/web race books exactly one
  * installment).
@@ -518,13 +518,13 @@ export async function undoLatestOccurrencePayment(
   const slot = latest?.recurring_due_date as string | null | undefined;
   if (!latest || !slot) return null;
 
-  // Undoable only if the chain sits exactly one cycle past this slot —
+  // Undoable only if the chain sits exactly one cycle past this slot –
   // anything older is history and stays booked.
   if (rule.next_due_date !== nextDueDate(slot, rule.frequency, rule.interval_days)) {
     return null;
   }
 
-  // Documented hard-delete exception (SCHEMA.md drift note 6) — owner-scoped.
+  // Documented hard-delete exception (SCHEMA.md drift note 6) – owner-scoped.
   const { error: deleteError } = await supabase
     .from("expenses")
     .delete()
@@ -547,7 +547,7 @@ export async function undoLatestOccurrencePayment(
 /**
  * "Pay from plan" in the expense form: books the rule's open slot with the
  * VALUES THE USER ENTERED (they may have corrected the price) and then
- * re-anchors the chain from the payment date — "everything starts counting
+ * re-anchors the chain from the payment date – "everything starts counting
  * from today". This is deliberately different from the Recurring tab's Mark
  * Paid, which keeps the schedule-locked advance. The rule's amount/currency
  * self-correct to what was actually paid.
@@ -607,13 +607,13 @@ export async function payPlanFromForm(
   });
   if (insertError) {
     if (insertError.code === "23505") {
-      throw new Error("This installment was already paid — the plan may have run on another device.");
+      throw new Error("This installment was already paid – the plan may have run on another device.");
     }
     throw insertError;
   }
 
   // Chain re-anchors from the payment date. The .eq(next_due, slot) guard
-  // means we only move the schedule off the slot THIS call just booked — a
+  // means we only move the schedule off the slot THIS call just booked – a
   // concurrent advance is then re-applied forward-only as a best effort.
   const nextDue = nextDueDate(paidDate, rule.frequency, rule.interval_days);
   const { data: advanced, error: advanceError } = await supabase

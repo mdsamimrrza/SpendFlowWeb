@@ -1,14 +1,12 @@
 "use client";
 
 /**
- * Settings — 1:1 web mirror of mobile app/(tabs)/settings.tsx: kicker +
- * title header with privacy-eye & theme round buttons, the primary-bordered
- * profile hero card with live-dot avatar, ONE grouped menu card (currency →
- * reports → categories → accounts → bullion → bin → notifications
- * → theme → language → export) with 38px tone chips and hairline dividers,
- * the rust-accent full sign-out pill, and the same fade modals.
- * Mobile-first: the column is the design at 390px; larger screens only
- * widen the centered column. Tints are tokens (globals.css --sf-set-*).
+ * Settings - V2 redesign (2026-10-10): identity hero + preferences grouped on
+ * the left, workspace/data menu sections on the right at lg (single column on
+ * phones). Same behavior as the mobile mirror: the currency, theme, language,
+ * notifications and sign-out modals keep their flows; menu rows route to the
+ * same destinations. The privacy eye and theme flip live in the shell topbar.
+ * Tokens only; tints from globals.css --sf-set-* / tailwind semantic colors.
  */
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -20,8 +18,6 @@ import {
   ChevronRight,
   Coins,
   DollarSign,
-  Eye,
-  EyeOff,
   Globe,
   Landmark,
   LogOut,
@@ -41,8 +37,8 @@ import {
 import { useAuth } from "@/store/AuthContext";
 import { useLanguage } from "@/store/LanguageContext";
 import { useTheme } from "@/store/ThemeContext";
-import { usePrivacy } from "@/store/PrivacyContext";
 import { useToast } from "@/store/ToastContext";
+import { Panel } from "@/components/ui/Card";
 import { CurrencyFlag } from "@/components/ui/CurrencyFlag";
 import { CURRENCIES, CURRENCY_DETAILS, type CurrencyCode } from "@/constants/app";
 import { WIZARD_COUNTRIES } from "@/constants/countries";
@@ -57,7 +53,7 @@ const COUNTRY_BY_CURRENCY = new Map<string, string>(
 );
 
 /** Language → flag country (mobile renders emoji flags; Windows can't). */
-const LANGUAGE_FLAG: Record<string, string> = { en: "us", hi: "in", ne: "np" };
+const LANGUAGE_FLAG: Record<string, string> = { en: "gb", hi: "in", ne: "np" };
 
 function Flag({ country, size = 20 }: { country: string; size?: number }) {
   return (
@@ -77,7 +73,6 @@ export default function SettingsPage() {
   const { profile, user, saveProfile, signOut } = useAuth();
   const { t, language, setLanguage } = useLanguage();
   const { isDark, preference, setPreference } = useTheme();
-  const { isPrivacyMode, toggle } = usePrivacy();
   const { showToast } = useToast();
   const router = useRouter();
   const supabase = getSupabaseBrowserClient();
@@ -90,11 +85,8 @@ export default function SettingsPage() {
   const [signingOut, setSigningOut] = useState(false);
   const [categoryCount, setCategoryCount] = useState(0);
 
-  // Mobile: displayName falls back to the email local-part, then the
-  // seeded sample account; email falls back to the sample address.
   const preferredCurrency = profile?.preferred_currency ?? "NPR";
-  const displayName =
-    profile?.display_name || profile?.email?.split("@")[0] || "Samim Reza";
+  const displayName = profile?.display_name || profile?.email?.split("@")[0] || "User";
   const initials = displayName.slice(0, 2).toUpperCase();
 
   useEffect(() => {
@@ -148,202 +140,175 @@ export default function SettingsPage() {
   };
 
   return (
-    <main className="mx-auto w-full max-w-[480px] space-y-4 md:max-w-[560px]">
-      {/* ── 1. HEADER (PREFERENCES & LIMITS / SETTINGS) ── */}
-      <div className="mt-1 flex items-center justify-between gap-3 pt-1">
-        <div className="space-y-0.5">
-          <p className="text-[11px] font-bold uppercase leading-4 tracking-[0.1em] text-text-muted">
-            {t("settingsKicker")}
-          </p>
-          <h1 className="text-[30px] font-extrabold leading-tight tracking-[-0.5px] text-text">
-            {t("settings")}
-          </h1>
+    <main className="-mt-3 mx-auto w-full max-w-[480px] md:max-w-[560px] lg:max-w-[1060px]">
+      {/* Header - privacy eye & theme flip live in the shell topbar */}
+      <header className="mb-5 mt-1">
+        <h1 className="text-[26px] font-bold tracking-tight text-text">
+          {t("settings")}
+        </h1>
+      </header>
+
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
+        {/* ── Left rail: identity hero + preferences (modals) ── */}
+        <div className="space-y-4">
+          {/* Profile hero */}
+          <section className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4 shadow-soft">
+            <div className="flex min-w-0 flex-1 items-center gap-3.5">
+              <div className="relative shrink-0">
+                <div className="grid h-[58px] w-[58px] place-items-center overflow-hidden rounded-full bg-surface-elevated">
+                  {isAllowedAvatarUrl(profile?.avatar_url ?? "") ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- external avatar
+                    <img src={profile?.avatar_url ?? ""} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-lg font-bold text-text">{initials}</span>
+                  )}
+                </div>
+                {/* Online status dot */}
+                <span className="absolute bottom-0 right-0 h-[15px] w-[15px] rounded-full border-2 border-surface bg-success" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[17px] font-bold leading-6 tracking-[-0.01em] text-text">
+                  {displayName}
+                </p>
+                <p className="truncate text-xs leading-4 text-text-muted">
+                  {profile?.email || t("settingsAccountFallback")}
+                </p>
+                <div className="mt-[3px] flex items-center gap-[5px]">
+                  <ShieldCheck size={13} className="text-success" aria-hidden />
+                  <span className="text-[11px] font-semibold text-success">
+                    {t("settingsVerifiedCloud")}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <Link
+              href="/profile"
+              className="shrink-0 rounded-lg border border-border bg-surface px-3 py-[7px] text-xs font-semibold text-text-muted transition-colors hover:border-faint hover:text-text"
+            >
+              {t("settingsEdit")}
+            </Link>
+          </section>
+
+          {/* Preferences - the four modal rows */}
+          <Panel label={t("settingsPrefs")}>
+            <MenuRow
+              icon={DollarSign}
+              chip="bg-[var(--sf-primary-light)]"
+              label={t("currency")}
+              onOpen={() => setCurrencyModalOpen(true)}
+              right={
+                <>
+                  <CurrencyFlag currency={preferredCurrency} size={18} />
+                  <span className="text-sm font-medium text-text-muted">
+                    {CURRENCY_DETAILS[preferredCurrency as CurrencyCode]?.label ?? preferredCurrency}{" "}
+                    ({CURRENCY_DETAILS[preferredCurrency as CurrencyCode]?.symbol})
+                  </span>
+                </>
+              }
+            />
+            <MenuDivider />
+            <MenuRow
+              icon={isDark ? Moon : Sun}
+              chip="bg-[var(--sf-primary-light)]"
+              label={t("theme")}
+              onOpen={() => setAppearanceModalOpen(true)}
+              right={
+                <span className="text-sm font-medium text-text-muted">
+                  {preference === "system" ? t("system") : preference === "dark" ? t("dark") : t("light")}
+                </span>
+              }
+            />
+            <MenuDivider />
+            <MenuRow
+              icon={Globe}
+              chip="bg-[var(--sf-primary-light)]"
+              label={t("language")}
+              onOpen={() => setLanguageModalOpen(true)}
+              right={
+                <span className="flex items-center gap-1.5 text-sm font-medium text-text-muted">
+                  <Flag country={LANGUAGE_FLAG[language] ?? "gb"} size={16} />
+                  {language === "en" ? "English" : language === "hi" ? "हिन्दी" : "नेपाली"}
+                </span>
+              }
+            />
+            <MenuDivider />
+            <MenuRow
+              icon={Bell}
+              chip="bg-[var(--sf-primary-light)]"
+              label={t("rowNotifications")}
+              onOpen={() => setNotificationsModalOpen(true)}
+              right={<span className="text-[13px] font-semibold text-primary">{t("settingsActive")}</span>}
+            />
+          </Panel>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {/* Privacy eye — mobile PrivacyEyeButton (40px circle). */}
-          <button
-            onClick={toggle}
-            aria-label={isPrivacyMode ? "Show balances" : "Hide balances"}
-            aria-pressed={isPrivacyMode}
-            className={`grid h-10 w-10 place-items-center rounded-full bg-surface transition active:opacity-70 ${
-              isPrivacyMode ? "border border-primary" : "border border-border"
-            }`}
-          >
-            {isPrivacyMode ? (
-              <EyeOff size={24} className="text-primary" aria-hidden />
-            ) : (
-              <Eye size={24} className="text-text-muted" aria-hidden />
-            )}
-          </button>
-          {/* Theme flip — mobile ThemeToggle (40px circle, sun on dark). */}
-          <button
-            onClick={() => setPreference(isDark ? "light" : "dark")}
-            aria-label="Toggle light/dark theme"
-            className="grid h-10 w-10 place-items-center rounded-full border border-border bg-surface transition active:opacity-70"
-          >
-            {isDark ? (
-              <Sun size={20} className="text-hue-amber" aria-hidden />
-            ) : (
-              <Moon size={20} className="text-text" aria-hidden />
-            )}
-          </button>
+
+        {/* ── Right: workspace + data sections, then sign-out ── */}
+        <div className="space-y-4">
+          <Panel label={t("navLedger")}>
+            <MenuRow
+              icon={TrendingUp}
+              chip="bg-[var(--sf-primary-light)]"
+              label={t("rowBudgetReports")}
+              href="/profit-loss"
+            />
+            <MenuDivider />
+            <MenuRow
+              icon={Tag}
+              chip="bg-[var(--sf-tint-success)]"
+              label={t("rowCategoriesBudgets")}
+              href="/categories"
+              right={
+                <span className="text-sm font-medium text-text-muted">{categoryCount}</span>
+              }
+            />
+            <MenuDivider />
+            <MenuRow
+              icon={Landmark}
+              chip="bg-[var(--sf-tint-sky)]"
+              iconColor="text-[var(--sf-set-icon-blue)]"
+              label={t("rowAccounts")}
+              href="/accounts"
+            />
+            <MenuDivider />
+            <MenuRow
+              icon={Coins}
+              chip="bg-[var(--sf-tint-amber)]"
+              iconColor="text-hue-amber"
+              label={t("rowBullion")}
+              href="/bullion"
+            />
+          </Panel>
+
+          <Panel label={t("exportImportTitle")}>
+            <MenuRow
+              icon={Upload}
+              chip="bg-[var(--sf-primary-light)]"
+              label={t("settingsExportData")}
+              href="/export"
+              right={<span className="text-sm font-medium text-text-muted">{t("settingsCsvPdf")}</span>}
+            />
+            <MenuDivider />
+            <MenuRow
+              icon={Trash2}
+              chip="bg-surface-elevated"
+              iconColor="text-text-muted"
+              label={t("settings_bin")}
+              href="/bin"
+            />
+          </Panel>
+
+          {/* Sign out */}
+          <div className="flex lg:justify-end">
+            <button
+              onClick={() => setSignOutModalOpen(true)}
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-border bg-surface px-6 text-sm font-semibold text-danger transition-colors hover:border-danger/40 hover:bg-rust-tint lg:w-auto"
+            >
+              <LogOut size={16} aria-hidden />
+              {t("settingsSignOut")}
+            </button>
+          </div>
         </div>
       </div>
-
-      {/* ── 2. USER PROFILE HERO CARD ── */}
-      <section className="flex items-center justify-between gap-3 rounded-[20px] border-[1.5px] border-primary bg-surface p-4 shadow-[0_4px_10px_var(--sf-set-hero-glow)]">
-        <div className="flex min-w-0 flex-1 items-center gap-3.5">
-          <div className="relative shrink-0">
-            <div className="grid h-[58px] w-[58px] place-items-center overflow-hidden rounded-full bg-surface-elevated">
-              {isAllowedAvatarUrl(profile?.avatar_url ?? "") ? (
-                // eslint-disable-next-line @next/next/no-img-element -- external avatar
-                <img src={profile?.avatar_url ?? ""} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <span className="text-lg font-bold text-text">{initials}</span>
-              )}
-            </div>
-            {/* Online status dot */}
-            <span className="absolute bottom-0 right-0 h-[15px] w-[15px] rounded-full border-2 border-surface bg-success" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[18px] font-extrabold leading-6 tracking-[-0.3px] text-text">
-              {displayName}
-            </p>
-            <p className="truncate text-xs leading-4 text-text-muted">
-              {profile?.email || t("settingsAccountFallback")}
-            </p>
-            <div className="mt-[3px] flex items-center gap-[5px]">
-              <ShieldCheck size={13} className="text-success" aria-hidden />
-              <span className="text-[11px] font-bold text-success">
-                {t("settingsVerifiedCloud")}
-              </span>
-            </div>
-          </div>
-        </div>
-        <Link
-          href="/profile"
-          className="shrink-0 rounded-full border border-border bg-surface-elevated px-3.5 py-[7px] text-xs font-bold text-text transition active:opacity-75"
-        >
-          {t("settingsEdit")}
-        </Link>
-      </section>
-
-      {/* ── 3. UNIFIED GROUPED SETTINGS MENU ── */}
-      <nav className="overflow-hidden rounded-[20px] border border-border bg-surface shadow-[0_2px_8px_var(--sf-set-card-shadow)]">
-        <MenuRow
-          icon={DollarSign}
-          chip="bg-[var(--sf-set-chip-teal)]"
-          label={t("currency")}
-          onOpen={() => setCurrencyModalOpen(true)}
-          right={
-            <>
-              <CurrencyFlag currency={preferredCurrency} size={18} />
-              <span className="text-sm font-medium text-text-muted">
-                {CURRENCY_DETAILS[preferredCurrency as CurrencyCode]?.label ?? preferredCurrency}{" "}
-                ({CURRENCY_DETAILS[preferredCurrency as CurrencyCode]?.symbol})
-              </span>
-            </>
-          }
-        />
-        <MenuDivider />
-        <MenuRow
-          icon={TrendingUp}
-          chip="bg-[var(--sf-set-chip-teal)]"
-          label={t("rowBudgetReports")}
-          href="/profit-loss"
-        />
-        <MenuDivider />
-        <MenuRow
-          icon={Tag}
-          chip="bg-[var(--sf-set-chip-green)]"
-          label={t("rowCategoriesBudgets")}
-          href="/categories"
-          right={
-            <span className="text-sm font-medium text-text-muted">{categoryCount}</span>
-          }
-        />
-        <MenuDivider />
-        <MenuRow
-          icon={Landmark}
-          chip="bg-[var(--sf-set-chip-blue)]"
-          iconColor="text-[var(--sf-set-icon-blue)]"
-          label={t("rowAccounts")}
-          href="/accounts"
-        />
-        <MenuDivider />
-        <MenuRow
-          icon={Coins}
-          chip="border border-[var(--sf-set-chip-gold-line)] bg-[var(--sf-set-chip-gold)]"
-          iconColor="text-hue-amber"
-          label={t("rowBullion")}
-          href="/bullion"
-          right={
-            <span className="flex items-center gap-1 rounded-full bg-[var(--sf-set-live-bg)] px-[7px] py-[2px]">
-              <span className="h-[5px] w-[5px] rounded-full bg-[var(--sf-hue-emerald)]" />
-              <span className="text-[10px] font-extrabold text-[var(--sf-hue-emerald-600)]">
-                Live
-              </span>
-            </span>
-          }
-        />
-        <MenuDivider />
-        <MenuRow
-          icon={Trash2}
-          chip="bg-[var(--sf-set-chip-slate)]"
-          iconColor="text-[var(--sf-set-icon-slate)]"
-          label={t("settings_bin")}
-          href="/bin"
-        />
-        <MenuDivider />
-        <MenuRow
-          icon={Bell}
-          chip="bg-[var(--sf-set-chip-teal)]"
-          label={t("rowNotifications")}
-          onOpen={() => setNotificationsModalOpen(true)}
-          right={<span className="text-[13px] font-bold text-primary">{t("settingsActive")}</span>}
-        />
-        <MenuDivider />
-        <MenuRow
-          icon={isDark ? Moon : Sun}
-          chip="bg-[var(--sf-set-chip-teal)]"
-          label={t("theme")}
-          onOpen={() => setAppearanceModalOpen(true)}
-          right={
-            <span className="text-sm font-medium text-text-muted">
-              {preference === "system" ? t("system") : preference === "dark" ? t("dark") : t("light")}
-            </span>
-          }
-        />
-        <MenuDivider />
-        <MenuRow
-          icon={Globe}
-          chip="bg-[var(--sf-set-chip-teal)]"
-          label={t("language")}
-          onOpen={() => setLanguageModalOpen(true)}
-          right={
-            <span className="flex items-center gap-1.5 text-sm font-medium text-text-muted">
-              <Flag country={LANGUAGE_FLAG[language] ?? "us"} size={16} />
-              {language === "en" ? "English" : language === "hi" ? "हिन्दी" : "नेपाली"}
-            </span>
-          }
-        />
-        <MenuDivider />
-        <MenuRow
-          icon={Upload}
-          chip="bg-[var(--sf-set-chip-teal)]"
-          label={t("settingsExportData")}
-          href="/export"
-          right={<span className="text-sm font-medium text-text-muted">{t("settingsCsvPdf")}</span>}
-        />
-      </nav>
-
-      {/* ── 4. SIGN OUT (RUST ACCENT) ── */}
-      <button
-        onClick={() => setSignOutModalOpen(true)}
-        className="mt-1 w-full rounded-full border-[1.5px] border-[var(--sf-set-signout-line)] bg-[var(--sf-set-signout-bg)] py-[14px] text-[15px] font-bold text-danger transition active:opacity-75"
-      >
-        {t("settingsSignOut")}
-      </button>
 
       {/* ═══════════════ MODALS ═══════════════ */}
 
@@ -357,24 +322,24 @@ export default function SettingsPage() {
       >
         <div className="mt-4">
           {/* Current selection badge */}
-          <div className="flex items-center justify-between rounded-[10px] border border-primary bg-primary-light p-2.5">
+          <div className="flex items-center justify-between rounded-lg border border-primary bg-[var(--sf-primary-light)] p-2.5">
             <div className="flex min-w-0 items-center gap-2">
               <CurrencyFlag currency={preferredCurrency} size={20} />
               <div className="min-w-0">
-                <p className="text-[13px] font-extrabold text-primary">
+                <p className="text-[13px] font-bold text-primary-strong">
                   {preferredCurrency} · {CURRENCY_DETAILS[preferredCurrency as CurrencyCode]?.symbol}
                 </p>
-                <p className="truncate text-[10px] text-text-muted">
+                <p className="truncate text-[10.5px] text-text-muted">
                   {CURRENCY_DETAILS[preferredCurrency as CurrencyCode]?.label}
                 </p>
               </div>
             </div>
-            <span className="shrink-0 text-[9px] font-bold text-primary">{t("settingsCurrent")}</span>
+            <span className="shrink-0 text-[10px] font-semibold text-primary">{t("settingsCurrent")}</span>
           </div>
           {/* Currency-consistency (2026-09-16): explain the display basis up front. */}
-          <p className="mt-2 text-[10.5px] leading-4 text-faint">{t("settingsCurrencyNote")}</p>
+          <p className="mt-2 text-[11px] leading-4 text-faint">{t("settingsCurrencyNote")}</p>
 
-          {/* 3-column chip grid (mobile flexBasis 31% / maxWidth 36%) */}
+          {/* Currency chips */}
           <div className="mt-4 flex flex-wrap gap-1.5">
             {CURRENCIES.map((code) => {
               const selected = preferredCurrency === code;
@@ -383,17 +348,17 @@ export default function SettingsPage() {
                 <button
                   key={code}
                   onClick={() => void onCurrency(code)}
-                  className={`flex w-[calc(33.333%-4px)] grow-0 basis-[31%] max-w-[36%] flex-col items-center justify-center gap-[2px] rounded-[14px] border-[1.5px] px-2 py-2.5 transition active:opacity-75 ${
+                  className={`flex w-[calc(33.333%-4px)] grow-0 basis-[31%] max-w-[36%] flex-col items-center justify-center gap-[2px] rounded-lg border px-2 py-2.5 transition-colors ${
                     selected
                       ? "border-primary bg-[var(--sf-set-cur-selected)]"
-                      : "border-border bg-surface-elevated"
+                      : "border-border bg-surface-elevated hover:border-faint"
                   }`}
                 >
                   <span className="flex items-center gap-1">
                     <CurrencyFlag currency={code} size={15} />
                     <span
                       className={`text-[11.5px] ${
-                        selected ? "font-extrabold text-primary" : "font-semibold text-text"
+                        selected ? "font-bold text-primary-strong" : "font-semibold text-text"
                       }`}
                     >
                       {code}
@@ -433,16 +398,16 @@ export default function SettingsPage() {
               <button
                 key={key}
                 onClick={() => setPreference(key)}
-                className={`flex flex-1 flex-col items-center justify-center gap-1.5 rounded-[10px] border-[1.5px] py-3.5 transition active:opacity-75 ${
+                className={`flex flex-1 flex-col items-center justify-center gap-1.5 rounded-lg border py-3.5 transition-colors ${
                   selected
-                    ? "border-primary bg-[var(--sf-set-option-selected)]"
-                    : "border-border bg-surface-elevated"
+                    ? "border-primary bg-[var(--sf-primary-light)]"
+                    : "border-border bg-surface-elevated hover:border-faint"
                 }`}
               >
                 <Icon size={20} className={selected ? "text-primary" : "text-text-muted"} aria-hidden />
                 <span
                   className={`text-[13px] ${
-                    selected ? "font-extrabold text-primary" : "font-semibold text-text"
+                    selected ? "font-bold text-primary-strong" : "font-semibold text-text"
                   }`}
                 >
                   {label}
@@ -477,18 +442,18 @@ export default function SettingsPage() {
                   setLanguage(l.code);
                   setLanguageModalOpen(false);
                 }}
-                className={`flex w-full items-center justify-between rounded-[10px] border-[1.5px] p-3 text-left transition active:opacity-75 ${
+                className={`flex w-full items-center justify-between rounded-lg border p-3 text-left transition-colors ${
                   active
-                    ? "border-primary bg-[var(--sf-set-option-selected)]"
-                    : "border-border bg-surface-elevated"
+                    ? "border-primary bg-[var(--sf-primary-light)]"
+                    : "border-border bg-surface-elevated hover:border-faint"
                 }`}
               >
                 <span className="flex min-w-0 items-center gap-2.5">
                   <Flag country={LANGUAGE_FLAG[l.code]} size={22} />
                   <span className="min-w-0">
                     <span
-                      className={`block text-sm font-extrabold ${
-                        active ? "text-primary" : "text-text"
+                      className={`block text-sm font-bold ${
+                        active ? "text-primary-strong" : "text-text"
                       }`}
                     >
                       {l.name}
@@ -516,7 +481,7 @@ export default function SettingsPage() {
         sub={t("settingsMilestoneSub")}
       >
         <div className="mt-4 space-y-2.5">
-          <div className="space-y-2 rounded-[10px] border border-border bg-surface-elevated p-3.5">
+          <div className="space-y-2 rounded-lg border border-border bg-surface-elevated p-3.5">
             <p className="flex items-center gap-1.5 text-[13px] font-bold text-text">
               <Target size={13} className="shrink-0 text-primary" aria-hidden />
               {t("settingsThresholdsTitle")}
@@ -527,7 +492,7 @@ export default function SettingsPage() {
           </div>
           <button
             onClick={() => void onResetAlerts()}
-            className="flex w-full items-center justify-center gap-1.5 rounded-[10px] border border-border bg-surface-elevated py-3 text-[13px] font-bold text-primary transition active:opacity-75"
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-surface py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-[var(--sf-primary-light)]"
           >
             <RefreshCw size={14} aria-hidden />
             {t("settingsResetAlerts")}
@@ -542,14 +507,13 @@ export default function SettingsPage() {
         icon={LogOut}
         title={t("settingsSignOutTitle")}
         overlay="bg-black/70"
-        card="rounded-[24px] p-[22px]"
         bare
       >
         <div className="flex flex-col items-center gap-3 pt-1.5">
-          <span className="grid h-[54px] w-[54px] place-items-center rounded-full border-[1.5px] border-[var(--sf-set-danger-line)] bg-[var(--sf-set-danger-bg)]">
-            <LogOut size={26} className="text-danger" aria-hidden />
+          <span className="grid h-[54px] w-[54px] place-items-center rounded-full bg-rust-tint">
+            <LogOut size={24} className="text-danger" aria-hidden />
           </span>
-          <h2 className="text-center text-[19px] font-black text-text">{t("settingsSignOutTitle")}</h2>
+          <h2 className="text-center text-lg font-bold text-text">{t("settingsSignOutTitle")}</h2>
           <p className="text-center text-[13px] leading-[18px] text-text-muted">
             {t("settingsSignOutBodyWeb")}
           </p>
@@ -558,14 +522,14 @@ export default function SettingsPage() {
           <button
             onClick={() => setSignOutModalOpen(false)}
             disabled={signingOut}
-            className="flex-1 rounded-[10px] border border-border bg-surface-elevated py-[13px] text-sm font-bold text-text transition active:opacity-75 disabled:opacity-60"
+            className="flex-1 rounded-lg border border-border bg-surface py-2.5 text-sm font-semibold text-text transition-colors hover:bg-surface-elevated disabled:opacity-60"
           >
             {t("cancel")}
           </button>
           <button
             onClick={() => void doSignOut()}
             disabled={signingOut}
-            className="flex-[1.2] rounded-[10px] bg-danger py-[13px] text-sm font-extrabold text-white transition active:opacity-90 disabled:opacity-70"
+            className="flex-[1.2] rounded-lg bg-danger py-2.5 text-sm font-semibold text-white transition-colors hover:opacity-90 disabled:opacity-70"
           >
             {t("signOut")}
           </button>
@@ -573,7 +537,7 @@ export default function SettingsPage() {
         <button
           onClick={() => void revokeEverywhere()}
           disabled={signingOut}
-          className="mx-auto mt-3 block rounded px-3 py-1.5 text-[12.5px] font-semibold text-text-muted underline transition active:opacity-70 disabled:opacity-50"
+          className="mx-auto mt-3 block rounded px-3 py-1.5 text-[12.5px] font-medium text-text-muted underline transition-colors hover:text-text disabled:opacity-50"
         >
           {t("settingsRevokeSession")}
         </button>
@@ -614,23 +578,23 @@ function MenuRow({
 }) {
   const inner = (
     <>
-      <span className="flex min-w-0 items-center gap-3.5">
+      <span className="flex min-w-0 items-center gap-3">
         <span
-          className={`grid h-[38px] w-[38px] shrink-0 place-items-center rounded-[10px] ${chip}`}
+          className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${chip}`}
           aria-hidden
         >
-          <Icon size={19} className={iconColor} />
+          <Icon size={17} className={iconColor} />
         </span>
-        <span className="truncate text-[15px] font-semibold text-text">{label}</span>
+        <span className="truncate text-[14.5px] font-medium text-text">{label}</span>
       </span>
       <span className="flex shrink-0 items-center gap-1.5">
         {right}
-        <ChevronRight size={16} className="text-text-muted" aria-hidden />
+        <ChevronRight size={15} className="text-faint" aria-hidden />
       </span>
     </>
   );
   const cls =
-    "flex min-h-[44px] w-full items-center justify-between gap-2 px-4 py-[14px] text-left transition-colors active:bg-[var(--sf-set-press)]";
+    "flex min-h-[44px] w-full items-center justify-between gap-2 px-4 py-3 text-left transition-colors last:rounded-b-xl hover:bg-surface-elevated";
   return href ? (
     <Link href={href} className={cls}>
       {inner}
@@ -642,7 +606,7 @@ function MenuRow({
   );
 }
 
-const MenuDivider = () => <div aria-hidden className="mx-4 h-px bg-border opacity-60" />;
+const MenuDivider = () => <div aria-hidden className="mx-4 h-px bg-border" />;
 
 /** Milestone line in the notifications modal (mobile colored-dot parity). */
 function ThresholdLine({ dot, bold, label }: { dot: string; bold: string; label: string }) {
@@ -657,8 +621,8 @@ function ThresholdLine({ dot, bold, label }: { dot: string; bold: string; label:
 }
 
 /**
- * Mobile settings modal shell: dim overlay → centered 360px paper card,
- * header row with teal icon chip, 16/800 title, 11px caption, 28px X button.
+ * Settings modal shell: dim overlay → centered 380px card, header row with
+ * icon chip, title, caption, X button. Escape closes.
  */
 function SheetModal({
   open,
@@ -668,7 +632,6 @@ function SheetModal({
   sub,
   children,
   overlay = "bg-black/60",
-  card = "rounded-[20px] p-5",
   bare = false,
 }: {
   open: boolean;
@@ -678,7 +641,6 @@ function SheetModal({
   sub?: string;
   children: ReactNode;
   overlay?: string;
-  card?: string;
   /** true: skip the standard header (sign-out confirm has its own). */
   bare?: boolean;
 }) {
@@ -708,26 +670,26 @@ function SheetModal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`sf-pop max-h-[85vh] w-full max-w-[360px] overflow-y-auto border border-border bg-surface shadow-pop ${card}`}
+        className="sf-pop max-h-[85vh] w-full max-w-[380px] overflow-y-auto rounded-xl border border-border bg-surface p-5 shadow-pop"
       >
         {!bare && (
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2.5">
               <span
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[var(--sf-set-chip-teal)]"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--sf-primary-light)]"
                 aria-hidden
               >
                 <Icon size={18} className="text-primary" />
               </span>
               <div className="min-w-0">
-                <p className="text-base font-extrabold leading-5 text-text">{title}</p>
-                {sub && <p className="mt-0.5 truncate text-[11px] text-text-muted">{sub}</p>}
+                <p className="text-[15px] font-bold leading-5 text-text">{title}</p>
+                {sub && <p className="mt-0.5 truncate text-[11.5px] text-text-muted">{sub}</p>}
               </div>
             </div>
             <button
               onClick={onClose}
               aria-label={t("close")}
-              className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-surface-elevated text-text transition active:opacity-75"
+              className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-surface-elevated text-text-muted transition-colors hover:text-text"
             >
               <X size={15} aria-hidden />
             </button>

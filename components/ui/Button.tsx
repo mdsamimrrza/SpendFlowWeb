@@ -22,7 +22,7 @@ export function Button({
 }: ButtonProps) {
   const VARIANTS = {
     primary:
-      "bg-primary text-white shadow-soft hover:bg-primary-strong active:scale-[0.98]",
+      "bg-primary text-primary-ink shadow-soft hover:bg-primary-strong active:scale-[0.98]",
     secondary:
       "bg-surface-elevated text-text border border-transparent hover:border-border",
     danger:

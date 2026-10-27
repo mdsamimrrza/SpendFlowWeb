@@ -1,4 +1,4 @@
-# Architecture — SpendFlow Web
+# Architecture – SpendFlow Web
 
 Status: **proposed / awaiting owner confirmation** (per bootstrap instructions, no feature code before sign-off).
 
@@ -14,7 +14,7 @@ Status: **proposed / awaiting owner confirmation** (per bootstrap instructions, 
 
 ### Current phase (Phase 0): restructure is OUT OF SCOPE right now
 
-The mobile repo is a **deployed standalone Expo app** (EAS builds, `app.json` project config, git history with production releases). Moving it into `apps/mobile` changes EAS project paths and risks breaking the release pipeline — not acceptable as a side effect of bootstrapping the web app. Explicitly deferred.
+The mobile repo is a **deployed standalone Expo app** (EAS builds, `app.json` project config, git history with production releases). Moving it into `apps/mobile` changes EAS project paths and risks breaking the release pipeline – not acceptable as a side effect of bootstrapping the web app. Explicitly deferred.
 
 **Interim arrangement (Phase 0):**
 
@@ -40,7 +40,7 @@ Browser (Next.js App Router)
 │     ├── direct fetch ───────────────────► public FX APIs (open.er-api.com, frankfurter.app)
 │     └── direct fetch ───────────────────► Edge functions: send-security-otp, delete-account,
 │                                            bullion-history (same as mobile client)
-Next.js server (Route Handlers / Server Actions — thin, stateless)
+Next.js server (Route Handlers / Server Actions – thin, stateless)
 └── Optional later: server-side cron for web-specific jobs (none today; gold rates are pg_cron)
 ```
 
@@ -49,8 +49,8 @@ Key decisions:
 - **Client-direct Supabase, same as mobile.** The web app is a *second client of the same backend*, not a BFF. All authorization happens through the exact RLS policies the mobile app relies on (documented in SUPABASE.md). The `anon` key is public by design.
 - **No service-role key in the web app.** Ever. Server-side privileged operations already exist as edge functions (`delete-account`, `send-security-otp`) and are reused as-is.
 - **Session handling**: `@supabase/ssr` (cookie-based storage for Next.js) rather than localStorage, so Server Components and middleware can read the session. PKCE flow for Google OAuth (redirect back to `/auth/callback` route handler).
-- **Data fetching**: cache-then-network, mirroring mobile's pattern (see SYNC-STRATEGY.md). No React Query requirement stated; keep dependencies minimal — the mobile pattern is plain listeners + TTL caches and ports cleanly to SWR-style hooks or context stores.
-- **Exports (PDF/Excel/CSV)**: client-side generation like mobile (e.g. jsPDF + SheetJS or similar), not server routes — keeps behavior byte-for-byte comparable and zero server load. CSV import is a client-side file read.
+- **Data fetching**: cache-then-network, mirroring mobile's pattern (see SYNC-STRATEGY.md). No React Query requirement stated; keep dependencies minimal – the mobile pattern is plain listeners + TTL caches and ports cleanly to SWR-style hooks or context stores.
+- **Exports (PDF/Excel/CSV)**: client-side generation like mobile (e.g. jsPDF + SheetJS or similar), not server routes – keeps behavior byte-for-byte comparable and zero server load. CSV import is a client-side file read.
 - **Hosting**: Vercel. Env vars only via Vercel project settings; `.env.local` locally.
 
 ## 3. Project structure (web app)
@@ -62,12 +62,12 @@ spendflowweb/
 │   ├── (dashboard)/            # authenticated shell: home, history, analytics, recurring, settings
 │   ├── accounts/ transfer/ export/ bullion/ profile/ profit-loss/ ...
 │   └── auth/callback/          # OAuth PKCE code exchange route handler
-├── components/                 # ui/, expense/, account/, category/ — mirror mobile component split
+├── components/                 # ui/, expense/, account/, category/ – mirror mobile component split
 ├── services/                   # same module names & responsibilities as mobile services/
 ├── hooks/ store/               # contexts mirroring mobile: Auth, Theme, Language, Privacy, rates
 ├── constants/                  # currencies, countries, categories, i18n (en/hi/ne)
 ├── utils/                      # format.ts (budget/cycle math), supabase.ts (SSR clients)
-├── types/database.types.ts     # GENERATED — never hand-edit (sync script copies it in)
+├── types/database.types.ts     # GENERATED – never hand-edit (sync script copies it in)
 ├── docs/                       # this doc set
 └── scripts/                    # sync-supabase-types.mjs, etc.
 ```
@@ -77,8 +77,8 @@ The structure deliberately mirrors the mobile repo module-for-module (`services/
 ## 4. Data flow (canonical example: create an expense)
 
 1. User submits form → zod validation client-side (same rules as mobile's schema).
-2. Before insert, resolve the FX snapshot for the expense's currency+date (`getRate` semantics from mobile `services/exchange.ts`: peg → cache → `exchange_rates` table → public API → fallback) and stamp `exchange_rate_to_usd` + `base_currency` — **identical to mobile**, because analytics/pivot logic depends on snapshots.
-3. `supabase.from('expenses').insert(...)` — RLS scopes the row to `auth.uid()`.
+2. Before insert, resolve the FX snapshot for the expense's currency+date (`getRate` semantics from mobile `services/exchange.ts`: peg → cache → `exchange_rates` table → public API → fallback) and stamp `exchange_rate_to_usd` + `base_currency` – **identical to mobile**, because analytics/pivot logic depends on snapshots.
+3. `supabase.from('expenses').insert(...)` – RLS scopes the row to `auth.uid()`.
 4. In-memory listeners notify home/history/analytics to re-read; cache updated.
 5. Budget milestone check runs client-side (same thresholds 25/50/75/90/100 %) → in-app banner; notification row insert (parity with mobile).
 

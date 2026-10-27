@@ -20,7 +20,7 @@ import type { LanguageCode } from "@/utils/format";
 /* Shell pieces                                                        */
 /* ------------------------------------------------------------------ */
 
-/** The parchment card every auth screen sits on — flat, hairline, no shadow. */
+/** The parchment card every auth screen sits on – flat, hairline, no shadow. */
 export function AuthCard({
   overline,
   title,
@@ -34,10 +34,8 @@ export function AuthCard({
 }) {
   return (
     <section className="panel sf-auth-card shadow-soft w-full max-w-[400px] p-3.5 sm:p-6">
-      <p className="caps-faint" style={{ color: "var(--sf-brass)" }}>
-        {overline}
-      </p>
-      <h1 className="font-brand mt-1 text-[22px] font-bold leading-tight tracking-tight text-text sm:text-2xl">
+      <p className="caps-faint">{overline}</p>
+      <h1 className="mt-1 text-[22px] font-bold leading-tight tracking-[-0.02em] text-text sm:text-2xl">
         {title}
       </h1>
       {subtitle && (
@@ -48,7 +46,7 @@ export function AuthCard({
   );
 }
 
-/** Error / info banner — sharp tinted strip with a lucide tone icon. */
+/** Error / info banner – sharp tinted strip with a lucide tone icon. */
 export function AuthBanner({ kind, text }: { kind: "error" | "info"; text: string }) {
   const Icon = kind === "error" ? CircleAlert : Info;
   return (
@@ -71,13 +69,13 @@ export function AuthDivider({ label }: { label: string }) {
   return (
     <div className="my-3 flex items-center gap-3" aria-hidden>
       <span className="h-px flex-1 bg-border" />
-      <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-faint">{label}</span>
+      <span className="text-[11px] font-medium text-faint">{label}</span>
       <span className="h-px flex-1 bg-border" />
     </div>
   );
 }
 
-/** Quiet shield line under the form — mirrors the brand panel promise. */
+/** Quiet shield line under the form – mirrors the brand panel promise. */
 export function AuthSecureNote() {
   const { t } = useLanguage();
   return (
@@ -148,7 +146,7 @@ export function AuthField({
           type={resolvedType}
           aria-invalid={!!error}
           aria-describedby={error || (isPassword && hint) ? `${fieldId}-msg` : undefined}
-          className={`h-11 w-full border bg-input text-[16px] text-text placeholder:text-faint focus:border-primary focus:outline-none sm:text-sm ${
+          className={`h-11 w-full rounded-lg border bg-input text-[16px] text-text placeholder:text-faint focus:border-primary focus:outline-none sm:text-sm ${
             error ? "border-danger" : "border-border"
           } ${Icon ? "pl-10" : "pl-3.5"} ${isPassword ? "pr-11" : "pr-3.5"}`}
           {...rest}
@@ -179,7 +177,7 @@ export function AuthField({
   );
 }
 
-/** Full-width sharp primary — same masthead button language as the landing. */
+/** Full-width sharp primary – same masthead button language as the landing. */
 export function AuthSubmit({
   loading,
   disabled,
@@ -198,7 +196,7 @@ export function AuthSubmit({
       type={type}
       onClick={onClick}
       disabled={disabled || loading}
-      className="sf-lift sf-grad-primary flex h-11 w-full items-center justify-center gap-2 border border-primary bg-primary px-5 text-xs font-bold uppercase tracking-[0.08em] text-white disabled:cursor-not-allowed disabled:opacity-50"
+      className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-ink transition-colors hover:bg-primary-strong active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
     >
       {loading && (
         <span
@@ -211,13 +209,13 @@ export function AuthSubmit({
   );
 }
 
-/** Google button — the official 4-colour G is logo art, not an emoji glyph. */
+/** Google button – the official 4-colour G is logo art, not an emoji glyph. */
 export function AuthGoogleButton({ onClick, label }: { onClick: () => void; label: string }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="sf-lift flex h-11 w-full items-center justify-center gap-2.5 border border-border bg-surface px-5 text-xs font-bold uppercase tracking-[0.08em] text-text hover:border-text-muted"
+      className="flex h-11 w-full items-center justify-center gap-2.5 rounded-lg border border-border bg-surface px-5 text-sm font-semibold text-text transition-colors hover:bg-surface-elevated"
     >
       <GoogleG /> {label}
     </button>
@@ -228,7 +226,7 @@ export function AuthGoogleButton({ onClick, label }: { onClick: () => void; labe
 /* Cross-links & chrome                                                */
 /* ------------------------------------------------------------------ */
 
-/** "Don't have an account? Create account" — sharp caps link, ≥44px row. */
+/** "Don't have an account? Create account" – sharp caps link, ≥44px row. */
 export function AuthSwitchLink({
   question,
   actionLabel,
@@ -261,11 +259,11 @@ export function LangPills() {
           key={l}
           onClick={() => setLanguage(l)}
           aria-pressed={language === l}
-          className={`h-9 border px-2.5 text-[11px] font-bold uppercase tracking-[0.08em] transition ${
+          className={`h-9 border px-2.5 text-[11px] font-semibold transition first:rounded-l-lg last:rounded-r-lg ${
             i > 0 ? "-ml-px" : ""
           } ${
             language === l
-              ? "relative z-10 border-primary bg-primary text-white"
+              ? "relative z-10 border-primary bg-primary text-primary-ink"
               : "border-border bg-transparent text-text-muted hover:border-text-muted"
           }`}
         >

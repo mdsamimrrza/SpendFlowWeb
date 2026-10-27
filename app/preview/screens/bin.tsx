@@ -1,11 +1,11 @@
 "use client";
 
-import { DashboardShell } from "@/components/layout/DashboardShell";
+import { AppShell } from "@/components/shell/AppShell";
 import BinStatement, { type BinInject } from "@/components/bin/BinStatement";
 import type { BinItem } from "@/services/bin";
 
 /**
- * Static design preview of the Bin (mock data, no auth, no network) — the
+ * Static design preview of the Bin (mock data, no auth, no network) – the
  * 60-day trash register with restore / delete-forever rows and countdown
  * tones, screenshottable without an account.
  */
@@ -132,8 +132,8 @@ const inject: BinInject = {
 
 export default function PreviewBinPage() {
   return (
-    <DashboardShell>
+    <AppShell>
       <BinStatement inject={inject} />
-    </DashboardShell>
+    </AppShell>
   );
 }

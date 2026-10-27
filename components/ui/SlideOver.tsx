@@ -6,7 +6,7 @@ import { useLanguage } from "@/store/LanguageContext";
 
 interface SlideOverProps {
   open: boolean;
-  /** Caps masthead label (ledger style — e.g. "Transaction record"). */
+  /** Caps masthead label (ledger style – e.g. "Transaction record"). */
   title: string;
   onClose: () => void;
   children: ReactNode;
@@ -15,7 +15,7 @@ interface SlideOverProps {
 }
 
 /**
- * Right-docked record sheet — the web-only drill-in surface (more detail than
+ * Right-docked record sheet – the web-only drill-in surface (more detail than
  * mobile's centered modals). Same portal/Escape semantics as Modal, docked to
  * the trailing edge with a full-height hairline panel and caps masthead.
  */

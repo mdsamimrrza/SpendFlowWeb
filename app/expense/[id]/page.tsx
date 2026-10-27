@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ExpenseForm } from "@/components/expense/ExpenseForm";
 
-export const metadata: Metadata = { title: "Edit Transaction — SpendFlow" };
+export const metadata: Metadata = { title: "Edit Transaction – SpendFlow" };
 
 /** Form owns the header bar (ref + recorded subline render inside it). */
 export default async function EditExpensePage({

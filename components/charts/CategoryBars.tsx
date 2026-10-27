@@ -16,7 +16,7 @@ interface CategoryBarsProps {
 
 /**
  * Ledger spending breakdown: ranked horizontal rules with color keys and
- * figures — the statement alternative to a pie chart.
+ * figures – the statement alternative to a pie chart.
  */
 export function CategoryBars({ slices, totalLabel, totalValue, formatValue }: CategoryBarsProps) {
   const total = slices.reduce((s, x) => s + x.value, 0);

@@ -7,9 +7,10 @@ import {
   FileSpreadsheet,
   FileText,
   Printer,
-  Share2,
+  ShieldCheck,
+  TrendingDown,
+  TrendingUp,
   Upload,
-  Wallet,
   X,
 } from "lucide-react";
 import { useAuth } from "@/store/AuthContext";
@@ -28,11 +29,12 @@ import {
 } from "@/services/export";
 import { getSupabaseBrowserClient } from "@/utils/supabase/browser";
 import type { TranslationKey } from "@/constants/i18n/dictionaries";
-import { formatMoney, todayISO, isValidISODate, toISODate, getCycleWindow } from "@/utils/format";
+import { formatMoney, formatShortDate, todayISO, isValidISODate, toISODate, getCycleWindow } from "@/utils/format";
+import { FitText } from "@/components/ui/FitText";
 
 type Period = "today" | "week" | "month" | "year" | "all";
 
-/** Mobile PERIODS list (app/export.tsx) — label keys resolve via t(). */
+/** Mobile PERIODS list (app/export.tsx) - label keys resolve via t(). */
 const PERIODS: { value: Period; labelKey: TranslationKey }[] = [
   { value: "today", labelKey: "periodToday" },
   { value: "week", labelKey: "periodWeek" },
@@ -52,12 +54,12 @@ interface ExportPageProps {
 }
 
 /**
- * Export / import — client-side only (mobile services/export.ts parity):
+ * Export / import - client-side only (mobile services/export.ts parity):
  * CSV / multi-sheet Excel / print-PDF statement of the selected period with
  * the full column set, CSV import with guards (≤ 2 MB, ≤ 1000 rows) that
  * round-trips our own exports.
  */
-/** Statement implementation — the default page export renders it bare;
+/** Statement implementation - the default page export renders it bare;
  *  preview harnesses pass inject (mock data, no auth, no network). */
 export function ExportStatement({ inject }: ExportPageProps) {
   const { user, profile } = useAuth();
@@ -108,7 +110,7 @@ export function ExportStatement({ inject }: ExportPageProps) {
     }
     if (period === "month") {
       // "This month" = the user's current billing cycle (History/analytics
-      // parity), not the calendar month — custom cycle starts (cycle_start_day
+      // parity), not the calendar month - custom cycle starts (cycle_start_day
       // 2–31) shift the window. Cycle start day 1 is the calendar-month
       // sentinel, so default profiles are unaffected.
       const cycle = getCycleWindow(now, profile?.cycle_start_day ?? 1, profile?.cycle_end_day ?? null);
@@ -128,7 +130,7 @@ export function ExportStatement({ inject }: ExportPageProps) {
     () => scoped.reduce((s, r) => s + (r.type === "income" ? convert(r) : -convert(r)), 0),
     [scoped, convert],
   );
-  // Period shape — inflow vs outflow drives the split bar.
+  // Period shape - inflow vs outflow drives the split bar.
   const incomeTotal = useMemo(
     () => scoped.reduce((s, r) => (r.type === "income" ? s + convert(r) : s), 0),
     [scoped, convert],
@@ -284,7 +286,7 @@ export function ExportStatement({ inject }: ExportPageProps) {
         const c = parseLine(line);
         const date = c[iDate]?.trim() ?? "";
         const amount = Number(c[iAmount]);
-        // isValidISODate first (real calendar day — the shared validator only
+        // isValidISODate first (real calendar day - the shared validator only
         // compares ranges), then the same money/date rules as every other
         // write path (services/expenses.ts). Invalid rows are skipped, as before.
         if (!isValidISODate(date)) continue;
@@ -351,7 +353,7 @@ export function ExportStatement({ inject }: ExportPageProps) {
         const batch = parsed.slice(i, i + 200);
         const inserts = [];
         for (const p of batch) {
-          // FX snapshot per row (mobile parity) — cached per currency+date.
+          // FX snapshot per row (mobile parity) - cached per currency+date.
           const snapKey = `${p.currency}:${p.date}`;
           if (!snapshotCache.has(snapKey)) {
             snapshotCache.set(snapKey, await getRateSnapshot(supabase, p.currency, p.date));
@@ -390,174 +392,216 @@ export function ExportStatement({ inject }: ExportPageProps) {
     }
   };
 
+  const rangeLabel = `${formatShortDate(range.from, locale)} – ${formatShortDate(range.to, locale)}`;
+
   return (
-    <main className="mx-auto w-full max-w-[560px] space-y-4 p-0.5 pb-6">
-      {/* ── 1. HEADER ── */}
-      <div className="flex items-center justify-between pt-1">
-        <div>
-          <p className="text-[11px] font-bold uppercase leading-4 tracking-[0.6px] text-text-muted">
-            {t("expKicker")}
-          </p>
-          <h1 className="mt-0.5 text-[28px] font-extrabold leading-[34px] tracking-tight text-text">
+    <main className="mx-auto w-full max-w-[600px] space-y-5 p-0.5 pb-6 lg:max-w-[980px]">
+      {/* ── CONSOLE MASTHEAD – chip pinned right at every width ── */}
+      <header className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="caps text-faint">{t("expKicker")}</p>
+          <h1 className="truncate text-[26px] font-extrabold leading-tight tracking-tight text-text">
             {t("expCenter")}
           </h1>
+          <p className="mt-0.5 truncate text-[12.5px] font-medium text-text-muted">
+            <span className="numeric">{periodLabel}</span> ·{" "}
+            {t("expTransactionsIncluded").replace("{count}", String(scoped.length))}
+          </p>
         </div>
         <Link
           href="/settings"
           aria-label={t("close")}
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border bg-surface-elevated text-text transition active:opacity-70"
+          className="mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border bg-surface text-text-muted transition hover:border-text-muted hover:text-text active:opacity-70"
         >
-          <X size={18} aria-hidden />
+          <X size={16} aria-hidden />
         </Link>
+      </header>
+
+      {/* ── PERIOD SELECTOR - segmented control ── */}
+      <div
+        className="scroll-x flex rounded-lg border border-border bg-surface-elevated p-0.5"
+        role="group"
+        aria-label={t("expSelectPeriod")}
+      >
+        {PERIODS.map((p) => {
+          const active = period === p.value;
+          return (
+            <button
+              key={p.value}
+              onClick={() => setPeriod(p.value)}
+              aria-pressed={active}
+              className={`h-9 min-h-[36px] shrink-0 whitespace-nowrap rounded-md px-3 text-[13px] font-semibold transition active:scale-[0.97] ${
+                active ? "flex-1 bg-primary text-primary-ink" : "flex-1 text-text-muted hover:text-text"
+              }`}
+            >
+              {t(p.labelKey)}
+            </button>
+          );
+        })}
       </div>
 
-      {/* ── 2. PERIOD SELECTOR PILLS ── */}
-      <div className="space-y-2">
-        <p className="text-sm font-extrabold text-text">{t("expSelectPeriod")}</p>
-        <div className="scroll-x flex gap-2 overflow-x-auto py-0.5">
-          {PERIODS.map((p) => {
-            const active = period === p.value;
-            return (
-              <button
-                key={p.value}
-                onClick={() => setPeriod(p.value)}
-                aria-pressed={active}
-                className={`shrink-0 rounded-full border px-4 py-2 text-[13px] transition active:opacity-80 ${
-                  active
-                    ? "border-primary bg-primary font-extrabold text-white"
-                    : "border-border bg-surface-elevated font-semibold text-text-muted"
-                }`}
-              >
-                {t(p.labelKey)}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── 3. STATEMENT PREVIEW CARD ── */}
-      <section className="space-y-3 rounded-[16px] border-[1.5px] border-primary bg-[var(--sf-studio-gauge-bg)] p-4">
-        <div className="flex items-center justify-between gap-2">
-          <span className="flex min-w-0 items-center gap-1.5">
-            <Wallet size={16} className="shrink-0 text-primary" aria-hidden />
-            <span className="truncate text-[11px] font-extrabold uppercase tracking-[0.6px] text-primary">
-              {t("expSummary").replace("{period}", periodLabel)}
+      {/* ── STATEMENT STAT ROW – net hero full-width on phones, 3-up on desktop ── */}
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        <div className="panel col-span-2 rounded-xl p-4 lg:col-span-1">
+          <div className="flex items-center justify-between">
+            <p className="caps text-faint">{t("cfNet")}</p>
+            <span
+              className={`grid h-7 w-7 place-items-center rounded-lg ${total >= 0 ? "bg-income/10 text-income" : "bg-danger/10 text-danger"}`}
+              aria-hidden
+            >
+              <ShieldCheck size={14} />
             </span>
-          </span>
-          <span className="shrink-0 text-[11px] text-text-muted">
-            {t("expTransactionsIncluded").replace("{count}", String(scoped.length))}
-          </span>
+          </div>
+          <FitText
+            basePx={19}
+            minPx={14}
+            className={`figures mt-2 font-extrabold leading-none ${total >= 0 ? "text-text" : "text-danger"}`}
+            title={fmt(total)}
+          >
+            {fmt(total)}
+          </FitText>
+          <p className="numeric mt-1.5 truncate text-[10.5px] font-semibold text-faint">{rangeLabel}</p>
         </div>
-        <div>
-          <p className="truncate text-[32px] font-extrabold leading-9 tracking-[-0.5px] text-text tabular-nums">
-            {fmt(expenseTotal)}
-          </p>
-          <p className="mt-0.5 text-xs text-text-muted">
-            {t("expVerifiedRecord")} • {displayCurrency}
-          </p>
+        <div className="panel rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <p className="caps text-faint">{t("flowIncome")}</p>
+            <span className="grid h-7 w-7 place-items-center rounded-lg bg-income/10 text-income" aria-hidden>
+              <TrendingUp size={14} />
+            </span>
+          </div>
+          <p className="numeric mt-2 text-[17px] font-extrabold leading-none text-income lg:text-[20px]">+{fmt(incomeTotal)}</p>
+          <p className="mt-1.5 truncate text-[11px] font-semibold text-text-muted">{displayCurrency}</p>
+        </div>
+        <div className="panel rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <p className="caps text-faint">{t("flowExpenses")}</p>
+            <span className="grid h-7 w-7 place-items-center rounded-lg bg-danger/10 text-danger" aria-hidden>
+              <TrendingDown size={14} />
+            </span>
+          </div>
+          <p className="numeric mt-2 text-[17px] font-extrabold leading-none text-danger lg:text-[20px]">−{fmt(expenseTotal)}</p>
+          <p className="mt-1.5 truncate text-[11px] font-semibold text-text-muted">{displayCurrency}</p>
         </div>
       </section>
 
-      {/* ── 4. EXPORT ACTION BUTTONS ── */}
-      <div className="space-y-3">
-        <p className="text-sm font-extrabold text-text">{t("expGenerate")}</p>
+      {/* ── VERIFIED RECORD STRIP ── */}
+      <div className="panel flex items-center gap-2.5 rounded-xl px-4 py-3">
+        <ShieldCheck size={16} className="shrink-0 text-income" aria-hidden />
+        <span className="min-w-0 truncate text-xs font-semibold text-text-muted">{t("expVerifiedRecord")}</span>
+        <span className="rule-after" aria-hidden />
+        <span className="numeric shrink-0 text-[11px] font-bold text-faint">
+          {t("expSummary").replace("{period}", periodLabel)}
+        </span>
+      </div>
 
-        {/* PDF Statement (primary highlight) */}
+      {/* ── GENERATE + IMPORT: two columns on desktop ── */}
+      <div className="space-y-5 lg:grid lg:grid-cols-12 lg:gap-4 lg:space-y-0">
+        <div className="space-y-2 lg:col-span-7">
+          <p className="caps">{t("expGenerate")}</p>
+
+        {/* PDF Statement (primary) */}
         <button
           onClick={() => void onExportPdf()}
           disabled={!!busy}
-          className="flex w-full items-center justify-between gap-3 rounded-2xl bg-primary p-4 text-left shadow-[0_6px_10px_color-mix(in_srgb,var(--sf-primary)_35%,transparent)] transition active:opacity-90 disabled:opacity-70"
+          className="flex w-full items-center justify-between gap-3 rounded-xl bg-primary p-4 text-left transition-colors hover:bg-primary-strong active:scale-[0.99] disabled:opacity-70"
         >
           <span className="flex min-w-0 items-center gap-3">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white/20 text-white">
-              {busy === "pdf" ? <BusyRing /> : <Printer size={22} aria-hidden />}
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-white/15 text-primary-ink dark:bg-black/10">
+              {busy === "pdf" ? <BusyRing tone="text-primary-ink" /> : <Printer size={21} aria-hidden />}
             </span>
             <span className="min-w-0">
               <span className="flex items-center gap-1.5">
-                <span className="text-base font-extrabold text-white">{t("expPdfTitle")}</span>
-                <span className="rounded bg-white px-1.5 py-px text-[10px] font-extrabold text-primary">
+                <span className="text-[15px] font-bold text-primary-ink">{t("expPdfTitle")}</span>
+                <span className="rounded-md bg-white px-1.5 py-px text-[10px] font-bold text-gray-900">
                   {t("expRecommended")}
                 </span>
               </span>
-              <span className="block truncate text-xs text-white/80">{t("expPdfSub")}</span>
+              <span className="block truncate text-xs text-white/80 dark:text-black/70">
+                {t("expPdfSub")}
+              </span>
             </span>
           </span>
-          <ArrowDownToLine size={20} className="shrink-0 text-white" aria-hidden />
+          <ArrowDownToLine size={19} className="shrink-0 text-primary-ink" aria-hidden />
         </button>
 
         {/* Excel XLSX */}
         <button
           onClick={() => void onExportExcel()}
           disabled={!!busy}
-          className="flex w-full items-center justify-between gap-3 rounded-2xl border border-border bg-surface-elevated p-4 text-left transition active:opacity-80 disabled:opacity-70"
+          className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4 text-left transition-colors hover:border-faint active:scale-[0.99] disabled:opacity-70"
         >
           <span className="flex min-w-0 items-center gap-3">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[var(--sf-export-excel-bg)] text-success">
-              {busy === "excel" ? <BusyRing tone="text-success" /> : <FileSpreadsheet size={22} aria-hidden />}
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-[var(--sf-export-excel-bg)] text-success">
+              {busy === "excel" ? <BusyRing tone="text-success" /> : <FileSpreadsheet size={21} aria-hidden />}
             </span>
             <span className="min-w-0">
-              <span className="block text-[15px] font-extrabold text-text">{t("expExcelTitle")}</span>
+              <span className="block text-[15px] font-bold text-text">{t("expExcelTitle")}</span>
               <span className="block truncate text-xs text-text-muted">{t("expExcelSub")}</span>
             </span>
           </span>
-          <Share2 size={18} className="shrink-0 text-text-muted" aria-hidden />
+          <ArrowDownToLine size={18} className="shrink-0 text-faint" aria-hidden />
         </button>
 
         {/* CSV */}
         <button
           onClick={() => void onExportCsv()}
           disabled={!!busy}
-          className="flex w-full items-center justify-between gap-3 rounded-2xl border border-border bg-surface-elevated p-4 text-left transition active:opacity-80 disabled:opacity-70"
+          className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4 text-left transition-colors hover:border-faint active:scale-[0.99] disabled:opacity-70"
         >
           <span className="flex min-w-0 items-center gap-3">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[var(--sf-export-csv-bg)] text-hue-sky">
-              {busy === "csv" ? <BusyRing tone="text-hue-sky" /> : <FileText size={22} aria-hidden />}
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-[var(--sf-export-csv-bg)] text-[var(--sf-hue-sky-ink)]">
+              {busy === "csv" ? <BusyRing tone="text-[var(--sf-hue-sky-ink)]" /> : <FileText size={21} aria-hidden />}
             </span>
             <span className="min-w-0">
-              <span className="block text-[15px] font-extrabold text-text">{t("expCsvTitle")}</span>
+              <span className="block text-[15px] font-bold text-text">{t("expCsvTitle")}</span>
               <span className="block truncate text-xs text-text-muted">{t("expCsvSub")}</span>
             </span>
           </span>
-          <Share2 size={18} className="shrink-0 text-text-muted" aria-hidden />
+          <ArrowDownToLine size={18} className="shrink-0 text-faint" aria-hidden />
         </button>
       </div>
 
-      {/* ── 5. IMPORT SECTION ── */}
-      <div className="space-y-2.5 pt-1">
-        <p className="text-sm font-extrabold text-text">{t("expBackupTitle")}</p>
-        <label className="flex cursor-pointer items-center justify-center gap-2 rounded-[10px] border border-dashed border-border bg-surface-elevated p-3.5 transition active:opacity-75">
-          {busy === "import" ? (
-            <BusyRing tone="text-primary" />
-          ) : (
-            <Upload size={16} className="text-primary" aria-hidden />
-          )}
-          <span className="text-xs font-bold text-primary">{t("expImportCsv")}</span>
-          <input
-            type="file"
-            accept=".csv,text/csv"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) void onImportCsv(f);
-              e.target.value = "";
-            }}
-          />
-        </label>
-        {importResult && (
-          <p className="rounded-xl bg-primary-light px-3 py-2 text-xs font-bold text-income">
-            {importResult}
-          </p>
-        )}
+        {/* ── IMPORT SECTION ── */}
+        <div className="space-y-2 lg:col-span-5">
+          <p className="caps">{t("expBackupTitle")}</p>
+          <div className="panel rounded-xl p-4">
+            <label className="flex min-h-[148px] cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-surface-elevated px-4 py-6 text-center transition-colors hover:border-primary">
+              {busy === "import" ? (
+                <BusyRing tone="text-primary" />
+              ) : (
+                <span className="grid h-11 w-11 place-items-center rounded-lg bg-[var(--sf-primary-light)] text-primary">
+                  <Upload size={18} aria-hidden />
+                </span>
+              )}
+              <span className="text-[13px] font-semibold text-primary">{t("expImportCsv")}</span>
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void onImportCsv(f);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+            {importResult && (
+              <p className="mt-3 rounded-lg bg-[var(--sf-primary-light)] px-3 py-2 text-xs font-semibold text-income">
+                {importResult}
+              </p>
+            )}
+          </div>
+        </div>
       </div>
 
-      <p className="text-center text-[10px] text-text-muted opacity-55">
+      <p className="text-center text-[10.5px] text-faint">
         Export build v7 · web
       </p>
     </main>
   );
 }
 
-/** Mobile ActivityIndicator parity — small ring inside action chips. */
+/** Mobile ActivityIndicator parity - small ring inside action chips. */
 function BusyRing({ tone = "text-white" }: { tone?: string }) {
   return (
     <span

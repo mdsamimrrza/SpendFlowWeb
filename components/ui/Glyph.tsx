@@ -48,7 +48,7 @@ import { CATEGORY_ICONS, EMOJI_TO_ICON_NAME } from "@/constants/categoryIcons";
 
 /**
  * Web icon layer: the shared DB stores category/account icons as emoji
- * (mobile writes them), but the web UI renders Lucide everywhere — this
+ * (mobile writes them), but the web UI renders Lucide everywhere – this
  * resolves a stored glyph to the matching Lucide icon, with a type-aware
  * fallback so custom emoji never leak into the interface.
  */
@@ -114,7 +114,7 @@ const EMOJI_TO_LUCIDE: Record<string, LucideIcon> = {
 /**
  * Own-property lookup for stored-value maps (NV hardening): a stored icon of
  * 'constructor'/'toString'/'__proto__' must never resolve an inherited member
- * to a non-component 'icon' — fall through to the neutral fallback instead.
+ * to a non-component 'icon' – fall through to the neutral fallback instead.
  */
 function ownIcon<K extends string | number | symbol, V>(map: Record<K, V>, key: string): V | undefined {
   return Object.hasOwn(map, key) ? map[key as K] : undefined;
@@ -152,7 +152,7 @@ export function accountGlyph(icon: string | null | undefined, accountType?: stri
     const byEmoji = ownIcon(EMOJI_TO_LUCIDE, icon.trim());
     if (byEmoji) return byEmoji;
     // Newer mobile rows store Lucide NAMES (e.g. 'landmark' from the account
-    // type presets) rather than emoji — resolve those too.
+    // type presets) rather than emoji – resolve those too.
     const byName = ownIcon(ACCOUNT_NAME_TO_LUCIDE, icon.trim());
     if (byName) return byName;
   }

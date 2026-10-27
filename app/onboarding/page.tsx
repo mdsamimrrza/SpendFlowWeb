@@ -33,7 +33,6 @@ export default function OnboardingPage() {
 
   return (
     <main className="relative flex min-h-screen items-center justify-center p-4">
-      <div className="sf-ambient" aria-hidden />
       <div className="w-full max-w-md">
         <div className="mb-6 flex items-center justify-end">
           <ThemeToggle className="h-9 w-9" />
@@ -43,18 +42,18 @@ export default function OnboardingPage() {
           <div className="mx-auto mb-4 w-fit">
             <SpendFlowSeal size={84} />
           </div>
-          <h1 className="font-brand text-4xl font-bold tracking-tight text-text">SpendFlow</h1>
+          <h1 className="text-4xl font-bold tracking-[-0.03em] text-text">SpendFlow</h1>
           <p className="mt-1.5 text-sm text-text-muted">See where your money flows</p>
         </header>
 
-        <div className="sf-card mb-5 p-5">
+        <div className="panel mb-5 p-5">
           <p className="mb-2 text-[13px] font-bold text-text-muted">{t("language")}</p>
           <div className="flex gap-2">
             {(["en", "hi", "ne"] as LanguageCode[]).map((l) => (
               <button
                 key={l}
                 onClick={() => setLanguage(l)}
-                className={`flex h-10 flex-1 items-center justify-center gap-1.5 border text-xs font-bold uppercase tracking-[0.08em] transition active:scale-[0.97] ${
+                className={`flex h-10 flex-1 items-center justify-center gap-1.5 rounded-lg border text-[13px] font-semibold transition active:scale-[0.98] ${
                   language === l
                     ? "border-primary bg-primary-light text-primary-strong"
                     : "border-border bg-surface text-text-muted hover:text-text"
@@ -74,9 +73,9 @@ export default function OnboardingPage() {
               <button
                 key={c.code}
                 onClick={() => setSelected(c.code)}
-                className={`flex h-10 items-center gap-1.5 border px-3.5 text-xs font-bold uppercase tracking-[0.06em] transition active:scale-[0.97] ${
+                className={`flex h-10 items-center gap-1.5 rounded-lg border px-3.5 text-[13px] font-semibold transition active:scale-[0.98] ${
                   selected === c.code
-                    ? "border-primary bg-primary text-white shadow-sm shadow-primary/25"
+                    ? "border-primary bg-primary text-primary-ink"
                     : "border-border bg-surface text-text-muted hover:text-text"
                 }`}
               >

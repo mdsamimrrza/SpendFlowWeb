@@ -1,6 +1,6 @@
 "use client";
 
-import { DashboardShell } from "@/components/layout/DashboardShell";
+import { AppShell } from "@/components/shell/AppShell";
 import {
   TransferHistoryStatement,
   type TransferHistoryInject,
@@ -9,7 +9,7 @@ import type { TransferRow } from "@/services/transfers";
 
 /**
  * Static design preview of the Transfer log register (mock data, no auth, no
- * network) — telemetry strip, filter band and the movement register with the
+ * network) – telemetry strip, filter band and the movement register with the
  * detail sheet reachable, screenshottable without an account.
  */
 const base = {
@@ -99,8 +99,8 @@ const inject: TransferHistoryInject = { rows };
 
 export default function PreviewTransferLogPage() {
   return (
-    <DashboardShell>
+    <AppShell>
       <TransferHistoryStatement inject={inject} />
-    </DashboardShell>
+    </AppShell>
   );
 }

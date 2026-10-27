@@ -3,8 +3,8 @@
 import { useEffect } from "react";
 import { useTheme } from "@/store/ThemeContext";
 
-const LIGHT = "#EDEAE0";
-const DARK = "#0B0F19";
+const LIGHT = "#F2EFE2";
+const DARK = "#0A100C";
 
 /**
  * Keeps the tab icon and browser theme color in sync with the IN-APP theme.
@@ -12,13 +12,13 @@ const DARK = "#0B0F19";
  * `prefers-color-scheme`; we retarget every icon link to the theme's asset.
  *
  * Rules of engagement with Next 16's head manager:
- *  - NEVER remove() or append() head tags — Next tracks the exact nodes and
+ *  - NEVER remove() or append() head tags – Next tracks the exact nodes and
  *    detaching them throws "removeChild of null" at runtime.
  *  - Next streams some links (the /favicon.ico convention, metadata) AFTER
  *    hydration, so a one-shot effect misses them; a MutationObserver on
  *    <head> themes late arrivals too. apply() is idempotent (compare before
  *    write) so the observer can't loop.
- *  - Browsers key the favicon cache by full URL — the ?theme= suffix makes
+ *  - Browsers key the favicon cache by full URL – the ?theme= suffix makes
  *    each swap a new resource and forces the tab to repaint.
  */
 export function ThemeFavicon() {

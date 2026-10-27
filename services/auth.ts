@@ -1,5 +1,5 @@
 /**
- * Auth service — mirrors mobile services/auth.ts semantics (docs/00-EXISTING-APP-AUDIT.md §5).
+ * Auth service – mirrors mobile services/auth.ts semantics (docs/00-EXISTING-APP-AUDIT.md §5).
  * Session storage differs by platform (cookies via @supabase/ssr instead of
  * SecureStore); flows and guards match.
  */
@@ -27,7 +27,7 @@ export async function signUpWithEmail(
     options: {
       data: { display_name: displayName },
       // Audit P2-6: confirmation links must land on the one redirect target
-      // this project's allowlist documents (docs/SUPABASE.md §7) — anything
+      // this project's allowlist documents (docs/SUPABASE.md §7) – anything
       // else gets silently rewritten to the mobile deep link. Bare path so the
       // allowlist entry matches; the callback defaults signed-in users to
       // /overview.
@@ -84,7 +84,7 @@ export async function finalizeRecoveryPassword(
   return { error: error?.message ?? null };
 }
 
-/** PKCE Google OAuth — web counterpart of mobile's browser-session flow. */
+/** PKCE Google OAuth – web counterpart of mobile's browser-session flow. */
 export async function signInWithGoogle(supabase: SupabaseClient<Database>) {
   return supabase.auth.signInWithOAuth({
     provider: "google",
@@ -102,12 +102,12 @@ export async function signOutAllDevices(supabase: SupabaseClient<Database>) {
   clearLocalCaches();
 }
 
-/** Purge per-user client-side data (sign-out / session loss — audit P3-4). */
+/** Purge per-user client-side data (sign-out / session loss – audit P3-4). */
 export function clearLocalCaches() {
   // Per-user caches are intentionally left simple on web v1 (no offline
-  // mutation queue exists — docs/SYNC-STRATEGY.md §5).
+  // mutation queue exists – docs/SYNC-STRATEGY.md §5).
   for (const key of Object.keys(localStorage)) {
-    // Audit P3-4: alert-dedupe keys also carry user-derived data — purge both
+    // Audit P3-4: alert-dedupe keys also carry user-derived data – purge both
     // prefixes on sign-out so nothing per-user survives the session.
     if (key.startsWith("sf_cache_") || key.startsWith("sf_alert_sent_")) {
       localStorage.removeItem(key);
@@ -129,7 +129,7 @@ export function clearLocalCaches() {
  * Google OAuth profile photos (lh3–lh6.googleusercontent.com) are also allowed:
  * a Google-signup user who never uploaded an avatar has the raw photo URL in
  * `users.avatar_url` (the /auth/callback mirror only runs for web signups), and
- * the mobile client renders it directly — rejecting it here broke parity.
+ * the mobile client renders it directly – rejecting it here broke parity.
  */
 const AVATAR_PATH_PREFIXES = [
   "/storage/v1/object/public/avatars/",
@@ -181,7 +181,7 @@ export async function ensureProfile(
     await seedDefaultCategories(supabase, userId, true);
     const profile = existing as Profile;
     // Metadata fallback (mobile parity): budget/cycle/currency were mirrored to
-    // auth metadata — adopt them when the DB row holds only defaults.
+    // auth metadata – adopt them when the DB row holds only defaults.
     const meta = (authMeta ?? {}) as {
       monthly_budget?: number;
       budget_currency?: string;
@@ -195,7 +195,7 @@ export async function ensureProfile(
     // URL in auth metadata; adopt it here when the row has no avatar (covers a
     // first sign-in where the row did not exist yet at callback time).
     // Audit NV-7 (healing): session.user.email is the server-confirmed
-    // identity — keep users.email aligned with it. Covers a two-sided
+    // identity – keep users.email aligned with it. Covers a two-sided
     // email change confirmed out-of-band (mobile / link click) and re-syncs
     // any legacy row that mirrored an address before its confirmation.
     if (email && profile.email !== email) patch.email = email;
@@ -206,7 +206,7 @@ export async function ensureProfile(
       patch.monthly_budget = meta.monthly_budget;
     }
     // Budget currency travels with the budget figure. Mobile NEVER writes the
-    // users column (PostgREST rejects unknown columns) — the live value lives
+    // users column (PostgREST rejects unknown columns) – the live value lives
     // in auth metadata, so the DB row is null and must adopt it here. Without
     // this the budget renders raw in the display currency (overview showed
     // "NPR 36,000" for a budget saved as INR). Metadata missing entirely
@@ -229,10 +229,10 @@ export async function ensureProfile(
           .maybeSingle();
         if (hist?.budget_currency) patch.budget_currency = hist.budget_currency.toUpperCase();
       } catch {
-        // history is best-effort — never block profile load
+        // history is best-effort – never block profile load
       }
     }
-    // Cycle days: same 1..31 clamp the consumers apply — never persist a
+    // Cycle days: same 1..31 clamp the consumers apply – never persist a
     // NaN/fraction/out-of-range metadata value (h09 hardening).
     const clampDay = (d: number): number => Math.min(Math.max(Math.round(d), 1), 31);
     if (!profile.cycle_start_day && typeof meta.cycle_start_day === "number" && Number.isFinite(meta.cycle_start_day)) {
@@ -257,7 +257,7 @@ export async function ensureProfile(
   }
 
   const onboardingCurrency = localStorage.getItem("spendflow_onboarding_currency");
-  // Audit P3-3: the localStorage value is user-editable — apply the same
+  // Audit P3-3: the localStorage value is user-editable – apply the same
   // 3-letter shape check the auth-metadata path enforces.
   const safeCurrency =
     onboardingCurrency && /^[A-Z]{3}$/.test(onboardingCurrency) ? onboardingCurrency : "NPR";
@@ -268,7 +268,7 @@ export async function ensureProfile(
     preferred_currency: safeCurrency,
   };
   // First OAuth sign-in: the callback mirrored Google's photo into the avatars
-  // bucket before this row existed — carry the (allowlist-checked) URL over.
+  // bucket before this row existed – carry the (allowlist-checked) URL over.
   const metaAvatar = (authMeta as { avatar_url?: unknown } | null)?.avatar_url;
   if (typeof metaAvatar === "string" && isAllowedAvatarUrl(metaAvatar)) {
     insert.avatar_url = metaAvatar;

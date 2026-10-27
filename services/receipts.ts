@@ -1,5 +1,5 @@
 /**
- * Receipt attachments — web port of mobile services/receipts.ts semantics
+ * Receipt attachments – web port of mobile services/receipts.ts semantics
  * (docs/SUPABASE.md §2, docs/SECURITY.md): private `receipts` bucket, 4 MiB,
  * image/jpeg|png|webp|heic|heif, owner-scoped `{uid}/…` path (bucket policy:
  * first segment must equal auth.uid()). The DB column stores the raw storage
@@ -10,7 +10,7 @@ import type { Database } from "@/types/database.types";
 
 export const RECEIPT_BUCKET = "receipts";
 
-const MAX_RECEIPT_BYTES = 4 * 1024 * 1024; // 4 MiB — mirrors the bucket limit
+const MAX_RECEIPT_BYTES = 4 * 1024 * 1024; // 4 MiB – mirrors the bucket limit
 
 const ALLOWED_MIME_TYPES = new Set([
   "image/jpeg",
@@ -37,7 +37,7 @@ export function validateReceiptFile(file: File): string | null {
   return null;
 }
 
-// Extension allowlist — the picker-supplied filename is never trusted verbatim.
+// Extension allowlist – the picker-supplied filename is never trusted verbatim.
 function sanitizeExtension(file: File): string {
   const raw = file.name?.split(".").pop()?.toLowerCase() ?? "";
   if (raw && ALLOWED_EXTENSIONS.has(raw)) return raw === "jpeg" ? "jpg" : raw;
@@ -71,7 +71,7 @@ export async function uploadReceipt(
  * `receipt_image_url`. Handles legacy full-URL rows and raw paths; returns
  * null for anything unmanageable (mobile parity).
  *
- * When `userId` is supplied the path's FIRST SEGMENT must equal it — the
+ * When `userId` is supplied the path's FIRST SEGMENT must equal it – the
  * stored column value is owner-settable over the data plane (and second-order
  * writable by the mobile client), so `..`-stripping is a traversal filter,
  * not an ownership one. Read/delete callers MUST pass the session uid; the
@@ -116,7 +116,7 @@ export async function resolveReceiptUrl(
       .createSignedUrl(path, SIGNED_URL_EXPIRY_SECONDS);
     if (!error && data?.signedUrl) return data.signedUrl;
   } catch {
-    // fall through — nothing renderable
+    // fall through – nothing renderable
   }
   return null;
 }
@@ -124,7 +124,7 @@ export async function resolveReceiptUrl(
 /**
  * Signed URL that forces a download (Content-Disposition: attachment).
  * Audit P2-2: links must never offer TOP-LEVEL navigation to a storage
- * object — a non-image planted via the REST escape hatch would render as a
+ * object – a non-image planted via the REST escape hatch would render as a
  * page on the Supabase origin. Downloads are inert by construction.
  */
 export async function resolveReceiptDownloadUrl(
@@ -158,6 +158,6 @@ export async function deleteReceipt(
   try {
     await supabase.storage.from(RECEIPT_BUCKET).remove([path]);
   } catch {
-    // object may already be gone — never breaks the caller's flow
+    // object may already be gone – never breaks the caller's flow
   }
 }

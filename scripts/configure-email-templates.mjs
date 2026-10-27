@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 // ─────────────────────────────────────────────────────────────────────────────
-// configure-email-templates.mjs — push the redesigned emails/ templates +
+// configure-email-templates.mjs – push the redesigned emails/ templates +
 // subject lines into the Supabase project's Auth config (Management API).
 //
 // Why the API instead of the dashboard: each dashboard tab hides a
 // "Customize message" toggle and the password-reset template is labelled
-// "Recovery" — easy to paste into the wrong place and still send defaults.
+// "Recovery" – easy to paste into the wrong place and still send defaults.
 // This writes the config fields directly and verifies the read-back.
 //
 // Field-name portability: Supabase stores template HTML under
@@ -74,7 +74,7 @@ const SUBJECTS = {
 
 // Sanity: the magic-link template MUST carry the OTP code variable.
 if (!HTML.magic_link.includes('{{ .Code }}')) {
-  console.error('✗ security-code.html is missing {{ .Code }} — OTP flows would break. Aborting.');
+  console.error('✗ security-code.html is missing {{ .Code }} – OTP flows would break. Aborting.');
   process.exit(1);
 }
 for (const k of KEYS) {
@@ -127,7 +127,7 @@ const brief = (cfg) =>
       const isCustom = /spendflow/i.test(t);
       return [k, {
         subject: cfg[`mailer_subjects_${k}`],
-        custom: isCustom ? `yes (${t.length} chars)` : t ? `NO — wrong content (${t.slice(0, 40)}…)` : 'NO — sending default',
+        custom: isCustom ? `yes (${t.length} chars)` : t ? `NO – wrong content (${t.slice(0, 40)}…)` : 'NO – sending default',
       }];
     }),
   );
@@ -189,7 +189,7 @@ async function main() {
   console.log(
     allCustom
       ? '\n✓ All four auth emails are now custom. Trigger a real Forgot-password to see it.'
-      : '\n✗ Some templates did not take — run with --dump and paste the output.',
+      : '\n✗ Some templates did not take – run with --dump and paste the output.',
   );
 }
 

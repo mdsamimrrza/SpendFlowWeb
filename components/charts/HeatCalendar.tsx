@@ -21,7 +21,7 @@ interface HeatCalendarProps {
  * Spending-intensity calendar (GitHub-contributions style, ledger flavored).
  * Weeks as columns, Mon–Sun rows; five quantile buckets drive the tint ramp
  * (brand color at low opacity → full). Tap a cell to deep-link that day
- * when onDayTap is provided. Fully token-driven — no raw hex.
+ * when onDayTap is provided. Fully token-driven – no raw hex.
  */
 export function HeatCalendar({
   values,
@@ -163,7 +163,6 @@ export function HeatCalendar({
                   onClick={() => onDayTap(cell.iso)}
                   onMouseEnter={() => setHovered({ iso: cell.iso, v })}
                   onMouseLeave={() => setHovered(null)}
-                  title={title}
                   aria-label={title}
                   className="min-w-0 rounded-[5px] transition hover:ring-2 hover:ring-primary/60 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none sm:rounded-md"
                 >
@@ -172,7 +171,6 @@ export function HeatCalendar({
               ) : (
                 <span
                   key={`${ci}-${cell.iso}`}
-                  title={cell.inMonth ? title : undefined}
                   onMouseEnter={() => cell.inMonth && !future && setHovered({ iso: cell.iso, v })}
                   onMouseLeave={() => setHovered(null)}
                   className="min-w-0"

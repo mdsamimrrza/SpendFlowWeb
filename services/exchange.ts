@@ -1,5 +1,5 @@
 /**
- * FX service — ported from mobile services/exchange.ts, SAME RATE DIRECTION:
+ * FX service – ported from mobile services/exchange.ts, SAME RATE DIRECTION:
  * getRate() returns **USD per 1 unit of currency** (e.g. NPR ≈ 0.00714),
  * matching the `exchange_rates.rate_to_usd` / `expenses.exchange_rate_to_usd`
  * columns that the mobile backfill populates with getRate() output.
@@ -8,13 +8,13 @@
  * NPR derives from INR ÷ 1.6.
  * ONE deliberate refinement over the mobile tier list (recorded in
  * docs/FEATURE-PARITY.md): clients can no longer write `exchange_rates`
- * (docs/SUPABASE.md §1 — SELECT-only) and no job refreshes it, so NO table
- * row — however recent — may answer a CURRENT-rate request: undated lookups
+ * (docs/SUPABASE.md §1 – SELECT-only) and no job refreshes it, so NO table
+ * row – however recent – may answer a CURRENT-rate request: undated lookups
  * go straight to the live APIs (frankfurter → er-api), falling back to the
  * table only when both are unreachable. Measured 2026-09-16: table/fallback
  * rows froze INR ≈ 95.2 vs live 95.96 (display figures ~0.7 % off), and
  * provider snapshots differ ~0.3 % among themselves (er-api 95.67, ECB 95.96,
- * Google ≈95.91) — frankfurter leads so web tracks the reference converter
+ * Google ≈95.91) – frankfurter leads so web tracks the reference converter
  * users compare against. Dated (historical) lookups keep the documented
  * tier order unchanged: row snapshots and row-date resolvers must stay
  * byte-compatible with mobile (docs/SYNC-STRATEGY.md §6.1).
@@ -26,7 +26,7 @@ export const USD = "USD";
 export const NPR_PER_INR = 1.6;
 
 /**
- * USD per 1 unit — pegged currencies (mobile PEGGED_USD_PER_UNIT parity,
+ * USD per 1 unit – pegged currencies (mobile PEGGED_USD_PER_UNIT parity,
  * including the inversion: QAR is 1/3.64 because 3.64 QAR = 1 USD).
  */
 export const PEGGED_USD_PER_UNIT: Record<string, number> = {
@@ -38,7 +38,7 @@ export const PEGGED_USD_PER_UNIT: Record<string, number> = {
 
 /**
  * Last-resort USD-per-1-unit fallbacks (mobile FALLBACK_UNITS_PER_USD values
- * inverted; refreshed 2026-09-15 — keep roughly current-era so worst case is
+ * inverted; refreshed 2026-09-15 – keep roughly current-era so worst case is
  * small drift). NPR has no entry by design: derived from INR ÷ 1.6.
  */
 const UNITS_PER_USD_2026: Record<string, number> = {
@@ -73,7 +73,7 @@ const API_TIMEOUT_MS = 8000;
  * a broad sanity band (all real world currencies sit well inside
  * 1e-6…1e6). A crafted table row (garbage, NaN/Infinity, absurd exponent)
  * is rejected at the boundary instead of flowing into money math and
- * persisted snapshots — the deployed write-revocation is the real
+ * persisted snapshots – the deployed write-revocation is the real
  * boundary; this is the client's last-trust filter, mirroring the
  * audit-P3 URL-validation discipline at the same trust edge.
  */
@@ -100,7 +100,7 @@ function todayISO(): string {
 async function fetchUnitsPerUsdFromApi(currency: string, date: string | null): Promise<number | null> {
   if (isPegged(currency) || currency === USD) return null;
   // Audit P3: never interpolate an unvalidated value into the feed URL, even
-  // though callers today pre-check — this function is the last trust boundary.
+  // though callers today pre-check – this function is the last trust boundary.
   if (!/^[A-Z]{3}$/.test(currency)) return null;
   if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
   try {
@@ -124,7 +124,7 @@ async function fetchUnitsPerUsdFromApi(currency: string, date: string | null): P
 }
 
 /**
- * Current-FX provider mobile uses (docs/00-EXISTING-APP-AUDIT.md §6) — used
+ * Current-FX provider mobile uses (docs/00-EXISTING-APP-AUDIT.md §6) – used
  * only for undated requests so a live web stamp matches a live mobile stamp.
  */
 async function fetchCurrentFromErApi(currency: string): Promise<number | null> {
@@ -171,12 +171,12 @@ async function readFromTable(
 
 /**
  * Resolve USD-per-1-unit for a currency at a date (null = today).
- * Dated requests keep the documented mobile tier order — table first,
+ * Dated requests keep the documented mobile tier order – table first,
  * byte-compat (docs/SYNC-STRATEGY.md §6.1). Current-rate requests go
  * API-FIRST: nothing can write exchange_rates any more, so no row of any
  * age can represent "today" (measured: frozen table rows priced display
  * currency ~1 % off; provider snapshots er-api morning = 95.67 vs ECB =
- * 95.96 vs Google ≈95.91 — frankfurter leads so web tracks the reference
+ * 95.96 vs Google ≈95.91 – frankfurter leads so web tracks the reference
  * converter users compare against, er-api is the secondary).
  */
 export async function getRate(
@@ -190,7 +190,7 @@ export async function getRate(
 
   const targetDate = date && date < todayISO() ? date : null;
 
-  // Nepal–India peg: NPR derives from the same date's INR rate — never
+  // Nepal–India peg: NPR derives from the same date's INR rate – never
   // fetched, never read from exchange_rates, never stored.
   if (ccy === "NPR") {
     const inr = await getRate(supabase, "INR", date);
