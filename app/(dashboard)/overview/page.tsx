@@ -1203,47 +1203,52 @@ export default function HomePage() {
       {/* ===== Bottom Row: Linked Accounts + Recent Budgets ===== */}
       <section className="rise mt-6 grid gap-5 lg:grid-cols-2">
         {/* Linked Accounts Card */}
-        <div className="flex min-w-0 flex-col justify-between p-0 lg:rounded-xl lg:border lg:border-[#eaecf0] dark:border-[#262626] lg:bg-white dark:bg-[#0a0a0a] lg:p-5 lg:shadow-[0_1px_3px_rgba(16,24,40,0.04)]">
+        <div className="flex min-w-0 flex-col justify-between -mx-5 bg-[#f7f8fa] px-5 py-4 dark:bg-[#0a0a0a] lg:mx-0 lg:rounded-xl lg:border lg:border-[#eaecf0] dark:lg:border-[#262626] lg:bg-white lg:px-5 lg:py-5 lg:shadow-[0_1px_3px_rgba(16,24,40,0.04)]">
           <div>
             <div className="flex items-center justify-between">
-              <h2 className="text-[15px] font-bold text-gray-900 dark:text-gray-100">Linked Accounts</h2>
+              <h2 className="text-[16px] font-semibold text-[#1e293b] dark:text-gray-100 lg:text-[15px] lg:font-bold lg:text-gray-900">Linked Accounts</h2>
               <Link
                 href="/accounts"
                 aria-label="Add account"
-                className="grid h-7 w-7 place-items-center rounded-lg text-gray-500 dark:text-gray-400 transition-colors hover:bg-gray-100 dark:hover:bg-[#141414] hover:text-gray-900 dark:hover:text-gray-100 lg:hidden"
+                className="text-[#94a3b8] transition-colors hover:text-gray-900 dark:hover:text-gray-100 lg:text-gray-500"
               >
-                <Plus size={15} />
+                <Plus size={18} />
               </Link>
             </div>
             {accounts.length === 0 ? (
               <p className="py-6 text-center text-xs text-gray-400">No accounts linked yet.</p>
             ) : (
               <>
-                {/* Mobile: swipeable balance cards */}
-                <div ref={stripRef} className="-mx-5 mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-1 lg:hidden">
-                  {sortedAccounts.slice(0, 5).map(({ account: a, value }) => (
+                {/* Mobile: reference swipe cards */}
+                <div ref={stripRef} className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:hidden">
+                  {sortedAccounts.slice(0, 5).map(({ account: a, value }, i) => (
                     <div
                       key={a.id}
-                      className="min-w-[200px] snap-start rounded-xl border border-[#eef0f2] bg-[#f7f8f9] dark:bg-[#141414] p-4"
+                      className="w-[200px] shrink-0 snap-start rounded-2xl border-[1.5px] border-[#e2e8f0] bg-white p-4 dark:border-[#262626] dark:bg-[#141414]"
                     >
                       <div className="flex items-center gap-2.5">
                         <span
                           className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-white"
-                          style={{ backgroundColor: a.color || "#111827" }}
+                          style={{ backgroundColor: linkedTileColor(i, a.account_type) }}
                         >
-                          <Landmark size={16} />
+                          <CreditCard size={17} />
                         </span>
                         <span className="min-w-0">
-                          <span className="block truncate text-xs font-semibold text-gray-900 dark:text-gray-100">{a.name}</span>
-                          <span className="block truncate text-[9px] font-bold uppercase tracking-wider text-gray-400">
+                          <span className="block truncate text-sm font-medium text-[#0f172a] dark:text-gray-100">{a.name}</span>
+                          <span className="block truncate text-[10px] font-semibold uppercase tracking-wider text-[#64748b] dark:text-gray-400">
                             {a.account_type}
                           </span>
                         </span>
                       </div>
-                      <p className="mt-4 text-[9px] font-bold uppercase tracking-wider text-gray-400">Available Balance</p>
-                      <p className="numeric mt-1 text-lg font-bold text-gray-900 dark:text-gray-100">
+                      <p className="mt-4 text-[9px] font-semibold uppercase tracking-wider text-[#64748b] dark:text-gray-400">Available Balance</p>
+                      <FitText
+                        basePx={22}
+                        minPx={13}
+                        className="numeric mt-1 font-bold text-[#0f172a] dark:text-gray-100"
+                        title={formatMoney(value, displayCurrency, locale)}
+                      >
                         {formatMoney(value, displayCurrency, locale)}
-                      </p>
+                      </FitText>
                     </div>
                   ))}
                 </div>
@@ -1382,6 +1387,20 @@ export default function HomePage() {
       />
     </div>
   );
+}
+
+function linkedTileColor(index: number, accountType?: string): string {
+  if (index === 0) return "#2D7FDB";
+  if (index === 1) return "#3A3D45";
+  const byType: Record<string, string> = {
+    wallet: "#10B981",
+    cash: "#F59E0B",
+    credit_card: "#6366F1",
+    savings: "#EC4899",
+    investment: "#8B5CF6",
+    bank: "#0284C7",
+  };
+  return byType[accountType ?? ""] ?? "#64748B";
 }
 
 function formatShort(d: Date, locale: string): string {

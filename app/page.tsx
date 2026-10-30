@@ -174,11 +174,11 @@ export default function LandingPage() {
   return (
     <div className="relative min-h-screen overflow-x-clip bg-background">
       {/* ===== Masthead ===== */}
-      <header className="glass sticky top-0 z-40 border-b border-border">
-        <div className="mx-auto flex max-w-[1200px] items-center justify-between px-5 py-3.5 sm:px-8">
-          <Link href="/" className="flex items-center gap-2.5">
-            <SpendFlowSeal size={34} />
-            <span className="font-brand text-lg font-bold text-text">SpendFlow</span>
+      <header className="sticky top-0 z-40 border-b border-[#eaecf0] bg-white dark:border-[#262626] dark:bg-[#0a0a0a]">
+        <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between px-5 sm:px-8">
+          <Link href="/" className="flex items-center gap-3" aria-label="SpendFlow">
+            <SpendFlowSeal size={32} />
+            <span className="text-[18px] font-bold tracking-tight text-gray-900 dark:text-gray-100">SpendFlow</span>
           </Link>
           <div className="flex items-center gap-2">
             <div className="hidden items-center gap-1 sm:flex">
@@ -186,10 +186,10 @@ export default function LandingPage() {
                 <button
                   key={l}
                   onClick={() => setLanguage(l)}
-                  className={`h-9 rounded-lg border px-2.5 text-[11px] font-semibold transition ${
+                  className={`flex h-9 items-center rounded-lg px-2.5 text-[11px] font-bold transition-colors ${
                     language === l
-                      ? "border-primary bg-primary text-primary-ink"
-                      : "border-border bg-transparent text-text-muted"
+                      ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900"
+                      : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-[#141414] dark:hover:text-gray-100"
                   }`}
                 >
                   {l.toUpperCase()}
@@ -201,13 +201,13 @@ export default function LandingPage() {
               href={ANDROID_DOWNLOAD_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden h-9 items-center gap-1.5 rounded-lg border border-border px-4 text-[13px] font-medium text-text transition-colors hover:border-faint md:flex"
+              className="hidden h-9 items-center gap-1.5 rounded-lg border border-gray-200 px-4 text-[13px] font-medium text-gray-700 transition-colors hover:border-gray-300 hover:text-gray-900 md:flex dark:border-[#262626] dark:text-gray-300 dark:hover:border-[#4b5563] dark:hover:text-gray-100"
             >
               <Download size={13} className="text-primary" /> {t("downloadAndroid")}
             </a>
             <Link
               href="/sign-in"
-              className="flex h-9 items-center rounded-lg bg-primary px-4 text-[13px] font-semibold text-primary-ink transition-colors hover:bg-primary-strong"
+              className="flex h-9 items-center rounded-lg bg-gray-900 px-4 text-[13px] font-semibold text-white transition-colors hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
             >
               {t("signIn")}
             </Link>
@@ -265,7 +265,7 @@ export default function LandingPage() {
             </Reveal>
             {/* Trust figures */}
             <Reveal delay={320}>
-              <div className="mx-auto mt-8 grid max-w-md grid-cols-3 gap-px border border-border bg-border">
+              <div className="mx-auto mt-8 grid max-w-md grid-cols-3 gap-px overflow-hidden rounded-xl border border-border bg-border">
                 {[
                   { n: "0%", d: t("figNoAds") },
                   { n: "12", d: t("figCurrencies") },
@@ -287,7 +287,7 @@ export default function LandingPage() {
             <div className="order-2 lg:order-1">
               <Reveal>
                 <p className="caps !text-primary-strong">{t("getTheApp")}</p>
-                <h2 className="font-display mt-3 text-3xl font-semibold leading-tight text-text sm:text-4xl">
+                <h2 className="mt-3 text-3xl font-extrabold leading-tight tracking-tight text-text sm:text-4xl">
                   {t("appSectionTitle")}
                 </h2>
                 <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-text-muted">
@@ -390,7 +390,7 @@ export default function LandingPage() {
               <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-[var(--sf-primary-light)] px-3 py-1 text-xs font-medium text-primary-strong">
                 <Sparkles size={11} /> {t("featuresKicker")}
               </span>
-              <h2 className="font-display mt-4 text-3xl font-semibold tracking-tight text-text sm:text-4xl">
+              <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-text sm:text-4xl">
                 {t("landingInsideTitle")}
               </h2>
             </div>
@@ -398,7 +398,7 @@ export default function LandingPage() {
           <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((f, i) => (
               <Reveal key={f.title} delay={(i % 3) * 80}>
-                <div className="group relative h-full overflow-hidden rounded-2xl border border-border bg-surface p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-transparent hover:shadow-pop">
+                <div className="group relative h-full overflow-hidden rounded-xl border border-border bg-surface p-5 transition-colors hover:border-faint">
                   {/* hover aurora in the card's own hue */}
                   <span
                     aria-hidden
@@ -424,7 +424,7 @@ export default function LandingPage() {
           <Reveal>
             <div className="flex flex-col items-center text-center">
               <p className="caps !text-primary-strong">{t("currencyKicker")}</p>
-              <h2 className="font-display mt-2 text-2xl font-semibold text-text sm:text-3xl">
+              <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-text sm:text-3xl">
                 {t("landingCurrencyStrip")}
               </h2>
             </div>
@@ -438,7 +438,7 @@ export default function LandingPage() {
                     key={c}
                     className={`flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12px] font-extrabold transition-all duration-300 ${
                       active
-                        ? "scale-105 border-primary bg-primary text-primary-ink shadow-pop"
+                        ? "border-primary bg-primary text-primary-ink"
                         : "border-border bg-surface text-text-muted"
                     }`}
                   >
@@ -453,7 +453,7 @@ export default function LandingPage() {
             </div>
           </Reveal>
           <Reveal delay={160}>
-            <div className="mt-8 grid gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-3">
+            <div className="mt-8 grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-3">
               <TrustCell icon={<Landmark size={14} />} label={t("landingTrustOneLedger")} />
               <TrustCell icon={<ShieldCheck size={14} />} label={t("landingTrustRls")} />
               <TrustCell
@@ -472,7 +472,7 @@ export default function LandingPage() {
               <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-[var(--sf-primary-light)] px-3 py-1 text-xs font-medium text-primary-strong">
                 <Download size={11} /> {t("installKicker")}
               </span>
-              <h2 className="font-display mt-4 text-3xl font-semibold tracking-tight text-text sm:text-4xl">
+              <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-text sm:text-4xl">
                 {t("installTitle")}
               </h2>
               <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-text-muted">{t("installDesc")}</p>
@@ -504,7 +504,7 @@ export default function LandingPage() {
               },
             ].map((s, i) => (
               <Reveal key={s.n} delay={i * 110}>
-                <div className="relative h-full overflow-hidden rounded-2xl border border-border bg-surface p-6">
+                <div className="relative h-full overflow-hidden rounded-xl border border-border bg-surface p-6">
                   <span
                     className="flex h-11 w-11 items-center justify-center rounded-xl"
                     style={{ background: `${s.hex}1f`, border: `1px solid ${s.hex}33`, color: s.hex }}
@@ -529,22 +529,22 @@ export default function LandingPage() {
         {/* ===== Closing CTA ===== */}
         <section className="border-t border-border py-14">
           <Reveal>
-            <div className="relative overflow-hidden rounded-2xl border border-border bg-surface p-8 shadow-soft sm:p-12">
+            <div className="relative overflow-hidden rounded-xl border border-primary bg-primary p-8 sm:p-12">
               <div
                 aria-hidden
-                className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-brass-tint opacity-60 blur-3xl"
+                className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10 blur-3xl"
               />
               <div className="relative flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="caps !text-primary-strong">{t("landingCtaStamp")}</p>
-                  <h2 className="font-display mt-2 text-2xl font-semibold tracking-tight text-text sm:text-3xl">
+                  <p className="caps !text-primary-ink/70">{t("landingCtaStamp")}</p>
+                  <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-primary-ink sm:text-3xl">
                     {t("landingCtaTitle")}
                   </h2>
                 </div>
                 <div className="flex w-full shrink-0 flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
                   <Link
                     href="/sign-up"
-                    className="flex h-11 items-center justify-center gap-2 rounded-lg bg-primary px-6 text-sm font-semibold text-primary-ink transition-colors hover:bg-primary-strong"
+                    className="flex h-11 items-center justify-center gap-2 rounded-lg bg-white px-6 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-100"
                   >
                     {t("getStarted")} <ArrowRight size={15} />
                   </Link>
@@ -552,9 +552,9 @@ export default function LandingPage() {
                     href={ANDROID_DOWNLOAD_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-surface px-6 text-sm font-semibold text-text transition-colors hover:bg-surface-elevated"
+                    className="flex h-11 items-center justify-center gap-2 rounded-lg border border-white/30 px-6 text-sm font-semibold text-primary-ink transition-colors hover:bg-white/10"
                   >
-                    <Download size={15} className="text-primary" /> {t("downloadAndroid")}
+                    <Download size={15} /> {t("downloadAndroid")}
                   </a>
                 </div>
               </div>

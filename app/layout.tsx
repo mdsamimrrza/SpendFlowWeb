@@ -58,6 +58,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     // suppressHydrationWarning: ThemeContext toggles the `dark` class pre-hydration.
     <html lang="en" suppressHydrationWarning className={`${dmSans.variable} ${geistMono.variable}`}>
       <body className="min-h-screen bg-background text-text antialiased">
+        {/* Theme before first paint: same resolution as ThemeContext.applyTheme,
+            run synchronously from the document head so a dark-mode refresh
+            never flashes the light theme. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var p=localStorage.getItem("spendflow_theme_preference")||"system";var d=p==="dark"||(p==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.classList.toggle("dark",d);}catch(e){}})();`,
+          }}
+        />
         <Providers>
           <ThemeFavicon />
           {children}

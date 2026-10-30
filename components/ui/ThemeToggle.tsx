@@ -1,13 +1,13 @@
 "use client";
 
-import { Moon, Sun, SunMoon } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { useTheme } from "@/store/ThemeContext";
 
-/** Cycles light → dark → system (mobile ThemeToggle parity). */
+/** Cycles light ↔ dark. */
 export function ThemeToggle({ className = "p-2" }: { className?: string }) {
   const { preference, setPreference } = useTheme();
-  const next = preference === "light" ? "dark" : preference === "dark" ? "system" : "light";
-  const Icon = preference === "light" ? Sun : preference === "dark" ? Moon : SunMoon;
+  const next = preference === "light" ? "dark" : "light";
+  const Icon = preference === "dark" ? Moon : Sun;
   const label = `Theme: ${preference} (click for ${next})`;
   return (
     <button

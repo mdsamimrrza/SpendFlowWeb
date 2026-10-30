@@ -34,7 +34,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
-    const stored = (localStorage.getItem(STORAGE_KEY) as ThemePreference | null) ?? "system";
+    let stored = (localStorage.getItem(STORAGE_KEY) as ThemePreference | null) ?? "system";
+    if (stored === "system") {
+      stored = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      localStorage.setItem(STORAGE_KEY, stored);
+    }
     setPreferenceState(stored);
     setIsDark(applyTheme(stored));
 

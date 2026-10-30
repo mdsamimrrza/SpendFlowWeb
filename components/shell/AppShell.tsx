@@ -140,7 +140,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return `${parts[0]?.[0] ?? "A"}${parts[1]?.[0] ?? "J"}`.toUpperCase();
   };
 
-  const themeNext = preference === "light" ? "dark" : preference === "dark" ? "system" : "light";
+  const themeNext = preference === "light" ? "dark" : "light";
 
   const avatar = (
     <div className="relative shrink-0" ref={avatarRef}>

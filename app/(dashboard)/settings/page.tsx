@@ -214,7 +214,7 @@ export default function SettingsPage() {
               onOpen={() => setAppearanceModalOpen(true)}
               right={
                 <span className="text-sm font-medium text-text-muted">
-                  {preference === "system" ? t("system") : preference === "dark" ? t("dark") : t("light")}
+                  {preference === "dark" ? t("dark") : t("light")}
                 </span>
               }
             />
@@ -390,7 +390,6 @@ export default function SettingsPage() {
             [
               { key: "light", label: t("light"), Icon: Sun },
               { key: "dark", label: t("dark"), Icon: Moon },
-              { key: "system", label: t("system"), Icon: Palette },
             ] as const
           ).map(({ key, label, Icon }) => {
             const selected = preference === key;
