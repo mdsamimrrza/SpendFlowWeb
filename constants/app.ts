@@ -34,16 +34,13 @@ export const CURRENCIES: CurrencyCode[] = [
 ];
 
 /**
- * Public Android APK distribution – free hosting via GitHub Releases.
+ * Public Android APK distribution via the dedicated Supabase Storage bucket.
  *
- * Uses the /releases/latest/download/ permalink so this URL always serves the
- * newest release with no code change needed per version. Convention: every
- * SpendFlow release must attach its APK as an asset named exactly
- * `SpendFlow.apk` and be published as a regular release (not a prerelease),
- * otherwise `latest` won't resolve the file.
+ * Keep `spendFlow.apk` current after each successful EAS website build. The
+ * bucket permits public reads only; release uploads remain administrator-only.
  */
 export const ANDROID_DOWNLOAD_URL =
-  "https://github.com/mdsamimrrza/SpendFlow/releases/latest/download/SpendFlow.apk";
+  "https://stisbfahlhquaqhrifjh.supabase.co/storage/v1/object/public/spendFlow_apk/spendFlow.apk?download=SpendFlow.apk";
 
 export interface CurrencyDetail {
   code: CurrencyCode;
